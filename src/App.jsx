@@ -3,11 +3,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 
-import DashboardPage from "./pages/DashboardPage";
-import CustomersPage from "./pages/CustomersPage";
-import InventoryPage from "./pages/InventoryPage";
-import FinanceLedgerPage from "./pages/FinanceLedgerPage";
-import ReportsPage from "./pages/ReportsPage";
+import DashboardPage from "./Pages/DashboardPage";
+import CustomersPage from "./Pages/CustomersPage";
+import InventoryPage from "./Pages/InventoryPage";
+import FinanceLedgerPage from "./Pages/FinanceLedgerPage";
+import ReportsPage from "./Pages/ReportsPage";
 
 function App() {
   return (
