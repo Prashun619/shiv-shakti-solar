@@ -72,18 +72,12 @@ const navigate = useNavigate();
 
 async function handleLogout(){
 
-  console.log("Before logout:",
-    sessionStorage.getItem("erp_user")
-  );
-
   await supabase.auth.signOut();
 
   localStorage.removeItem("erp_user");
   sessionStorage.removeItem("erp_user");
 
-  console.log("After logout:",
-    sessionStorage.getItem("erp_user")
-  );
+  setCurrentUser(null);
 
   navigate("/login");
 
