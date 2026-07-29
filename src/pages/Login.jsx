@@ -86,17 +86,14 @@ console.log("User from DB:", user);
 
       // Auth login
 
-      const {
-        error
+      const { data, error } =
+await supabase.auth.signInWithPassword({
+  email: user.email,
+  password,
+});
 
-      } =
-      await supabase.auth.signInWithPassword({
-
-        email:user.email,
-
-        password,
-
-      });
+console.log("AUTH RESULT:", data);
+console.log("AUTH ERROR:", error);
 
 
 
@@ -165,6 +162,12 @@ console.log("User from DB:", user);
           JSON.stringify(userSession)
         );
 
+console.log(
+  "Saved user:",
+  localStorage.getItem("erp_user") ||
+  sessionStorage.getItem("erp_user")
+);
+
       }
       else{
 
@@ -175,7 +178,7 @@ console.log("User from DB:", user);
 
       }
 
-
+console.log("Navigating to dashboard...");
 
       navigate("/");
 
