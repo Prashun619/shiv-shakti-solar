@@ -3,7 +3,7 @@ import { supabase } from "../services/supabase";
 import { useNavigate } from "react-router-dom";
 
 
-export default function Login() {
+export default function Login({setCurrentUser}) {
 
 
   const [username,setUsername] =
@@ -58,7 +58,6 @@ await supabase
 )
 .single();
 
-console.log("User from DB:", user);
 
       if(userError || !user){
 
@@ -92,8 +91,7 @@ await supabase.auth.signInWithPassword({
   password,
 });
 
-console.log("AUTH RESULT:", data);
-console.log("AUTH ERROR:", error);
+
 
 
 
@@ -188,11 +186,11 @@ console.log(
   sessionStorage.getItem("erp_user")
 );
 
-alert("erp_user saved");
+setCurrentUser(userSession);
 
 console.log("Navigating to dashboard...");
 
-      navigate("/");
+navigate("/");
 
 
     }

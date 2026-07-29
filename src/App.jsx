@@ -29,28 +29,21 @@ const location = useLocation();
 
 
 
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+
+  const saved =
+    localStorage.getItem("erp_user") ||
+    sessionStorage.getItem("erp_user");
+
+  return saved ? JSON.parse(saved) : null;
+
+});
 
 const [userLoaded, setUserLoaded] = useState(false);
 
 
 useEffect(()=>{
-
-  const savedUser =
-    localStorage.getItem("erp_user") ||
-    sessionStorage.getItem("erp_user");
-
-console.log("ProtectedRoute user:", savedUser);
-  if(savedUser){
-
-    setCurrentUser(
-      JSON.parse(savedUser)
-    );
-
-  }
-
   setUserLoaded(true);
-
 },[]);
 
 function hasPermission(permission){
@@ -97,7 +90,9 @@ if(!userLoaded){
 
 <Route
 path="/login"
-element={<Login />}
+element={
+<Login setCurrentUser={setCurrentUser}/>
+}
 />
 
 <Route
