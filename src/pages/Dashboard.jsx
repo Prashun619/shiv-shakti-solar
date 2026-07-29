@@ -59,38 +59,36 @@ export default function Dashboard() {
   async function loadDashboard() {
     try {
       const [
-        { count: customerCount },
-        { data: projects },
-        { data: customers },
-        financeResult,
-      ] = await Promise.all([
+  customerResult,
+  projectResult,
+  recentCustomerResult,
+  financeResult,
+] = await Promise.all([
         supabase
-          .from("customers")
-          .select("*", {
-            count: "exact",
-            head: true,
-          }),
+  .from("customers")
+  .select("id", {
+    count: "exact",
+  }),
 
         supabase
-          .from("projects")
-          .select("*"),
-
-        supabase
-          .from("customers")
-          .select(
-            "customer_name, location, plant_size"
-          )
-          .order("id", {
-            ascending: false,
-          })
-          .limit(5),
+  .from("projects")
+  .select("*"),
+supabase
+  .from("customers")
+  .select(
+    "customer_name, location, plant_size"
+  )
+  .order("id", {
+    ascending: false,
+  })
+  .limit(5),
 
         supabase
   .from("billing")
   .select("*"),
       ]);
 
-      const projectList = projects || [];
+      const projectList = projectResult.data || [];
 
       const totalProjects = projectList.length;
 
@@ -137,7 +135,7 @@ let expenses = 0;
 
 });
       setStats({
-        customers: customerCount || 0,
+        customers: customerResult.count || 0,
         projects: totalProjects,
         projectValue: totalValue,
         received: totalReceived,
@@ -149,7 +147,9 @@ let expenses = 0;
         balance: income - expenses,
       });
 
-      setRecentCustomers(customers || []);
+      setRecentCustomers(
+  recentCustomerResult.data || []
+);
 
       await loadRecentProjects(projectList);
 
