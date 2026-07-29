@@ -178,6 +178,18 @@ console.log(
 
       }
 
+      console.log(
+  "Local:",
+  localStorage.getItem("erp_user")
+);
+
+console.log(
+  "Session:",
+  sessionStorage.getItem("erp_user")
+);
+
+alert("erp_user saved");
+
 console.log("Navigating to dashboard...");
 
       navigate("/");
