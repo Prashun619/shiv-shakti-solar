@@ -26,8 +26,7 @@ import CreateInvoice from "./pages/CreateInvoice";
 export default function App() {
 const location = useLocation();
 
-const isLoginPage =
-  location.pathname === "/login";
+
 
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -40,7 +39,7 @@ useEffect(()=>{
     localStorage.getItem("erp_user") ||
     sessionStorage.getItem("erp_user");
 
-
+console.log("ProtectedRoute user:", savedUser);
   if(savedUser){
 
     setCurrentUser(
@@ -90,14 +89,18 @@ if(!userLoaded){
 
  return (
 
-
-isLoginPage ? (
+!currentUser ? (
 
 <Routes>
 
 <Route
 path="/login"
 element={<Login />}
+/>
+
+<Route
+path="*"
+element={<Navigate to="/login" />}
 />
 
 </Routes>
@@ -107,7 +110,6 @@ element={<Login />}
 :
 
 (
-
 <div className="h-screen flex bg-gray-100">
 
       {/* Sidebar */}
@@ -298,7 +300,14 @@ font-semibold
 <div className="flex-1 p-6 overflow-x-hidden">
   <div className="max-w-[1200px] mx-auto">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route
+ path="/"
+ element={
+   <ProtectedRoute>
+     <Dashboard />
+   </ProtectedRoute>
+ }
+/>
           <Route
 path="/customers"
 element={
