@@ -24,7 +24,7 @@ import CreateInvoice from "./pages/CreateInvoice";
 
 
 export default function App() {
-  console.log("APP VERSION: LOGIN CHECK ACTIVE");
+  
 const location = useLocation();
 
 

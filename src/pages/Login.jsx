@@ -176,19 +176,10 @@ console.log(
 
       }
 
-      console.log(
-  "Local:",
-  localStorage.getItem("erp_user")
-);
-
-console.log(
-  "Session:",
-  sessionStorage.getItem("erp_user")
-);
+     
 
 setCurrentUser(userSession);
 
-console.log("Navigating to dashboard...");
 
 navigate("/");
 
