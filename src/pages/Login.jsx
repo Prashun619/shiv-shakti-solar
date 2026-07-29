@@ -24,7 +24,8 @@ export default function Login() {
 
     e.preventDefault();
 
-
+console.log("LOGIN VERSION 2");
+alert("LOGIN VERSION 2");
     try{
 
 
