@@ -10,11 +10,6 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-
-  // =====================================================
-  // CORS
-  // =====================================================
-
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: corsHeaders,
@@ -22,128 +17,83 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    // =====================================================
-    // ENVIRONMENT
-    // =====================================================
-
-    const supabaseUrl =
-      Deno.env.get("SUPABASE_URL");
-
-    const supabaseAnonKey =
-      Deno.env.get("SUPABASE_ANON_KEY");
-
-    const serviceRoleKey =
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (
-      !supabaseUrl ||
-      !supabaseAnonKey ||
-      !serviceRoleKey
-    ) {
-      throw new Error(
-        "Supabase environment variables are missing."
-      );
+    if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
+      throw new Error("Supabase environment variables are missing.");
     }
 
-    // =====================================================
-    // CALLER CLIENT
-    // =====================================================
+    // -----------------------------------------------------
+    // VERIFY CALLER
+    // -----------------------------------------------------
 
-    const supabaseUser =
-      createClient(
-        supabaseUrl,
-        supabaseAnonKey,
-        {
-          global: {
-            headers: {
-              Authorization:
-                req.headers.get(
-                  "Authorization"
-                ) || "",
-            },
+    const supabaseUser = createClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        global: {
+          headers: {
+            Authorization:
+              req.headers.get("Authorization") || "",
           },
-        }
-      );
-
-    // =====================================================
-    // VERIFY AUTHENTICATED USER
-    // =====================================================
+        },
+      }
+    );
 
     const {
-      data: {
-        user: authUser,
-      },
+      data: { user: authUser },
       error: authError,
-    } =
-      await supabaseUser.auth.getUser();
+    } = await supabaseUser.auth.getUser();
 
-    if (
-      authError ||
-      !authUser
-    ) {
+    if (authError || !authUser) {
       return new Response(
         JSON.stringify({
-          error:
-            "Unauthorized. Please login first.",
+          error: "Unauthorized. Please login first.",
         }),
         {
           status: 401,
           headers: {
             ...corsHeaders,
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
         }
       );
     }
 
-    // =====================================================
+    // -----------------------------------------------------
     // ADMIN CLIENT
-    // =====================================================
+    // -----------------------------------------------------
 
-    const supabaseAdmin =
-      createClient(
-        supabaseUrl,
-        serviceRoleKey
-      );
+    const supabaseAdmin = createClient(
+      supabaseUrl,
+      serviceRoleKey
+    );
 
-    // =====================================================
+    // -----------------------------------------------------
     // VERIFY CURRENT USER IS ADMIN
-    // =====================================================
+    // -----------------------------------------------------
 
     const {
       data: currentUser,
       error: currentUserError,
-    } =
-      await supabaseAdmin
-        .from("users")
-        .select(`
-          id,
-          role,
-          active
-        `)
-        .eq(
-          "id",
-          authUser.id
-        )
-        .single();
+    } = await supabaseAdmin
+      .from("users")
+      .select("id, role, active")
+      .eq("id", authUser.id)
+      .single();
 
-    if (
-      currentUserError ||
-      !currentUser
-    ) {
+    if (currentUserError || !currentUser) {
       return new Response(
         JSON.stringify({
-          error:
-            "Unable to verify current user.",
+          error: "Unable to verify current user.",
         }),
         {
           status: 403,
           headers: {
             ...corsHeaders,
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
         }
       );
@@ -155,222 +105,171 @@ Deno.serve(async (req) => {
     ) {
       return new Response(
         JSON.stringify({
-          error:
-            "Only Admin users can delete users.",
+          error: "Only Admin users can delete users.",
         }),
         {
           status: 403,
           headers: {
             ...corsHeaders,
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
         }
       );
     }
 
-    // =====================================================
-    // REQUEST DATA
-    // =====================================================
+    // -----------------------------------------------------
+    // REQUEST
+    // -----------------------------------------------------
 
-    const {
-      id,
-    } = await req.json();
+    const { id } = await req.json();
 
     if (!id) {
       return new Response(
         JSON.stringify({
-          error:
-            "User ID is required.",
+          error: "User ID is required.",
         }),
         {
           status: 400,
           headers: {
             ...corsHeaders,
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
         }
       );
     }
 
-    // =====================================================
+    // -----------------------------------------------------
     // PREVENT SELF DELETE
-    // =====================================================
+    // -----------------------------------------------------
 
     if (id === authUser.id) {
       return new Response(
         JSON.stringify({
-          error:
-            "You cannot delete your own account.",
+          error: "You cannot delete your own account.",
         }),
         {
           status: 400,
           headers: {
             ...corsHeaders,
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
         }
       );
     }
 
-    // =====================================================
-    // VERIFY TARGET USER
-    // =====================================================
+    // -----------------------------------------------------
+    // FIND TARGET USER
+    // -----------------------------------------------------
 
     const {
       data: targetUser,
       error: targetUserError,
-    } =
-      await supabaseAdmin
-        .from("users")
-        .select(`
-          id,
-          full_name,
-          role,
-          active
-        `)
-        .eq(
-          "id",
-          id
-        )
-        .single();
+    } = await supabaseAdmin
+      .from("users")
+      .select(`
+        id,
+        full_name,
+        username,
+        email,
+        role,
+        active
+      `)
+      .eq("id", id)
+      .single();
 
-    if (
-      targetUserError ||
-      !targetUser
-    ) {
+    if (targetUserError || !targetUser) {
       return new Response(
         JSON.stringify({
-          error:
-            "Target user was not found.",
+          error: "Target user was not found.",
         }),
         {
           status: 404,
           headers: {
             ...corsHeaders,
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
         }
       );
     }
 
-    // =====================================================
-    // PREVENT DELETING ANOTHER ADMIN
-    //
-    // This protects the remaining admin account(s).
-    // =====================================================
+    // -----------------------------------------------------
+    // PREVENT ADMIN DELETE
+    // -----------------------------------------------------
 
-    if (
-      targetUser.role === "Admin"
-    ) {
+    if (targetUser.role === "Admin") {
       return new Response(
         JSON.stringify({
-          error:
-            "Admin users cannot be deleted from User Management.",
+          error: "Admin users cannot be deleted.",
         }),
         {
           status: 403,
           headers: {
             ...corsHeaders,
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
         }
       );
     }
 
-    // =====================================================
-    // DELETE USER PERMISSIONS FIRST
-    // =====================================================
-
-    const {
-      error: permissionDeleteError,
-    } =
-      await supabaseAdmin
-        .from("user_permissions")
-        .delete()
-        .eq(
-          "user_id",
-          id
-        );
-
-    if (permissionDeleteError) {
-      throw permissionDeleteError;
-    }
-
-    // =====================================================
-    // DELETE AUTH USER
-    // =====================================================
+    // -----------------------------------------------------
+    // DELETE AUTH USER FIRST
+    // -----------------------------------------------------
 
     const {
       error: authDeleteError,
-    } =
-      await supabaseAdmin.auth.admin.deleteUser(
-        id
-      );
+    } = await supabaseAdmin.auth.admin.deleteUser(id);
 
-    if (
-      authDeleteError &&
-      !authDeleteError.message
-        .toLowerCase()
-        .includes("not found")
-    ) {
+    if (authDeleteError) {
       throw authDeleteError;
     }
 
-    // =====================================================
+    // -----------------------------------------------------
     // DELETE ERP USER PROFILE
-    // =====================================================
+    //
+    // user_permissions are deleted automatically because:
+    //
+    // user_permissions.user_id
+    //        →
+    // users.id
+    //        ON DELETE CASCADE
+    // -----------------------------------------------------
 
     const {
-      error: dbDeleteError,
-    } =
-      await supabaseAdmin
-        .from("users")
-        .delete()
-        .eq(
-          "id",
-          id
-        );
+      error: profileDeleteError,
+    } = await supabaseAdmin
+      .from("users")
+      .delete()
+      .eq("id", id);
 
-    if (dbDeleteError) {
-      throw dbDeleteError;
+    if (profileDeleteError) {
+      throw profileDeleteError;
     }
 
-    // =====================================================
+    // -----------------------------------------------------
     // SUCCESS
-    // =====================================================
+    // -----------------------------------------------------
 
     return new Response(
       JSON.stringify({
         success: true,
-        message:
-          "User deleted successfully.",
+        message: "User deleted successfully.",
       }),
       {
         status: 200,
         headers: {
           ...corsHeaders,
-          "Content-Type":
-            "application/json",
+          "Content-Type": "application/json",
         },
       }
     );
 
   } catch (error) {
-
     const message =
       error instanceof Error
         ? error.message
         : String(error);
 
-    console.error(
-      "DELETE USER ERROR:",
-      error
-    );
+    console.error("DELETE USER ERROR:", error);
 
     return new Response(
       JSON.stringify({
@@ -380,8 +279,7 @@ Deno.serve(async (req) => {
         status: 500,
         headers: {
           ...corsHeaders,
-          "Content-Type":
-            "application/json",
+          "Content-Type": "application/json",
         },
       }
     );
