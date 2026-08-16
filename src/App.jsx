@@ -1,3 +1,4 @@
+import Investments from "./pages/Investments";
 import { useLocation } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -13,12 +14,10 @@ import MasterInventory from "./pages/MasterInventory";
 import Inventory from "./pages/Inventory";
 import UsedInventory from "./pages/UsedInventory";
 import Reports from "./pages/Reports";
-import Projects from "./pages/Projects";
 import Settings from "./pages/Settings";
 import FinanceLedger from "./pages/FinanceLedger";
 import CustomerPayments from "./pages/CustomerPayments";
 import Billing from "./pages/Billing";
-import QuotationInvoices from "./pages/QuotationInvoices";
 import Invoice from "./pages/Invoice";
 import CreateInvoice from "./pages/CreateInvoice";
 
@@ -110,15 +109,78 @@ element={<Navigate to="/login" />}
 <div className="h-screen flex bg-gray-100">
 
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-900 text-white flex flex-col">
-        <div className="p-5 text-2xl font-bold border-b border-gray-700">
-          ⚡ Solar ERP
-        </div>
+      <aside
+className="
+w-64
+bg-gradient-to-b
+from-[#064E3B]
+via-[#065F46]
+to-[#0F766E]
+text-white
+flex
+flex-col
+shadow-2xl
+"
+>
+        <div
+className="
+p-5
+border-b
+border-white/20
+"
+>
+
+<div className="flex items-center gap-3">
+
+<div
+className="
+h-12
+w-12
+rounded-2xl
+bg-white/20
+backdrop-blur
+flex
+items-center
+justify-center
+shadow-lg
+"
+>
+⚡
+</div>
+
+
+<div>
+
+<h1 className="text-xl font-bold">
+Solar ERP
+</h1>
+
+<p className="text-xs text-emerald-100">
+Shiv Shakti Solar
+</p>
+
+</div>
+
+</div>
+
+</div>
 
        <nav className="flex-1 p-4 space-y-2">
 
   <Link 
-    className="block px-3 py-2 rounded hover:bg-gray-700" 
+   className="
+block
+px-4
+py-3
+rounded-xl
+text-sm
+font-medium
+text-emerald-50
+hover:bg-white/20
+hover:translate-x-1
+transition-all
+duration-200
+"
     to="/"
   >
     Dashboard
@@ -139,18 +201,7 @@ hasPermission("customers") && (
 }
 
 
-  {
-hasPermission("projects") && (
-
-<Link 
-  className="block px-3 py-2 rounded hover:bg-gray-700" 
-  to="/projects"
->
-  Projects
-</Link>
-
-)
-}
+  
 
 {
 hasPermission("master-inventory") && (
@@ -186,14 +237,14 @@ hasPermission("used-inventory") && (
   className="block px-3 py-2 rounded hover:bg-gray-700" 
   to="/used-inventory"
 >
-  Used Inventory
+  Material Consumption
 </Link>
 
 )
 }
 
   {
-hasPermission("finance") && (
+hasPermission("billing") && (
 
 <Link 
   className="block px-3 py-2 rounded hover:bg-gray-700" 
@@ -207,16 +258,42 @@ hasPermission("finance") && (
 
 
 {
-hasPermission("quotation-invoices") && (
+  hasPermission("investments") && (
 
-<Link 
-  className="block px-3 py-2 rounded hover:bg-gray-700" 
-  to="/quotation-invoices"
->
-  Quotation & Invoices
-</Link>
+    <Link
+      className="block px-3 py-2 rounded hover:bg-gray-700"
+      to="/investments"
+    >
+      Investments
+    </Link>
 
-)
+  )
+}
+
+{
+  hasPermission("invoices") && (
+
+    <Link
+      className="block px-3 py-2 rounded hover:bg-gray-700"
+      to="/invoice"
+    >
+      Invoice
+    </Link>
+
+  )
+}
+
+{
+  hasPermission("settings") && (
+
+    <Link
+      className="block px-3 py-2 rounded hover:bg-gray-700"
+      to="/plant-costing"
+    >
+      Plant Costing
+    </Link>
+
+  )
 }
 
 
@@ -250,18 +327,31 @@ hasPermission("settings") && (
 
 </nav>
 
-<div className="p-4 border-t border-gray-700">
+<div
+className="
+p-4
+border-t
+border-white/20
+bg-black/10
+"
+>
 
 {
 currentUser && (
 
 <div className="mb-4">
 
-<p className="font-bold text-white">
+<p className="
+font-bold
+text-white
+flex
+items-center
+gap-2
+">
 👤 {currentUser.full_name}
 </p>
 
-<p className="text-sm text-gray-400">
+<p className="text-sm text-emerald-100/80">
 Role: {currentUser.role}
 </p>
 
@@ -280,11 +370,10 @@ w-full
 bg-red-600
 hover:bg-red-700
 text-white
-py-2
+py-0.5
 rounded-xl
 font-semibold
 "
-
 >
 🚪 Logout
 </button>
@@ -329,43 +418,69 @@ element={
 </ProtectedRoute>
 }
 />
-          <Route path="/customer-payments" element={<CustomerPayments />} />
-          <Route path="/billing" element={<Billing />} />
-        <Route
-path="/inventory"
-element={
-<ProtectedRoute permission="inventory">
 
-<Inventory />
-
-</ProtectedRoute>
-}
-/>
-
-         <Route
-path="/used-inventory"
-element={
-<ProtectedRoute permission="used_inventory">
-<UsedInventory />
-</ProtectedRoute>
-}
+<Route
+  path="/investments"
+  element={
+    <ProtectedRoute permission="investments">
+      <Investments />
+    </ProtectedRoute>
+  }
 />
 
 <Route
-path="/quotation-invoices"
-element={
-<ProtectedRoute permission="quotations">
-<QuotationInvoices />
-</ProtectedRoute>
-}
+  path="/finance"
+  element={
+    <ProtectedRoute permission="billing">
+      <FinanceLedger />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/billing"
+  element={
+    <ProtectedRoute permission="billing">
+      <Billing />
+    </ProtectedRoute>
+  }
 />
 
 <Route
   path="/invoice"
-  element={<Invoice />}
+  element={
+    <ProtectedRoute permission="invoices">
+      <Invoice />
+    </ProtectedRoute>
+  }
 />
-<Route path="/plant-costing" element={<PlantCosting />} />
-<Route path="/plant-costing/:size" element={<PlantCosting />} />
+
+<Route
+  path="/invoice/new"
+  element={
+    <ProtectedRoute permission="invoices">
+      <CreateInvoice />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/plant-costing"
+  element={
+    <ProtectedRoute permission="settings">
+      <PlantCosting />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/plant-costing/:size"
+  element={
+    <ProtectedRoute permission="settings">
+      <PlantCosting />
+    </ProtectedRoute>
+  }
+/>
 <Route
   path="/invoice/new"
   element={<CreateInvoice />}
@@ -391,14 +506,7 @@ element={
 </ProtectedRoute>
 }
 />
-         <Route
-path="/projects"
-element={
-<ProtectedRoute permission="projects">
-<Projects />
-</ProtectedRoute>
-}
-/>
+         
           
         </Routes>
       </div>

@@ -7,195 +7,125 @@ import { supabase } from "./supabase";
 
 export async function getMasterInventory() {
 
+  // ===============================
+  // PURCHASED INVENTORY
+  // ===============================
 
-  // Get purchased stock
+  const { data: inventory, error: inventoryError } =
+    await supabase
+      .from("inventory")
+      .select("*");
 
-  const {
-    data: inventory,
-    error: inventoryError
-  } = await supabase
-    .from("inventory")
-    .select(`
-      product_name,
-      category,
-      quantity,
-purchased_quantity,
-unit,
-unit_cost
-    `);
+  if (inventoryError) throw inventoryError;
 
+  // ===============================
+  // USED INVENTORY
+  // ===============================
 
-  if(inventoryError)
-    throw inventoryError;
+  const { data: usedInventory, error: usedError } =
+    await supabase
+      .from("used_inventory")
+      .select("products");
 
-
-
-
-  // Get used stock
-
-  const {
-    data: usedInventory,
-    error: usedError
-  } = await supabase
-    .from("used_inventory")
-    .select(`
-      products
-    `);
-
-
-
-  if(usedError)
-    throw usedError;
-
-
-
+  if (usedError) throw usedError;
 
   const stockMap = {};
 
-
+  // Map Inventory ID -> Product Key
+  const inventoryKeyMap = {};
 
   // ===============================
-  // PURCHASE STOCK
+  // PURCHASED STOCK
   // ===============================
 
+  inventory.forEach((item) => {
 
-  inventory.forEach((item)=>{
+    const key = [
+      item.company || "",
+      item.specification || "",
+      item.product_name,
+      item.category,
+    ].join("_");
 
+    inventoryKeyMap[item.id] = key;
 
-    const key =
-      item.product_name +
-      "_" +
-      item.category;
-
-
-
-    if(!stockMap[key]){
-
+    if (!stockMap[key]) {
 
       stockMap[key] = {
 
-        product_name:item.product_name,
+        display_name: item.company
+          ? `${item.company} ${item.specification || ""} ${item.product_name}`
+          : item.product_name,
 
-        category:item.category,
+        company: item.company || "",
 
-        unit:item.unit || "",
+        specification: item.specification || "",
 
-        total_quantity:0,
+        product_name: item.product_name,
 
-        used_quantity:0,
+        category: item.category,
 
-        unit_cost:Number(item.unit_cost || 0)
+        unit: item.unit || "",
+
+        total_quantity: 0,
+
+        used_quantity: 0,
+
+        stock_value: 0,
 
       };
 
     }
 
+    const purchased =
+      Number(
+        item.purchased_quantity ??
+        item.quantity ??
+        0
+      );
 
+    stockMap[key].total_quantity += purchased;
 
-    stockMap[key].total_quantity +=
-  Number(
-    item.purchased_quantity ||
-    item.quantity ||
-    0
-  );
-
+    stockMap[key].stock_value +=
+      purchased *
+      Number(item.unit_cost || 0);
 
   });
-
-
-
-
 
   // ===============================
   // USED STOCK
   // ===============================
 
+  usedInventory.forEach((record) => {
 
-  usedInventory.forEach((entry)=>{
-
-
-    const products =
-      entry.products || [];
-
-
-
-    products.forEach((product)=>{
-
+    (record.products || []).forEach((product) => {
 
       const key =
-        product.product_name +
-        "_" +
-        product.category;
+        inventoryKeyMap[product.product_id];
 
+      if (key && stockMap[key]) {
 
-
-      if(!stockMap[key]){
-
-
-        stockMap[key] = {
-
-
-          product_name:
-            product.product_name,
-
-
-          category:
-            product.category,
-
-
-          unit:"",
-
-
-          total_quantity:0,
-
-
-          used_quantity:0,
-
-
-          unit_cost:
-            Number(product.unit_price || 0)
-
-        };
-
+        stockMap[key].used_quantity +=
+          Number(product.quantity || 0);
 
       }
 
-
-
-      stockMap[key].used_quantity +=
-        Number(product.quantity || 0);
-
-
-
     });
-
 
   });
 
+  // ===============================
+  // FINAL
+  // ===============================
 
-
-console.log("MASTER INVENTORY DATA", stockMap);
-  return Object.values(stockMap).map((item)=>({
-
+  return Object.values(stockMap).map((item) => ({
 
     ...item,
-
 
     remaining:
       item.total_quantity -
       item.used_quantity,
 
-
-    stock_value:
-      (
-        item.total_quantity -
-        item.used_quantity
-      )
-      *
-      item.unit_cost
-
-
   }));
-
 
 }

@@ -93,7 +93,7 @@ export default function UsedInventory() {
 
     if(
       !window.confirm(
-        "Delete this customer used inventory?"
+        "Delete this material consumption record?"
       )
     )
       return;
@@ -204,27 +204,21 @@ const groupedItems = Object.values(
     });
 
 
-
-
-
-
-
-
   return (
 
-  <div className="p-6 bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 min-h-screen">
+  <div className="p-4 bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 min-h-screen">
 
     {/* Header */}
 
-    <div className="mb-6 rounded-3xl bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500 p-6 shadow-2xl">
+    <div className="mb-4 rounded-2xl bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500 p-4 shadow-xl">
 
       <div className="flex justify-between items-center">
 
         <div>
 
-          <h1 className="text-4xl font-extrabold text-white tracking-wide">
+          <h1 className="text-3xl font-bold text-white tracking-wide">
 
-            Used Inventory
+            Material Consumption
 
           </h1>
 
@@ -246,11 +240,11 @@ const groupedItems = Object.values(
 
           }}
 
-          className="px-6 py-3 rounded-xl bg-white text-indigo-700 font-bold shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300"
+          className="px-4 py-2 rounded-lg bg-white text-indigo-700 font-semibold shadow hover:shadow-lg transition-all"
 
         >
 
-          + Add Used Inventory
+          + Add Material Consumption
 
         </button>
 
@@ -262,11 +256,11 @@ const groupedItems = Object.values(
 
     {/* Search */}
 
-    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-5 mb-6">
+    <div className="bg-white rounded-xl shadow border border-slate-300 p-1 mb-2">
 
       <input
 
-        className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-5 py-3 text-lg outline-none transition-all duration-300 focus:border-indigo-500 focus:bg-white"
+       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition-all duration-300 focus:border-indigo-500 focus:bg-white"
 
         placeholder="Search Customer or Location..."
 
@@ -290,31 +284,31 @@ const groupedItems = Object.values(
 
       <div className="overflow-x-auto">
 
-        <table className="w-full">
+        <table className="w-full border-collapse border-2 border-black">
 
           <thead className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900 text-white">
 
             <tr>
 
-              <th className="px-6 py-4 text-left text-sm font-bold uppercase tracking-wider">
+              <th className="border border-black px-3 py-1 text-center text-sm font-bold ">
 
                 Customer
 
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-bold uppercase tracking-wider">
+              <th className="border border-black px-3 py-1 text-center text-sm font-bold  tracking-wider">
 
                 Plant Size
 
               </th>
 
-              <th className="px-6 py-4 text-left text-sm font-bold uppercase tracking-wider">
+              <th className="px-3 py-1 text-center text-sm font-bold  tracking-wider">
 
                 Location
 
               </th>
 
-              <th className="px-6 py-4 text-center text-sm font-bold uppercase tracking-wider">
+              <th className="border border-black px-3 py-1 text-center text-sm font-bold ">
 
                 Action
 
@@ -329,28 +323,29 @@ const groupedItems = Object.values(
   {filteredItems.map((item) => (
 
     <tr
-      key={item.id}
-      className="border-b border-slate-200 hover:bg-slate-50 transition"
+  key={item.id}
+  className="hover:bg-slate-100 transition"
+
     >
 
-      <td className="px-6 py-4 font-semibold text-slate-800">
+      <td className="border border-black px-3 py-2 text-center font-medium text-slate-800">
         {item.customers?.customer_name}
       </td>
 
-      <td className="px-6 py-4">
+      <td className="border border-black px-3 py-2 text-center">
         {item.plant_size || "-"}
       </td>
 
-      <td className="px-6 py-4">
+      <td className="border border-black px-3 py-2 text-center">
         {item.location || "-"}
       </td>
 
-      <td className="px-6 py-4">
-        <div className="flex gap-2 flex-wrap justify-center">
+      <td className="border border-black px-3 py-2 text-center">
+        <div className="flex gap-1 flex-wrap justify-center">
 
           <button
             onClick={() => setViewItem(item)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 text-xs rounded-md font-medium"
           >
             View
           </button>
@@ -360,28 +355,28 @@ const groupedItems = Object.values(
               setEditingItem(item);
               setShowModal(true);
             }}
-            className="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1 rounded-lg"
+            className="bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 text-xs rounded-md font-medium"
           >
             Edit
           </button>
 
           <button
             onClick={() => handleDelete(item.id)}
-            className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded-lg"
+            className="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 text-xs rounded-md font-medium"
           >
             Delete
           </button>
 
           <button
             onClick={() => downloadUsedInventoryPDF(item)}
-            className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded-lg"
+            className="bg-orange-600 hover:bg-orange-700 text-white px-2 py-1 text-xs rounded-md font-medium"
           >
             PDF
           </button>
 
           <button
             onClick={() => downloadUsedInventoryExcel(item)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 text-xs rounded-md font-medium"
           >
             Excel
           </button>

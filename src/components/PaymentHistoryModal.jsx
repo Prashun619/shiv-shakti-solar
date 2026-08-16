@@ -137,8 +137,12 @@ export default function PaymentHistoryModal({
 
 
                 <td className="border p-2">
-                  {item.payment_date}
-                </td>
+  {new Date(item.payment_date).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  })}
+</td>
 
 
                 <td className="border p-2">

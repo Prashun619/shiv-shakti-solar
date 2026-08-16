@@ -2,9 +2,27 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "../services/supabase";
 
+import {
+  Users,
+  FolderKanban,
+  IndianRupee,
+  Wallet,
+  Clock3,
+  CircleCheckBig,
+  AlertTriangle,
+  TrendingUp,
+} from "lucide-react";
+
+import {
+  Card,
+  KpiCard,
+  PageHeader,
+  Badge,
+} from "../components/ui";
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
+ const [stats, setStats] = useState({
     customers: 0,
     projects: 0,
     projectValue: 0,
@@ -15,11 +33,47 @@ export default function Dashboard() {
     income: 0,
     expenses: 0,
     balance: 0,
-  });
+    profit: 0,
+});
 
   const [recentCustomers, setRecentCustomers] = useState([]);
   const [recentProjects, setRecentProjects] = useState([]);
   const [currentTime, setCurrentTime] = useState("");
+
+useEffect(() => {
+
+  async function testAuth() {
+
+    const { data, error } =
+      await supabase.rpc("who_am_i");
+
+    console.log("WHO AM I:", data);
+
+    console.log("ERROR:", error);
+
+    const {
+  data: {
+    user: authUser,
+  },
+} = await supabase.auth.getUser();
+
+console.log(
+  "AUTH USER ID:",
+  authUser?.id
+);
+
+console.log(
+  "AUTH USER EMAIL:",
+  authUser?.email
+);
+
+  }
+
+  
+
+  testAuth();
+
+}, []);
 
   /* ---------------- CLOCK ---------------- */
 
@@ -58,21 +112,26 @@ export default function Dashboard() {
 
   async function loadDashboard() {
     try {
+  
       const [
   customerResult,
   projectResult,
   recentCustomerResult,
   financeResult,
+  usedInventoryResult,
+  paymentResult,
 ] = await Promise.all([
+
         supabase
   .from("customers")
   .select("id", {
     count: "exact",
   }),
 
-        supabase
-  .from("projects")
-  .select("*"),
+       supabase
+.from("projects")
+.select("*"),
+
 supabase
   .from("customers")
   .select(
@@ -85,7 +144,16 @@ supabase
 
         supabase
   .from("billing")
-  .select("*"),
+  .select("amount"),
+
+  supabase
+.from("used_inventory")
+.select("project_no,total_plant_cost"),
+
+supabase
+.from("payments")
+.select("amount"),
+
       ]);
 
       const projectList = projectResult.data || [];
@@ -115,37 +183,65 @@ supabase
         (p) => p.status === "Pending"
       ).length;
 
-      let income = 0;
-let expenses = 0;
+    let expenses = (financeResult.data || []).reduce(
+  (sum, item) => sum + Number(item.amount || 0),
+  0
+);
 
-(financeResult.data || []).forEach((item)=>{
+const income = (paymentResult.data || []).reduce(
+  (sum, item) =>
+    sum + Number(item.amount || 0),
+  0
+);
+const balance = income - expenses;
 
-  if(item.payment_type === "Credit"){
 
-    income += Number(item.amount || 0);
+      
+      // TOTAL PROJECT PROFIT
+const usedInventoryList = usedInventoryResult.data || [];
 
-  }
+const profit = projectList.reduce(
+  (sum, project) => {
+
+    const inventory = usedInventoryList.find(
+      (item) =>
+        item.project_no === project.project_no
+    );
+
+    const projectCost = Number(
+      inventory?.total_plant_cost || 0
+    );
+
+    const projectValue = Number(
+      project.total_amount || 0
+    );
+
+    if(projectCost > 0){
+
+  return sum + (projectValue - projectCost);
+
+}
+
+return sum;
+
+  },
+  0
+);
 
 
-  if(item.payment_type === "Debit"){
-
-    expenses += Number(item.amount || 0);
-
-  }
-
+setStats({
+  customers: customerResult.count || 0,
+  projects: totalProjects,
+  projectValue: totalValue,
+  received: totalReceived,
+  pending: totalPending,
+  completed: completedProjects,
+  pendingProjects,
+  income,
+  expenses,
+  balance,
+  profit,
 });
-      setStats({
-        customers: customerResult.count || 0,
-        projects: totalProjects,
-        projectValue: totalValue,
-        received: totalReceived,
-        pending: totalPending,
-        completed: completedProjects,
-        pendingProjects,
-        income,
-        expenses,
-        balance: income - expenses,
-      });
 
       setRecentCustomers(
   recentCustomerResult.data || []
@@ -204,82 +300,32 @@ let expenses = 0;
     }
   }
 
-  const cards = [
-{
-title:"Total Customers",
-value:stats.customers,
-icon:"👥",
-color:"blue",
-desc:"Registered customers"
-},
-{
-title:"Total Projects",
-value:stats.projects,
-icon:"☀️",
-color:"violet",
-desc:"Solar installations"
-},
-{
-title:"Completed",
-value:stats.completed,
-icon:"✅",
-color:"green",
-desc:"Completed projects"
-},
-{
-title:"Pending",
-value:stats.pendingProjects,
-icon:"⏳",
-color:"orange",
-desc:"Work in progress"
-},
-{
-title:"Project Value",
-value:`₹ ${stats.projectValue.toLocaleString()}`,
-icon:"📊",
-color:"indigo",
-desc:"Total project cost"
-},
-{
-title:"Received",
-value:`₹ ${stats.received.toLocaleString()}`,
-icon:"💰",
-color:"emerald",
-desc:"Collected amount"
-},
-{
-title:"Pending Amount",
-value:`₹ ${stats.pending.toLocaleString()}`,
-icon:"⚠️",
-color:"red",
-desc:"Outstanding"
-},
-];
+ 
 
   return (
-  <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-indigo-50 p-6">
+  <div className="min-h-screen bg-gradient-to-br from-white via-teal-50 to-cyan-100 p-6">
 
 {/* ================= HEADER ================= */}
 
 <div
 className="
-mb-8
+mb-6
 rounded-3xl
-px-8
-py-6
+px-5
+py-3
 shadow-2xl
 flex
 flex-col
 lg:flex-row
 lg:justify-between
 lg:items-center
-gap-6
+gap-4
 bg-gradient-to-r
-from-slate-900
-via-slate-800
-to-emerald-900
+from-cyan-600
+via-teal-600
+to-emerald-500
 border
-border-slate-700
+border-white/20
 "
 >
 
@@ -338,7 +384,7 @@ Shiv Shakti Solar ERP
 <p
 className="
 text-sm
-text-emerald-200
+text-white/80
 mt-1
 "
 >
@@ -361,13 +407,14 @@ mt-5
 inline-flex
 items-center
 gap-3
-bg-white/10
+bg-emerald-500/20
 backdrop-blur-md
-px-4
-py-2
+px-3
+py-1
 rounded-full
 border
-border-white/20
+border-emerald-300/30
+shadow-lg
 "
 >
 
@@ -376,7 +423,7 @@ className="
 h-3
 w-3
 rounded-full
-bg-emerald-400
+bg-emerald-300
 animate-pulse
 shadow-lg
 "
@@ -397,7 +444,7 @@ System Online
 
 <span
 className="
-text-slate-300
+text-emerald-100
 text-sm
 "
 >
@@ -418,12 +465,12 @@ text-sm
 
 <div
 className="
-bg-white/95
-backdrop-blur
+bg-white/90
+backdrop-blur-xl
 rounded-3xl
 shadow-xl
-px-7
-py-5
+px-5
+py-3
 min-w-[280px]
 "
 >
@@ -536,364 +583,133 @@ Welcome back, Admin
 </div>
 
       
-    {/* ================= KPI CARDS ================= */}
 
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+{/* ================= KPI CARDS ================= */}
 
-      {cards.map((card)=>(
+<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
 
-<div
-key={card.title}
-className="
-bg-white
-rounded-2xl
-shadow-sm
-border
-p-3
-hover:shadow-lg
-hover:-translate-y-1
-transition
-"
->
+  <KpiCard
+    title="Total Customers"
+    value={stats.customers}
+    icon={<Users size={30} strokeWidth={2.2} />}
+    subtitle="Registered Customers"
+    color="purple"
+  />
 
-<div className="flex justify-between items-start">
+  <KpiCard
+    title="Total Projects"
+    value={stats.projects}
+    icon={<FolderKanban size={30} strokeWidth={2.2} />}
+    subtitle="Solar Installations"
+    color="blue"
+  />
 
-<div>
+  <KpiCard
+    title="Completed"
+    value={stats.completed}
+    icon={<CircleCheckBig size={30} strokeWidth={2.2} />}
+    subtitle="Completed Projects"
+    color="green"
+  />
 
-<p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
-{card.title}
-</p>
+  <KpiCard
+    title="Pending"
+    value={stats.pendingProjects}
+    icon={<AlertTriangle size={30} strokeWidth={2.2} />}
+    subtitle="Pending Projects"
+    color="orange"
+  />
 
-<h2 className="text-xl font-bold text-slate-800 mt-1">
-{card.value}
-</h2>
+  <KpiCard
+    title="Project Value"
+    value={`₹ ${stats.projectValue.toLocaleString()}`}
+    icon={<IndianRupee size={30} strokeWidth={2.2} />}
+    subtitle="Total Project Value"
+    color="purple"
+  />
 
-<p className="text-[11px] text-slate-500 mt-1">
-{card.desc}
-</p>
+  <KpiCard
+    title="Received"
+    value={`₹ ${stats.received.toLocaleString()}`}
+    icon={<Wallet size={30} strokeWidth={2.2} />}
+    subtitle="Payments Received"
+    color="green"
+  />
+
+  <KpiCard
+    title="Pending Amount"
+    value={`₹ ${stats.pending.toLocaleString()}`}
+    icon={<Clock3 size={30} strokeWidth={2.2} />}
+    subtitle="Outstanding Payments"
+    color="red"
+    trend="down"
+  />
+
+<KpiCard
+  title="Profit"
+  value={`₹ ${stats.profit.toLocaleString()}`}
+  icon={<TrendingUp size={30} strokeWidth={2.2} />}
+  color="green"
+  subtitle="Overall Business Profit"
+/>
 
 </div>
 
+ {/* ================= FINANCE SUMMARY ================= */}
 
-<div className="
-text-2xl
-bg-slate-100
-rounded-xl
-p-2
-">
-{card.icon}
+    <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl border border-blue-200 shadow-sm p-6">
+
+      <div className="flex items-center justify-between mb-6">
+
+        <h2 className="text-xl font-bold text-slate-800">
+          Finance Summary
+        </h2>
+
+        <span className="text-sm text-gray-500">
+          Overall Financial Overview
+        </span>
+
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-blue-700 p-5 text-white shadow-lg">
+
+          <p className="text-sm font-medium text-white/90">
+            Total Income
+          </p>
+
+          <h3 className="mt-2 text-4xl font-bold tracking-tight text-white">
+            ₹ {stats.income.toLocaleString()}
+          </h3>
+
+        </div>
+
+        <div className="rounded-xl bg-gradient-to-br from-rose-500 to-red-700 p-5 text-white shadow-lg">
+
+          <p className="text-sm font-medium text-white/90">
+            Total Expenses
+          </p>
+
+          <h3 className="mt-2 text-4xl font-bold tracking-tight text-white">
+            ₹ {stats.expenses.toLocaleString()}
+          </h3>
+
+        </div>
+
+        <div className="rounded-xl bg-gradient-to-br from-sky-500 to-teal-700 p-5 text-white shadow-lg">
+
+          <p className="text-sm font-medium text-white/90">
+            Current Balance
+          </p>
+
+          <h3 className="mt-2 text-4xl font-bold tracking-tight text-white">
+            ₹ {stats.balance.toLocaleString()}
+          </h3>
+
+        </div>
+        </div>
 </div>
-
-
-</div>
-
-</div>
-
-))}
-
-    </div>
-
-  {/* ================= QUICK ACTIONS ================= */}
-
-<div className="mt-8">
-
-<div className="flex items-center justify-between mb-4">
-
-<h2 className="text-xl font-bold text-slate-800">
-Quick Actions
-</h2>
-
-<span className="text-sm text-slate-500">
-Frequently used actions
-</span>
-
-</div>
-
-
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-
-
-{/* Customer */}
-
-<button
-onClick={()=>navigate("/customers")}
-className="
-group
-bg-gradient-to-br
-from-blue-50
-to-white
-border
-border-blue-200
-rounded-3xl
-p-5
-shadow-sm
-hover:shadow-xl
-hover:-translate-y-1
-transition-all
-text-left
-"
->
-
-<div
-className="
-h-12
-w-12
-rounded-2xl
-bg-blue-600
-text-white
-flex
-items-center
-justify-center
-text-2xl
-mb-4
-group-hover:scale-110
-transition
-"
->
-👥
-</div>
-
-
-<h3 className="
-font-bold
-text-slate-800
-flex
-justify-between
-items-center
-">
-
-New Customer
-
-<span className="text-blue-600">
-→
-</span>
-
-</h3>
-
-
-<p className="text-sm text-slate-500 mt-1">
-Add customer details
-</p>
-
-
-</button>
-
-
-
-
-{/* Project */}
-
-<button
-onClick={()=>navigate("/projects")}
-className="
-group
-bg-gradient-to-br
-from-green-50
-to-white
-border
-border-green-200
-rounded-3xl
-p-5
-shadow-sm
-hover:shadow-xl
-hover:-translate-y-1
-transition-all
-text-left
-"
->
-
-
-<div
-className="
-h-12
-w-12
-rounded-2xl
-bg-green-600
-text-white
-flex
-items-center
-justify-center
-text-2xl
-mb-4
-group-hover:scale-110
-transition
-"
->
-☀️
-</div>
-
-
-<h3 className="
-font-bold
-text-slate-800
-flex
-justify-between
-items-center
-">
-
-New Project
-
-<span className="text-green-600">
-→
-</span>
-
-</h3>
-
-
-<p className="text-sm text-slate-500 mt-1">
-Create solar installation
-</p>
-
-
-</button>
-
-
-
-
-
-{/* Inventory */}
-
-<button
-onClick={()=>navigate("/inventory")}
-className="
-group
-bg-gradient-to-br
-from-orange-50
-to-white
-border
-border-orange-200
-rounded-3xl
-p-5
-shadow-sm
-hover:shadow-xl
-hover:-translate-y-1
-transition-all
-text-left
-"
->
-
-
-<div
-className="
-h-12
-w-12
-rounded-2xl
-bg-orange-500
-text-white
-flex
-items-center
-justify-center
-text-2xl
-mb-4
-group-hover:scale-110
-transition
-"
->
-📦
-</div>
-
-
-<h3 className="
-font-bold
-text-slate-800
-flex
-justify-between
-items-center
-">
-
-Inventory
-
-<span className="text-orange-600">
-→
-</span>
-
-</h3>
-
-
-<p className="text-sm text-slate-500 mt-1">
-Manage stock items
-</p>
-
-
-</button>
-
-
-
-
-
-{/* Invoice */}
-
-<button
-onClick={()=>navigate("/invoice/new")}
-className="
-group
-bg-gradient-to-br
-from-purple-50
-to-white
-border
-border-purple-200
-rounded-3xl
-p-5
-shadow-sm
-hover:shadow-xl
-hover:-translate-y-1
-transition-all
-text-left
-"
->
-
-
-<div
-className="
-h-12
-w-12
-rounded-2xl
-bg-purple-600
-text-white
-flex
-items-center
-justify-center
-text-2xl
-mb-4
-group-hover:scale-110
-transition
-"
->
-🧾
-</div>
-
-
-<h3 className="
-font-bold
-text-slate-800
-flex
-justify-between
-items-center
-">
-
-Create Invoice
-
-<span className="text-purple-600">
-→
-</span>
-
-</h3>
-
-
-<p className="text-sm text-slate-500 mt-1">
-Generate customer invoice
-</p>
-
-
-</button>
-
-
-
-</div>
-
-</div>
-
-
 
     {/* ================= CUSTOMERS + PROJECTS ================= */}
 
@@ -901,40 +717,40 @@ Generate customer invoice
 
       {/* Recent Customers Card */}
 
-      <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl border border-blue-200 shadow-sm p-6">
+      <div className="bg-gradient-to-br from-sky-500 to-blue-700 rounded-2xl shadow-lg p-6 text-white">
 
         <div className="flex items-center justify-between mb-5">
 
 <div className="flex items-center gap-3">
-  <div className="w-1.5 h-8 rounded-full bg-blue-600"></div>
-  <h2 className="text-xl font-bold text-slate-800">
+  <div className="w-1.5 h-8 rounded-full bg-white"></div>
+  <h2 className="text-xl font-bold text-white">
       Recent Customers
   </h2>
 </div>
       
 
-          <span className="text-sm text-gray-500">
-            Last 5 Customers
-          </span>
+          <span className="text-sm text-bold text-white/80">
+  Last 5 Customers
+</span>
 
         </div>
                 <div className="overflow-x-auto rounded-xl">
 
           <table className="w-full">
 
-            <thead className="bg-slate-50">
+            <thead className="bg-white/10">
 
 <tr className="border-b border-slate-200">
 
-                <th className="text-left py-2.5 text-sm font-semibold text-gray-600">
+                <th className="text-left py-2.5 text-sm font-bold text-white/90">
                   Customer
                 </th>
 
-                <th className="text-left py-2.5 text-sm font-semibold text-gray-600">
+                <th className="text-left py-2.5 text-sm font-bold text-white/90">
                   Location
                 </th>
 
-                <th className="text-left py-2.5 text-sm font-semibold text-gray-600">
+                <th className="text-left py-2.5 text-sm font-bold text-white/90">
                   Plant Size
                 </th>
 
@@ -950,18 +766,18 @@ Generate customer invoice
 
                   <tr
                     key={index}
-                    className="border-b border-slate-100 even:bg-slate-50 hover:bg-blue-50 transition-colors"
+                    className="border-b border-white/20 even:bg-white/10 hover:bg-white/20 transition-colors"
                   >
 
-                    <td className="py-3 font-medium text-slate-800">
+                    <td className="py-3 font-medium text-semibold text-white">
                       {customer.customer_name}
                     </td>
 
-                    <td className="py-3 text-gray-600">
+                    <td className="py-3 text-semibold text-white/80">
                       {customer.location || "-"}
                     </td>
 
-                    <td className="py-3 text-gray-600">
+                    <td className="py-3 text-semibold text-white/80">
                       {customer.plant_size || "-"} kW
                     </td>
 
@@ -993,20 +809,20 @@ Generate customer invoice
       </div>
             {/* Recent Projects Card */}
 
-      <div className="bg-gradient-to-br from-white to-violet-50 rounded-2xl border border-violet-200 shadow-sm p-6">
+      <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl shadow-lg p-6 text-white">
 
         <div className="flex items-center justify-between mb-5">
 
     <div className="flex items-center gap-3">
-  <div className="w-1.5 h-8 rounded-full bg-violet-600"></div>
-  <h2 className="text-xl font-bold text-slate-800">
-      Recent Projects
-  </h2>
+  <div className="w-1.5 h-8 rounded-full bg-white"></div>
+  <h2 className="text-xl font-bold text-white">
+  Recent Projects
+</h2>
 </div>
 
-          <span className="text-sm text-gray-500">
-            Last 5 Projects
-          </span>
+          <span className="text-sm text-white/80">
+  Last 5 Projects
+</span>
 
         </div>
 
@@ -1014,23 +830,23 @@ Generate customer invoice
 
           <table className="w-full">
 
-            <thead>
+            <thead className="bg-white/10">
 
               <tr className="border-b border-blue-200">
 
-                <th className="text-left py-3 text-sm font-semibold text-gray-600">
+                <th className="text-left py-3 text-sm font-semibold text-white/90">
                   Project No
                 </th>
 
-                <th className="text-left py-3 text-sm font-semibold text-gray-600">
+                <th className="text-left py-3 text-sm font-semibold text-white/90">
                   Customer
                 </th>
 
-                <th className="text-left py-3 text-sm font-semibold text-gray-600">
+                <th className="text-left py-3 text-sm font-semibold text-white/90">
                   Project Size
                 </th>
 
-                <th className="text-left py-3 text-sm font-semibold text-gray-600">
+                <th className="text-left py-3 text-sm font-semibold text-white/90">
                   Status
                 </th>
 
@@ -1046,18 +862,18 @@ Generate customer invoice
 
                   <tr
                     key={project.id}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition"
+                    className="border-b border-white/20 hover:bg-white/10 transition"
                   >
 
-                    <td className="py-3 font-medium text-slate-800">
+                    <td className="py-3 font-medium text-white">
                       {project.project_no}
                     </td>
 
-                    <td className="py-3 text-gray-600">
+                    <td className="py-3 text-white/80">
                       {project.customer_name}
                     </td>
 
-                    <td className="py-3 text-gray-600">
+                    <td className="py-3 text-white/80">
                       {project.project_size}
                     </td>
 
@@ -1105,64 +921,10 @@ Generate customer invoice
       </div>
 
     </div>
-        {/* ================= FINANCE SUMMARY ================= */}
-
-    <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl border border-blue-200 shadow-sm p-6">
-
-      <div className="flex items-center justify-between mb-6">
-
-        <h2 className="text-xl font-bold text-slate-800">
-          Finance Summary
-        </h2>
-
-        <span className="text-sm text-gray-500">
-          Overall Financial Overview
-        </span>
+        
 
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-        <div className="rounded-xl bg-green-50 border border-green-200 p-5">
-
-          <p className="text-sm font-medium text-green-700">
-            Total Income
-          </p>
-
-          <h3 className="mt-2 text-4xl font-bold tracking-tight text-red-700">
-            ₹ {stats.income.toLocaleString()}
-          </h3>
-
-        </div>
-
-        <div className="rounded-xl bg-red-50 border border-red-200 p-5">
-
-          <p className="text-sm font-medium text-red-700">
-            Total Expenses
-          </p>
-
-          <h3 className="mt-2 text-4xl font-bold tracking-tight text-red-700">
-            ₹ {stats.expenses.toLocaleString()}
-          </h3>
-
-        </div>
-
-        <div className="rounded-xl bg-blue-50 border border-blue-200 p-5">
-
-          <p className="text-sm font-medium text-blue-700">
-            Current Balance
-          </p>
-
-          <h3 className="mt-2 text-4xl font-bold tracking-tight text-blue-700">
-            ₹ {stats.balance.toLocaleString()}
-          </h3>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
+    
 );
 }

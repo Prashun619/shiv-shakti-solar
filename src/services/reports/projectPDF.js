@@ -7,6 +7,12 @@ import {
 
 export function exportProjectPDF(projects) {
 
+  projects = [...projects].sort(
+    (a, b) =>
+      Number(a.project_no.replace(/\D/g, "")) -
+      Number(b.project_no.replace(/\D/g, ""))
+  );
+
   const doc = createReportPDF("Project Report");
 
 
@@ -14,7 +20,6 @@ export function exportProjectPDF(projects) {
     { title: "S.No", width: 12 },
     { title: "Project No", width: 28 },
     { title: "Customer", width: 45 },
-    { title: "Date", width: 25 },
     { title: "Size", width: 20 },
     { title: "Status", width: 25 },
     { title: "Total", width: 30 },
@@ -32,6 +37,22 @@ export function exportProjectPDF(projects) {
       }
     );
 
+    
+
+const totalValue = projects.reduce(
+  (sum, item) => sum + Number(item.total_amount || 0),
+  0
+);
+
+const totalReceived = projects.reduce(
+  (sum, item) => sum + Number(item.received || 0),
+  0
+);
+
+const totalBalance = projects.reduce(
+  (sum, item) => sum + Number(item.remaining || 0),
+  0
+);
 
   const rows = projects.map(
     (project, index) => [
@@ -41,19 +62,6 @@ export function exportProjectPDF(projects) {
       project.project_no || "",
 
       project.customers?.customer_name || "",
-
-
-      project.project_date
-        ? new Date(project.project_date)
-            .toLocaleDateString(
-              "en-GB",
-              {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              }
-            )
-        : "",
 
 
       project.project_size
@@ -82,53 +90,97 @@ export function exportProjectPDF(projects) {
   );
 
 
-  const endY = drawTable(
-    doc,
-    columns,
-    rows
+// ===============================
+// PROJECT SUMMARY CARDS
+// ===============================
+
+let startX = 10;
+let startY = 48;
+
+const cards = [
+  {
+    title: "Projects",
+    value: String(projects.length),
+    color: [37, 99, 235], // Blue
+  },
+  {
+    title: "Project Value",
+    value: `Rs. ${formatAmount(totalValue)}`,
+    color: [22, 163, 74], // Green
+  },
+  {
+    title: "Received",
+    value: `Rs. ${formatAmount(totalReceived)}`,
+    color: [147, 51, 234], // Purple
+  },
+  {
+    title: "Balance",
+    value: `Rs. ${formatAmount(totalBalance)}`,
+    color: [220, 38, 38], // Red
+  },
+];
+
+cards.forEach((card, index) => {
+
+  const x = startX + index * 68;
+  const y = startY;
+
+  // Card Background
+  doc.setFillColor(...card.color);
+  doc.roundedRect(
+    x,
+    y,
+    62,
+    22,
+    2,
+    2,
+    "F"
   );
 
-
-  // Summary
-
-  doc.setFont(
-    "helvetica",
-    "bold"
-  );
-
-  doc.setFontSize(11);
-
+  // Title
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(255,255,255);
 
   doc.text(
-    `Total Projects : ${projects.length}`,
-    10,
-    endY + 12
+    card.title,
+    x + 31,
+    y + 7,
+    {
+      align: "center",
+    }
   );
 
-
-  const totalValue =
-    projects.reduce(
-      (sum, item) =>
-        sum +
-        Number(
-          item.total_amount || 0
-        ),
-      0
-    );
-
+  // Value
+  doc.setFont("helvetica","bold");
+  doc.setFontSize(13);
 
   doc.text(
-    `Total Project Value : ${formatAmount(totalValue)}`,
-    10,
-    endY + 20
+    card.value,
+    x + 31,
+    y + 16,
+    {
+      align: "center",
+    }
   );
 
+});
 
-  addFooter(doc);
+const summaryEndY = startY + 24;
 
+// ===============================
+// Project Table
+// ===============================
 
-  doc.save(
-    "Project Report.pdf"
-  );
+const endY = drawTable(
+  doc,
+  columns,
+  rows,
+  summaryEndY + 6
+);
+
+addFooter(doc);
+
+doc.save("Project Report.pdf");
 
 }

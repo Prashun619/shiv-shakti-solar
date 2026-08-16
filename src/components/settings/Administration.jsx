@@ -2,6 +2,11 @@ import { supabase } from "../../services/supabase";
 import { useEffect, useState } from "react";
 
 import {
+  validatePassword,
+  getPasswordStrength,
+} from "../../utils/passwordValidation";
+
+import {
   getUsers,
   createUser,
   updateUser,
@@ -24,6 +29,25 @@ const [selectedUser, setSelectedUser] =
 
 const [resetPassword, setResetPassword] =
   useState("");
+
+  const [showResetPassword, setShowResetPassword] =
+  useState(false);
+
+const [resetPasswordStrength, setResetPasswordStrength] =
+  useState({
+    label:"",
+    color:""
+  });
+
+  const [showPassword, setShowPassword] =
+  useState(false);
+
+const [passwordStrength, setPasswordStrength] =
+  useState({
+    label:"",
+    color:""
+  });
+
   const [editingUser, setEditingUser] = useState(null);
 
 const [newUser, setNewUser] = useState({
@@ -41,6 +65,9 @@ const [newUser, setNewUser] = useState({
   reports: false,
   quotations: false,
   settings: false,
+  billing: false,
+  investments: false,
+  invoices: false,
 });
 
   useEffect(() => {
@@ -72,24 +99,27 @@ function handleEditUser(user) {
 
   setNewUser({
 
-    full_name: user.full_name,
-    username: user.username,
+  full_name: user.full_name,
+  username: user.username,
 
-    password: "",
+  password: "",
 
-    role: user.role,
-    active: user.active,
+  role: user.role,
+  active: user.active,
 
-    customers: user.customers,
-    projects: user.projects,
-    inventory: user.inventory,
-    used_inventory: user.used_inventory,
-    payments: user.payments,
-    reports: user.reports,
-    quotations: user.quotations,
-    settings: user.settings,
+  customers: user.customers,
+  projects: user.projects,
+  inventory: user.inventory,
+  used_inventory: user.used_inventory,
+  payments: user.payments,
+  reports: user.reports,
+  quotations: user.quotations,
+  settings: user.settings,
+  billing: user.billing,
+  investments: user.investments,
+  invoices: user.invoices,
 
-  });
+});
 
   setShowUserModal(true);
 
@@ -101,107 +131,97 @@ async function handleCreateUser() {
 
     if (editingUser) {
 
-  await updateUser(
+      await updateUser(
 
-    editingUser.id,
+        editingUser.id,
 
-    {
+        {
 
-      full_name: newUser.full_name,
-      role: newUser.role,
-      active: newUser.active,
+          full_name: newUser.full_name,
 
-      customers: newUser.customers,
-      projects: newUser.projects,
-      inventory: newUser.inventory,
-      used_inventory: newUser.used_inventory,
-      payments: newUser.payments,
-      reports: newUser.reports,
-      quotations: newUser.quotations,
-      settings: newUser.settings,
+          role: newUser.role,
 
-    }
+          active: newUser.active,
 
-  );
+          customers: newUser.customers,
+          projects: newUser.projects,
+          inventory: newUser.inventory,
+          used_inventory: newUser.used_inventory,
+          payments: newUser.payments,
+          reports: newUser.reports,
+          quotations: newUser.quotations,
+          settings: newUser.settings,
 
-}
-else {
+        }
 
-  if (editingUser) {
-
-  await updateUser(
-
-    editingUser.id,
-
-    {
-
-      full_name: newUser.full_name,
-
-      role: newUser.role,
-
-      active: newUser.active,
-
-      customers: newUser.customers,
-
-      projects: newUser.projects,
-
-      inventory: newUser.inventory,
-
-      used_inventory: newUser.used_inventory,
-
-      payments: newUser.payments,
-
-      reports: newUser.reports,
-
-      quotations: newUser.quotations,
-
-      settings: newUser.settings,
+      );
 
     }
 
-  );
+    else {
 
-}
-else {
 
-  await createUser(newUser);
+      const validation =
+        validatePassword(newUser.password);
 
-}
 
-}
+      if(!validation.valid){
+
+        alert(
+          validation.errors.join("\n")
+        );
+
+        return;
+
+      }
+
+
+      await createUser(newUser);
+
+    }
+
 
     await loadUsers();
 
-setShowUserModal(false);
-setEditingUser(null);
-    setNewUser({
-  full_name: "",
-  username: "",
-  password: "",
-  role: "User",
-  active: true,
 
-  customers: false,
-  projects: false,
-  inventory: false,
-  used_inventory: false,
-  payments: false,
-  reports: false,
-  quotations: false,
-  settings: false,
-});
+    setShowUserModal(false);
+
+    setEditingUser(null);
+
+
+    setNewUser({
+
+      full_name: "",
+      username: "",
+      password: "",
+      role: "User",
+      active: true,
+
+      customers: false,
+      projects: false,
+      inventory: false,
+      used_inventory: false,
+      payments: false,
+      reports: false,
+      quotations: false,
+      settings: false,
+
+    });
+
 
     alert(
 
-  editingUser
+      editingUser
 
-    ? "User updated successfully."
+      ? "User updated successfully."
 
-    : "User created successfully."
+      : "User created successfully."
 
-);
+    );
+
 
   }
+
   catch (error) {
 
     console.log(error);
@@ -236,16 +256,18 @@ async function handleResetPassword() {
 
     }
 
+const validation =
+validatePassword(resetPassword);
 
-    if(resetPassword.length < 6){
+if(!validation.valid){
 
-      alert(
-        "Password must be at least 6 characters."
-      );
+alert(
+validation.errors.join("\n")
+);
 
-      return;
+return;
 
-    }
+}
 
 
     await resetUserPassword(
@@ -490,24 +512,58 @@ Delete
   className="w-full border rounded-lg p-3"
 />
 
-      {
+{
 !editingUser && (
 
+<div>
+
+<div className="relative">
+
 <input
-  type="password"
+  type={showPassword ? "text" : "password"}
   placeholder="Password"
   value={newUser.password}
-  onChange={(e)=>
+  onChange={(e)=>{
+
+    const value = e.target.value;
+
     setNewUser({
       ...newUser,
-      password:e.target.value
-    })
-  }
-  className="w-full border rounded-lg p-3"
+      password:value
+    });
+
+    setPasswordStrength(
+      getPasswordStrength(value)
+    );
+
+  }}
+  className="w-full border rounded-lg p-3 pr-12"
 />
+
+
+<button
+type="button"
+onClick={() =>
+setShowPassword(!showPassword)
+}
+className="absolute right-3 top-3 text-slate-500"
+>
+{showPassword ? "🙈" : "👁"}
+</button>
+
+</div>
+
+
+<p className={`text-sm mt-2 ${passwordStrength.color}`}>
+Password Strength: {passwordStrength.label}
+</p>
+
+
+</div>
 
 )
 }
+     
 <select
   value={newUser.role}
   onChange={(e)=>{
@@ -528,6 +584,9 @@ Delete
       reports: role === "Admin" ? true : newUser.reports,
       quotations: role === "Admin" ? true : newUser.quotations,
       settings: role === "Admin" ? true : newUser.settings,
+      billing: role === "Admin" ? true : newUser.billing,
+       investments: role === "Admin" ? true : newUser.investments,
+        invoices: role === "Admin" ? true : newUser.invoices,
 
     });
 
@@ -546,16 +605,21 @@ Delete
 
   <div className="grid grid-cols-2 gap-3">
 
-    {[
-      ["customers","Customers"],
-      ["projects","Projects"],
-      ["inventory","Inventory"],
-      ["used_inventory","Used Inventory"],
-      ["payments","Payments"],
-      ["reports","Reports"],
-      ["quotations","Quotation & Invoice"],
-      ["settings","Settings"],
-    ].map(([key,label])=>(
+    {
+    [
+  ["customers", "Customers"],
+  ["projects", "Projects"],
+  ["inventory", "Inventory"],
+  ["used_inventory", "Used Inventory"],
+  ["payments", "Payments"],
+  ["reports", "Reports"],
+  ["quotations", "Quotation"],
+  ["billing", "Finance Ledger"],
+  ["investments", "Investments"],
+  ["invoices", "Invoices"],
+  ["settings", "Settings"],
+]
+    .map(([key,label])=>(
 
       <label
         key={key}
@@ -636,15 +700,53 @@ Delete
     </p>
 
 
-    <input
-      type="password"
-      placeholder="Enter New Password"
-      value={resetPassword}
-      onChange={(e)=>
-        setResetPassword(e.target.value)
-      }
-      className="w-full border rounded-lg p-3"
-    />
+  <div className="relative">
+
+<input
+  type={
+    showResetPassword
+    ? "text"
+    : "password"
+  }
+  placeholder="Enter New Password"
+  value={resetPassword}
+  onChange={(e)=>{
+
+    const value = e.target.value;
+
+    setResetPassword(value);
+
+    setResetPasswordStrength(
+      getPasswordStrength(value)
+    );
+
+  }}
+  className="w-full border rounded-lg p-3 pr-12"
+/>
+
+
+<button
+type="button"
+onClick={() =>
+setShowResetPassword(!showResetPassword)
+}
+className="absolute right-3 top-3 text-slate-500"
+>
+{
+showResetPassword
+?
+"🙈"
+:
+"👁"
+}
+</button>
+
+</div>
+
+
+<p className={`text-sm mt-2 ${resetPasswordStrength.color}`}>
+Password Strength: {resetPasswordStrength.label}
+</p>
 
 
     <div className="flex justify-end gap-3 mt-6">

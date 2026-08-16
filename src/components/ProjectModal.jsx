@@ -4,7 +4,9 @@ import {
   createProject,
   updateProject,
   generateProjectNumber,
+  getProjects,
 } from "../services/projectsService";
+import { addPayment } from "../services/paymentsService";
 
 export default function ProjectModal({
   open,
@@ -25,19 +27,14 @@ export default function ProjectModal({
 
 
   /* LOAD CUSTOMERS */
-  useEffect(() => {
-    if (open) {
-      loadCustomers();
-    }
-  }, [open]);
+ 
+ async function loadCustomers() {
 
-
-  async function loadCustomers() {
-
-  const { data, error } = await supabase
-    .from("customers")
-    .select("id, customer_name, plant_size")
-    .order("customer_name");
+  const { data: customerData, error } =
+    await supabase
+      .from("customers")
+      .select("*")
+      .order("customer_name");
 
 
   if (error) {
@@ -45,47 +42,79 @@ export default function ProjectModal({
     return;
   }
 
-  setCustomers(data || []);
+
+  const projectData = await getProjects();
+
+
+  const existingCustomerIds =
+    projectData
+      .filter(p => p.customer_id)
+      .map(p => String(p.customer_id));
+
+
+  const availableCustomers =
+    customerData.filter(
+      (customer) =>
+        !existingCustomerIds.includes(String(customer.id))
+        ||
+        String(customer.id) === String(project?.customer_id)
+    );
+
+console.log("CUSTOMERS", customerData);
+console.log("PROJECT IDS", existingCustomerIds);
+console.log("FINAL DROPDOWN", availableCustomers);
+console.log("ALL CUSTOMERS:", customerData);
+
+console.log("ALL PROJECTS:", projectData);
+
+console.log("EXISTING CUSTOMER IDS:", existingCustomerIds);
+
+console.log("AVAILABLE CUSTOMERS:", availableCustomers);
+  setCustomers(availableCustomers);
 
 }
 
 
 
   /* LOAD DATA */
-  useEffect(() => {
+useEffect(() => {
 
-    async function loadData() {
+  async function loadData() {
 
-      if (project) {
+    if (project) {
 
-        setCustomerId(project.customer_id);
-        setProjectNo(project.project_no);
-        setProjectSize(project.project_size || "");
-        setAmount(project.total_amount || "");
-        setReceived(project.received || 0);
-        setRemarks(project.remarks || "");
+      setCustomerId(project.customer_id);
+      setProjectNo(project.project_no);
+      setProjectSize(project.project_size || "");
+      setAmount(project.total_amount || "");
+      setReceived(project.received || 0);
+      setRemarks(project.remarks || "");
 
-      } else {
+    } else {
 
-        setCustomerId("");
-        setProjectSize("");
-        setAmount("");
-        setReceived("");
-        setRemarks("");
+      setCustomerId("");
+      setProjectSize("");
+      setAmount("");
+      setReceived("");
+      setRemarks("");
 
-        const number =
-          await generateProjectNumber();
+      const number =
+        await generateProjectNumber();
 
-        setProjectNo(number);
-      }
+      setProjectNo(number);
     }
+  }
 
 
-    if (open) {
-      loadData();
-    }
+  if (open) {
 
-  }, [project, open]);
+    loadCustomers();   // <-- ADD THIS
+
+    loadData();
+
+  }
+
+}, [project, open]);
 
 
 
@@ -129,20 +158,62 @@ export default function ProjectModal({
       let saved;
 
 
-      if (project) {
+     if (project) {
 
-        saved =
-          await updateProject(
-            project.id,
-            payload
-          );
+  saved =
+    await updateProject(
+      project.id,
+      payload
+    );
 
-      } else {
+} else {
 
-        saved =
-          await createProject(payload);
+  saved =
+    await createProject(payload);
 
-      }
+
+  // Add initial received amount to payment history
+   
+  if (Number(received) > 0) {
+
+  console.log(
+    "ADDING INITIAL PAYMENT",
+    saved.id,
+    received
+  );
+
+
+  const paymentResult =
+    await addPayment({
+
+      project_id: saved.id,
+
+      amount: Number(received),
+
+      payment_type: "Initial Payment",
+
+      payment_mode: "Cash",
+
+      payment_date: new Date()
+        .toISOString()
+        .split("T")[0],
+
+      reference_no: "",
+
+      remarks:
+        "Received amount while creating project"
+
+    });
+
+
+  console.log(
+    "PAYMENT SAVED",
+    paymentResult
+  );
+
+}
+
+}
 
 
       onSaved(saved);

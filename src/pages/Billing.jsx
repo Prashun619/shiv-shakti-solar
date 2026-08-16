@@ -43,7 +43,6 @@ company:"",
 
 paid_by:"",
 
-payment_type:"Debit",
 
 payment_mode:"Cash",
 
@@ -136,7 +135,7 @@ company:"",
 
 paid_by:"",
 
-payment_type:"Debit",
+
 
 payment_mode:"Cash",
 
@@ -405,98 +404,25 @@ Total Entries
 
 <div className="bg-gradient-to-br from-green-50 to-white border rounded-xl shadow p-5">
 
-
 <p className="text-gray-500">
-
-Total Credit
-
+Total Expenses
 </p>
-
-
-
-<h2 className="text-2xl font-bold text-green-600">
-
-₹ {
-
-billing
-
-.filter(
-x=>x.payment_type==="Credit"
-)
-
-.reduce(
-
-(sum,x)=>
-
-sum + Number(x.amount || 0)
-
-,0)
-
-.toFixed(2)
-
-}
-
-</h2>
-
-
-</div>
-
-
-
-
-
-
-
-<div className="bg-gradient-to-br from-red-50 to-white border rounded-xl shadow p-5">
-
-
-<p className="text-gray-500">
-
-Total Debit
-
-</p>
-
-
 
 <h2 className="text-2xl font-bold text-red-600">
-
 ₹ {
-
 billing
-
-.filter(
-x=>x.payment_type==="Debit"
-)
-
 .reduce(
-
-(sum,x)=>
-
-sum + Number(x.amount || 0)
-
-,0)
-
+(sum, x) => sum + Number(x.amount || 0),
+0
+)
 .toFixed(2)
-
 }
-
 </h2>
 
 
 </div>
 
-
-
-
-
 </div>
-
-
-
-
-
-
-
 
 
 {/* FORM */}
@@ -599,30 +525,11 @@ paid_by:e.target.value
 
 
 <select
-
-className="border p-3 rounded"
-
-value={form.payment_type}
-
-onChange={e=>setForm({
-
-...form,
-
-payment_type:e.target.value
-
-})}
-
+  className="border p-3 rounded bg-gray-100 cursor-not-allowed"
+  value="Debit"
+  disabled
 >
-
-<option>
-Debit
-</option>
-
-<option>
-Credit
-</option>
-
-
+  <option value="Debit">Expense</option>
 </select>
 
 
@@ -788,7 +695,7 @@ Billing Records
 
 <th className="p-4 text-left">Paid By</th>
 
-<th className="p-4 text-left">Type</th>
+<th className="p-4 text-left">Category</th>
 
 <th className="p-4 text-left">Mode</th>
 
@@ -844,14 +751,6 @@ className="border-t hover:bg-green-50"
 {item.paid_by}
 
 </td>
-
-
-<td className="p-4">
-
-{item.payment_type}
-
-</td>
-
 
 <td className="p-4">
 

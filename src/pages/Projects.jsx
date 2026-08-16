@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import ProjectModal from "../components/ProjectModal";
 import PaymentModal from "../components/PaymentModal";
-
+import KpiCard from "../components/ui/KpiCard";
 import {
   getProjects,
   deleteProject,
@@ -22,6 +22,8 @@ export default function Projects() {
 
   const [showProjectModal, setShowProjectModal] =
     useState(false);
+
+   
 
   const [showPaymentModal, setShowPaymentModal] =
     useState(false);
@@ -148,11 +150,6 @@ export default function Projects() {
 
   }
 
-
-
-
-
-
   async function handleDeletePayment(id) {
 
 
@@ -188,11 +185,20 @@ export default function Projects() {
 
   }
 
+const totalProjects = projects.length;
 
+const completedProjects = projects.filter(
+  (p) => p.status === "Completed"
+).length;
 
+const pendingProjects = projects.filter(
+  (p) => p.status !== "Completed"
+).length;
 
-
-
+const totalRevenue = projects.reduce(
+  (sum, p) => sum + Number(p.total_amount || 0),
+  0
+);
 
   const filteredProjects =
     projects.filter((p)=>{
@@ -231,36 +237,39 @@ export default function Projects() {
 
    <div className="mb-6 rounded-3xl bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500 p-6 shadow-2xl">
 
-    <div className="flex justify-between items-center">
+    <div className="flex justify-between items-center mb-6">
 
-        <div>
+  <div>
+    <h1 className="text-2xl font-bold">
+      Projects
+    </h1>
 
-            <h1 className="text-4xl font-extrabold text-white tracking-wide">
-                Projects
-            </h1>
-
-            <p className="text-blue-100 mt-2 text-lg">
-                Customer Project Management
-            </p>
-
-        </div>
-
-        <button
-            onClick={()=>{
-                setEditingProject(null);
-                setShowProjectModal(true);
-            }}
-            className="bg-white text-indigo-700 font-bold px-6 py-3 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300"
-        >
-            + Add Project
-        </button>
-
-    </div>
+    <p className="text-gray-500">
+      Customer Project Management
+    </p>
+  </div>
 
 
+  <div className="flex gap-3">
+
+<button
+  onClick={() => setShowProjectModal(true)}
+  className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+>
+  + Add Project
+</button>
 
 
+    <button
+      onClick={() => setShowPaymentModal(true)}
+      className="px-4 py-2 rounded-lg bg-green-600 text-white"
+    >
+      + Add Payment
+    </button>
 
+  </div>
+
+</div>
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-5 mb-6">
 
   <input
@@ -272,14 +281,45 @@ export default function Projects() {
 
 </div>
 
+{/* KPI Cards */}
 
+<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
 
+  <div className="scale-90 origin-top">
+    <KpiCard
+      title="Projects"
+      value={totalProjects}
+      color="blue"
+    />
+  </div>
 
+  <div className="scale-90 origin-top">
+    <KpiCard
+      title="Completed"
+      value={completedProjects}
+      color="green"
+    />
+  </div>
 
+  <div className="scale-90 origin-top">
+    <KpiCard
+      title="Pending"
+      value={pendingProjects}
+      color="orange"
+    />
+  </div>
 
+  <div className="scale-90 origin-top">
+    <KpiCard
+      title="Revenue"
+      value={`₹${totalRevenue.toLocaleString()}`}
+      color="purple"
+    />
+  </div>
 
-      <div className="overflow-x-auto rounded-2xl bg-white shadow-2xl border border-slate-200">
+</div>
 
+<div className="overflow-x-auto rounded-2xl bg-white shadow-2xl border border-slate-200">
 
       <table className="w-full table-fixed border-collapse">
 
@@ -359,16 +399,31 @@ export default function Projects() {
             className="border border-slate-400 hover:bg-indigo-50 transition-all duration-300"
           >
 
+<td className="px-6 py-4">
 
+  <div className="flex items-center gap-3">
 
-           
+    <div className="w-11 h-11 rounded-full bg-gradient-to-r from-indigo-600 to-blue-500 text-white flex items-center justify-center font-bold text-lg shadow-md">
 
+      {p.customers?.customer_name?.charAt(0).toUpperCase()}
 
+    </div>
 
-            <td className="border border-slate-400 px-2 py-2 text-center align-middle whitespace-nowrap overflow-hidden text-ellipsis">
-  {p.customers?.customer_name}
+    <div>
+
+      <p className="font-semibold text-slate-800">
+        {p.customers?.customer_name}
+      </p>
+
+      <p className="text-xs text-slate-500">
+        {p.project_no}
+      </p>
+
+    </div>
+
+  </div>
+
 </td>
-
 
 
             <td className="border border-slate-400 px-3 py-3 text-center align-middle whitespace-nowrap w-24">
@@ -419,11 +474,21 @@ export default function Projects() {
 
 
 
-           <td className="border border-slate-400 px-3 py-3 text-center align-middle w-40">
+           <td className="px-6 py-4 text-center">
 
-    <span className="bg-blue-100 text-blue-700 px-4 py-1 rounded-full font-semibold">
-        {p.status}
-    </span>
+<span
+className={`inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold shadow-sm ${
+p.status === "Completed"
+? "bg-green-100 text-green-700 border border-green-200"
+: p.status === "In Progress"
+? "bg-yellow-100 text-yellow-700 border border-yellow-200"
+: "bg-red-100 text-red-700 border border-red-200"
+}`}
+>
+
+{p.status}
+
+</span>
 
 </td>
 
@@ -433,48 +498,39 @@ export default function Projects() {
 
               <td className="border border-slate-400 px-3 py-3 align-middle">
 
-      <div className="flex justify-center items-center gap-1 flex-nowrap scale-90">
+      <div className="flex justify-center gap-2">
 
-          <button
-              onClick={async () => {
+{/* Edit */}
+<button
+  onClick={async () => {
+    setEditingProject(p);
+    setShowProjectModal(true);
+  }}
+  title="Edit Project"
+  className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 hover:bg-sky-600 hover:text-white transition-all duration-200 flex items-center justify-center shadow"
+>
+  ✏️
+</button>
 
-  setSelectedProject(p);
 
-  const data = await getProjectPayments(p.id);
 
-  setPayments(data);
+{/* Payment History */}
+<button
+  onClick={() => openPayments(p)}
+  title="Payment History"
+  className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white transition-all duration-200 flex items-center justify-center shadow"
+>
+  📄
+</button>
 
-  setShowPaymentModal(true);
-
-}}
-              className="bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 text-xs rounded-lg shadow-md transition"
-          >
-              Edit
-          </button>
-
-          <button
-              onClick={()=>{
-                  setSelectedProject(p);
-                  setShowPaymentModal(true);
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 text-xs rounded-lg shadow-md transition"
-          >
-            Add Payment
-        </button>
-
-        <button
-            onClick={()=>openPayments(p)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 text-xs rounded-lg shadow-md transition"
-        >
-            Payments
-        </button>
-
-        <button
-            onClick={()=>handleDeleteProject(p.id)}
-            className="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 text-xs rounded-lg shadow-md transition"
-        >
-            Delete
-        </button>
+{/* Delete */}
+<button
+  onClick={() => handleDeleteProject(p.id)}
+  title="Delete Project"
+  className="w-10 h-10 rounded-full bg-red-100 text-red-700 hover:bg-red-600 hover:text-white transition-all duration-200 flex items-center justify-center shadow"
+>
+  🗑️
+</button>
 
     </div>
 

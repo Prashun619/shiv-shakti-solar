@@ -38,8 +38,7 @@ export async function getBilling(){
 
 export async function addBilling(entry){
 
-
-  const {data,error}=await supabase
+  const { data, error } = await supabase
 
     .from("billing")
 
@@ -56,11 +55,6 @@ export async function addBilling(entry){
   return data[0];
 
 }
-
-
-
-
-
 
 
 /* ==============================
@@ -104,7 +98,6 @@ export async function updateBilling(id,entry){
     .from("billing")
 
     .update(entry)
-
     .eq("id",id)
 
     .select();

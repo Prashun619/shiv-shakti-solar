@@ -4,7 +4,25 @@ export async function getUsers() {
 
   const { data, error } = await supabase
     .from("users")
-    .select("*")
+    .select(`
+      id,
+      full_name,
+      username,
+      email,
+      role,
+      active,
+      customers,
+      projects,
+      inventory,
+      used_inventory,
+      payments,
+      reports,
+      quotations,
+      settings,
+      billing,
+      investments,
+      invoices
+    `)
     .order("full_name");
 
   if (error) throw error;
@@ -13,7 +31,6 @@ export async function getUsers() {
 }
 
 export async function createUser(user) {
-
   const { data, error } =
     await supabase.functions.invoke(
       "create-user",
@@ -22,25 +39,43 @@ export async function createUser(user) {
       }
     );
 
-
-  if(error){
-
-    throw error;
-
-  }
-
-
-  if(data?.error){
-
-    throw new Error(
-      data.error
+  if (error) {
+    console.error(
+      "CREATE USER ERROR:",
+      error
     );
 
+    let responseBody = null;
+
+    try {
+      if (error.context) {
+        responseBody =
+          await error.context.json();
+      }
+    } catch (parseError) {
+      console.error(
+        "CREATE USER RESPONSE PARSE ERROR:",
+        parseError
+      );
+    }
+
+    console.error(
+      "CREATE USER RESPONSE BODY:",
+      responseBody
+    );
+
+    throw new Error(
+      responseBody?.error ||
+      error.message ||
+      "Unable to create user."
+    );
   }
 
+  if (data?.error) {
+    throw new Error(data.error);
+  }
 
   return data;
-
 }
 
 export async function updateUser(id, values) {

@@ -92,7 +92,32 @@ useState([]);
 const [inventoryProducts,setInventoryProducts] =
 useState([]);
 
+const uniqueInventoryProducts = inventoryProducts.filter((product, index, array) => {
 
+  const displayName =
+    product.category === "Panel" || product.category === "Inverter"
+      ? `${product.company || ""} ${product.category} ${product.specification || ""}`.trim()
+      : product.product_name;
+
+  const unitPrice = Math.round(calculateUnitCost(product));
+
+  return (
+    index ===
+    array.findIndex((p) => {
+
+      const otherName =
+        p.category === "Panel" || p.category === "Inverter"
+          ? `${p.company || ""} ${p.category} ${p.specification || ""}`.trim()
+          : p.product_name;
+
+      return (
+        otherName === displayName &&
+        Math.round(calculateUnitCost(p)) === unitPrice
+      );
+    })
+  );
+
+});
 
 const [form,setForm] =
 useState(initialForm);
@@ -251,6 +276,7 @@ setInventoryProducts(
 inventoryData || []
 );
 
+console.log("FULL INVENTORY DATA", inventoryData);
 
 }
 catch(error){
@@ -415,31 +441,67 @@ productId
 
 
 const selectedProduct =
-inventoryProducts.find(
+uniqueInventoryProducts.find(
+  (p) =>
+    String(p.id) === String(productId)
+);
 
-(p)=>
+console.log("Selected Product:", selectedProduct);
 
-String(p.id)
-===
-String(productId)
+console.log(
+  "Matching Products:",
+  inventoryProducts.filter((p) =>
+    p.category === selectedProduct.category &&
+    (p.company || "") === (selectedProduct.company || "") &&
+    (p.specification || "") === (selectedProduct.specification || "") &&
+    Math.round(calculateUnitCost(p)) ===
+      Math.round(calculateUnitCost(selectedProduct))
+  )
+);
+
+const totalStock = inventoryProducts
+.filter((p)=>{
+
+return (
+
+p.category === selectedProduct.category &&
+
+(p.company || "") === (selectedProduct.company || "") &&
+
+(p.specification || "") === (selectedProduct.specification || "")
 
 );
 
+})
+.reduce(
+(sum,p)=>sum + Number(p.quantity || 0),
+0
+);
+
+
+console.log("FINAL TOTAL STOCK =", totalStock);
+
 const alreadySelectedQty =
-form.products.reduce((sum, item, i)=>{
+  form.products.reduce((sum, item, i) => {
 
-  if(
-    i !== index &&
-    String(item.product_id) === String(productId)
-  ){
+    if (i !== index) {
 
-    return sum + Number(item.quantity || 0);
+      const sameProduct =
+        item.category === selectedProduct.category &&
+        item.company === selectedProduct.company &&
+        item.specification === selectedProduct.specification;
 
-  }
+      if (sameProduct) {
 
-  return sum;
+        return sum + Number(item.quantity || 0);
 
-},0);
+      }
+
+    }
+
+    return sum;
+
+  }, 0);
 
 
 const updatedProducts =
@@ -447,7 +509,25 @@ const updatedProducts =
 ...form.products
 ];
 
-
+console.log("Total Stock =", totalStock);
+console.log(
+  "Matching Quantities =",
+  inventoryProducts
+    .filter((p) => {
+      return (
+        p.category === selectedProduct?.category &&
+        (p.company || "") === (selectedProduct?.company || "") &&
+        (p.specification || "") === (selectedProduct?.specification || "") &&
+        Math.round(calculateUnitCost(p)) ===
+          Math.round(calculateUnitCost(selectedProduct))
+      );
+    })
+    .map((p) => ({
+      quantity: p.quantity,
+      purchased_quantity: p.purchased_quantity,
+      used_quantity: p.used_quantity,
+    }))
+);
 
 updatedProducts[index]={
 
@@ -455,25 +535,18 @@ updatedProducts[index]={
 product_id:
 selectedProduct?.id || "",
 
-product_name:
+product_name: selectedProduct?.product_name || "",
 
-(selectedProduct?.category === "Panel" ||
- selectedProduct?.category === "Inverter")
+company: selectedProduct?.company || "",
 
-?
-
-`${selectedProduct.company || ""} ${selectedProduct.category} ${selectedProduct.specification || ""}`
-
-:
-
-selectedProduct?.product_name || "",
+specification: selectedProduct?.specification || "",
 
 
 category:
 selectedProduct?.category || "",
 
 stock:
-Number(selectedProduct?.quantity || 0) - alreadySelectedQty,
+totalStock - alreadySelectedQty,
 
 unit: 
 selectedProduct?.unit || "",
@@ -510,7 +583,7 @@ calculateUnitCost(selectedProduct)
 };
 
 
-
+console.log("UPDATED PRODUCT ROW", updatedProducts[index]);
 
 
 updateTotals(updatedProducts);
@@ -523,81 +596,83 @@ updateTotals(updatedProducts);
 ============================ */
 
 
-function handleQuantityChange(
-index,
-value
-){
+function handleQuantityChange(index, value) {
+
+  const updatedProducts = [
+    ...form.products
+  ];
 
 
-const updatedProducts =
-[
-...form.products
-];
+  updatedProducts[index].quantity = value;
 
 
-
-updatedProducts[index].quantity =
-value;
-
-// Update stock for duplicate products
-updatedProducts.forEach((item,i)=>{
-
-  if(
-    i !== index &&
-    item.product_id === updatedProducts[index].product_id
-  ){
-
-    const originalProduct =
-      inventoryProducts.find(
-        p => p.id === item.product_id
-      );
-
-
-    const otherUsedQty =
-      updatedProducts.reduce((sum,p,j)=>{
-
-        if(
-          j !== i &&
-          p.product_id === item.product_id
-        ){
-          return sum + Number(p.quantity || 0);
-        }
-
-        return sum;
-
-      },0);
-
-
-    item.stock =
-      Number(originalProduct?.quantity || 0)
-      -
-      otherUsedQty;
-
-  }
-
-});
-
-updatedProducts[index].total =
-
-Number(value || 0)
-
-*
-
-Number(
-updatedProducts[index].unit_price || 0
-);
+  updatedProducts[index].total =
+    Number(value || 0) *
+    Number(updatedProducts[index].unit_price || 0);
 
 
 
-updateTotals(updatedProducts);
+  // Update stock for same product (company + specification based)
+  updatedProducts.forEach((item, i) => {
 
+    if (
+      i !== index &&
+      item.category === updatedProducts[index].category &&
+      item.company === updatedProducts[index].company &&
+      item.specification === updatedProducts[index].specification
+    ) {
+
+
+      const originalStock =
+        inventoryProducts
+          .filter(
+            p =>
+              p.category === item.category &&
+              p.company === item.company &&
+              p.specification === item.specification
+          )
+          .reduce(
+            (sum, p) =>
+              sum + Number(p.quantity || 0),
+            0
+          );
+
+
+      const otherUsedQty =
+        updatedProducts.reduce(
+          (sum, p, j) => {
+
+            if (
+              j !== i &&
+              p.category === item.category &&
+              p.company === item.company &&
+              p.specification === item.specification
+            ) {
+
+              return sum + Number(p.quantity || 0);
+
+            }
+
+            return sum;
+
+          },
+          0
+        );
+
+
+      item.stock =
+        originalStock - otherUsedQty;
+
+
+    }
+
+  });
+
+
+
+  updateTotals(updatedProducts);
 
 }
-
-
-
-
-
 
 
 /* ============================
@@ -908,9 +983,9 @@ return (
 
 {item
 ?
-"Edit Used Inventory"
+"Edit Material Consumption"
 :
-"Add Used Inventory"}
+"Add Material Consumption"}
 
 </h2>
 
@@ -1224,76 +1299,21 @@ Select Product
 
 </option>
 
-{inventoryProducts.map((p) => {
+{uniqueInventoryProducts.map((p) => {
 
-let displayName = "";
+  const displayName =
+    p.category === "Panel" || p.category === "Inverter"
+      ? `${p.company || ""} ${p.category} ${p.specification || ""}`.trim()
+      : p.product_name;
 
-if (
-  p.category === "Panel" ||
-  p.category === "Inverter"
-) {
-
-  displayName =
-    `${p.company || ""} ${p.category} ${p.specification || ""}`.trim();
-
-}
-else {
-
-  displayName =
-    p.product_name;
-
-}
-
-const duplicateCount =
-inventoryProducts.filter((item)=>{
-
-let name = "";
-
-if(
-item.category === "Panel" ||
-item.category === "Inverter"
-){
-
-name =
-`${item.company || ""} ${item.category} ${item.specification || ""}`.trim();
-
-}
-else{
-
-name =
-item.product_name;
-
-}
-
-return name === displayName;
-
-}).length;
-
-
-return(
-
-<option
-key={p.id}
-value={p.id}
->
-
-{
-
-duplicateCount > 1
-
-?
-
-`${displayName} | ₹${Math.round(p.unit_cost || 0)}`
-
-:
-
-displayName
-
-}
-
-</option>
-
-);
+  return (
+    <option
+      key={p.id}
+      value={p.id}
+    >
+      {`${displayName} | ₹${Math.round(calculateUnitCost(p))}`}
+    </option>
+  );
 
 })}
 
@@ -1329,6 +1349,7 @@ className="border p-2 rounded bg-gray-100 w-50"
   <input
     readOnly
     value={`${product.stock || 0} ${product.unit || ""}`}
+
     className="border p-2 rounded bg-gray-100 w-30 text-center"
   />
 

@@ -113,88 +113,119 @@ Number(form.net_metering_charges || 0)
    DEDUCT INVENTORY
 ====================================== */
 
-async function deductInventory(products){
+async function deductInventory(products) {
+
+  for (const product of products) {
+
+    let requiredQty = Number(product.quantity || 0);
+
+    if (requiredQty <= 0) continue;
+
+    // Find the selected inventory item
+   const { data: selectedItems, error: selectedError } =
+      await supabase
+        .from("inventory")
+        .select("*")
+        .eq("category", product.category)
+        .eq("company", product.company)
+        .eq("specification", product.specification);
 
 
-for(const product of products){
+if (selectedError) {
+  throw selectedError;
+}
 
 
-const qty =
-Number(product.quantity || 0);
-
-
-
-if(!product.product_id || qty <=0)
-continue;
-
-
-
-const {data:inventory,error} =
-await supabase
-.from("inventory")
-.select("*")
-.eq("id",product.product_id)
-.single();
-
-
-
-if(error)
-throw error;
-
-
-
-const remaining =
-Number(inventory.quantity || 0);
-
-
-
-if(remaining < qty){
-
-throw new Error(
-`${inventory.product_name} has only ${remaining} in stock`
+const availableStock = selectedItems.reduce(
+  (sum, item) =>
+    sum + Number(item.quantity || 0),
+  0
 );
 
+
+console.log(
+  "DEDUCT STOCK CHECK",
+  product.company,
+  product.category,
+  product.specification,
+  availableStock
+);
+
+    // Get ALL matching inventory batches
+const { data: batches, error: batchError } =
+  await supabase
+    .from("inventory")
+    .select("*")
+    .eq("category", product.category)
+    .eq("company", product.company)
+    .eq("specification", product.specification)
+    .order("date", { ascending: true });
+
+
+if (batchError) throw batchError;
+
+
+// Total available stock
+const totalAvailable = batches.reduce(
+  (sum, b) =>
+    sum + Number(b.quantity || 0),
+  0
+);
+
+
+console.log(
+  "FIFO STOCK AVAILABLE",
+  product.company,
+  product.category,
+  product.specification,
+  totalAvailable
+);
+
+
+if (totalAvailable < requiredQty) {
+
+  throw new Error(
+    `${product.company} ${product.specification} ${product.product_name} has only ${totalAvailable} in stock`
+  );
+
 }
+      
 
+    // FIFO deduction
+    for (const batch of batches) {
 
+      if (requiredQty <= 0) break;
 
-const newRemaining =
-remaining - qty;
+      const batchQty = Number(batch.quantity || 0);
 
+      if (batchQty <= 0) continue;
 
+      const deductQty = Math.min(batchQty, requiredQty);
 
-const newUsed =
-Number(inventory.used_quantity || 0)
-+
-qty;
+      const { error: updateError } =
+        await supabase
+          .from("inventory")
+          .update({
 
+            quantity: batchQty - deductQty,
 
+            used_quantity:
+              Number(batch.used_quantity || 0) + deductQty,
 
-const {error:updateError} =
-await supabase
-.from("inventory")
-.update({
+            total_amount:
+              (batchQty - deductQty) *
+              Number(batch.unit_cost || 0)
 
-quantity:newRemaining,
+          })
+          .eq("id", batch.id);
 
-used_quantity:newUsed,
+      if (updateError) throw updateError;
 
-total_amount:
-newRemaining *
-Number(inventory.unit_cost || 0)
+      requiredQty -= deductQty;
 
-})
-.eq("id",inventory.id);
+    }
 
-
-
-if(updateError)
-throw updateError;
-
-
-
-}
-
+  }
 
 }
 
@@ -371,80 +402,62 @@ return data;
    RESTORE INVENTORY
 ====================================== */
 
-async function restoreInventory(products){
+async function restoreInventory(products) {
 
+  for (const product of products) {
 
-for(const product of products){
+    let qtyToRestore = Number(product.quantity || 0);
 
+    if (qtyToRestore <= 0) continue;
 
-const qty =
-Number(product.quantity || 0);
+    const { data: inventories, error } =
+      await supabase
+        .from("inventory")
+        .select("*")
+        .eq("product_name", product.product_name)
+        .eq("company", product.company || "")
+        .eq("specification", product.specification || "")
+        .eq("unit_cost", product.unit_price)
+        .order("date", { ascending: false });
 
+    if (error) throw error;
 
+    for (const inventory of inventories) {
 
-if(!product.product_id || qty<=0)
-continue;
+      if (qtyToRestore <= 0) break;
 
+      const usedQty = Number(inventory.used_quantity || 0);
 
+      if (usedQty <= 0) continue;
 
-const {data:inventory,error} =
-await supabase
-.from("inventory")
-.select("*")
-.eq("id",product.product_id)
-.single();
+      const restoreQty = Math.min(usedQty, qtyToRestore);
 
+      const newRemaining =
+        Number(inventory.quantity || 0) + restoreQty;
 
+      const newUsed =
+        usedQty - restoreQty;
 
-if(error)
-throw error;
+      const { error: updateError } =
+        await supabase
+          .from("inventory")
+          .update({
+            quantity: newRemaining,
+            used_quantity: newUsed,
+            total_amount:
+              newRemaining *
+              Number(inventory.unit_cost || 0)
+          })
+          .eq("id", inventory.id);
 
+      if (updateError) throw updateError;
 
+      qtyToRestore -= restoreQty;
+    }
 
-const newRemaining =
-Number(inventory.quantity || 0)
-+
-qty;
-
-
-
-const newUsed =
-Math.max(
-Number(inventory.used_quantity || 0)
--
-qty,
-0
-);
-
-
-
-const {error:updateError} =
-await supabase
-.from("inventory")
-.update({
-
-quantity:newRemaining,
-
-used_quantity:newUsed,
-
-total_amount:
-newRemaining *
-Number(inventory.unit_cost || 0)
-
-})
-.eq("id",inventory.id);
-
-
-
-if(updateError)
-throw updateError;
-
+  }
 
 }
-
-
-}
-
 
 
 
@@ -636,24 +649,45 @@ return data;
 export async function deleteUsedInventory(id){
 
 
-const {error} =
-await supabase
-.from("used_inventory")
-.delete()
-.eq("id",id);
+  // Get used inventory record first
+  const {data:record,error:fetchError} =
+    await supabase
+    .from("used_inventory")
+    .select("*")
+    .eq("id",id)
+    .single();
 
 
 
-if(error)
-throw error;
+  if(fetchError)
+    throw fetchError;
 
 
 
-return true;
+  // Restore stock back
+  await restoreInventory(
+    record.products || []
+  );
 
+
+
+  // Delete used inventory record
+  const {error} =
+    await supabase
+    .from("used_inventory")
+    .delete()
+    .eq("id",id);
+
+
+
+  if(error)
+    throw error;
+
+
+
+  return true;
 
 }
-
 
 
 

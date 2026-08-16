@@ -4,71 +4,232 @@ import {
   addFooter,
 } from "./pdfTable";
 
+
 export function exportInventoryPDF(inventory) {
 
   const doc = createReportPDF("Inventory Report");
 
-  const columns = [
-  { title: "S.No", width: 15 },
-  { title: "Product", width: 75 },
-  { title: "Category", width: 35 },
-  { title: "Available Qty", width: 28 },
-  { title: "Unit", width: 20 },
-  { title: "Unit Cost", width: 30 },
-  { title: "Stock Value", width: 35 },
-];
 
-  const rows = inventory.map((item, index) => {
+  // ===============================
+// Summary Table
+// ===============================
 
-  let productName = item.product_name || "";
 
-  if (item.company) {
-    productName = `${item.company} ${productName}`;
-  }
+const totalProducts = inventory.length;
 
-  if (item.specification) {
-    productName += ` ${item.specification}`;
-  }
 
-  return [
-
-    index + 1,
-
-    productName,
-
-    item.category || "",
-
-    item.quantity || 0,
-
-    item.unit || "",
-
-    Math.round(item.unit_cost || 0),
-
-    Math.round(
+const stockValue = inventory.reduce(
+  (sum, item) =>
+    sum +
+    (
       Number(item.quantity || 0) *
       Number(item.unit_cost || 0)
     ),
+  0
+);
+
+
+
+const summaryColumns = [
+
+  {
+    title: "Total Products",
+    width: 45,
+  },
+
+  {
+    title: "Stock Value",
+    width: 45,
+  },
+
+];
+
+
+
+const summaryRows = [
+
+  [
+
+    totalProducts,
+
+    Number(stockValue)
+      .toLocaleString(
+        "en-IN",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }
+      ),
+
+  ],
+
+];
+
+
+
+drawTable(
+  doc,
+  summaryColumns,
+  summaryRows,
+  55,
+  8
+);
+
+  // ===============================
+  // Table Columns
+  // ===============================
+
+
+  const columns = [
+
+    {
+      title: "S.No",
+      width: 12,
+    },
+
+    {
+      title: "Supplier",
+      width: 30,
+    },
+
+    {
+      title: "Product",
+      width: 45,
+    },
+
+    {
+      title: "Category",
+      width: 25,
+    },
+
+    {
+      title: "Available Qty",
+      width: 25,
+    },
+
+    {
+      title: "Unit",
+      width: 15,
+    },
+
+    {
+      title: "Unit Cost",
+      width: 28,
+    },
+
+    {
+      title: "Stock Value",
+      width: 30,
+    },
 
   ];
 
-});
 
-  const endY = drawTable(
-    doc,
-    columns,
-    rows
+
+
+  // ===============================
+  // Table Rows
+  // ===============================
+
+
+  const rows = inventory.map(
+    (item, index) => {
+
+
+      let productName =
+        item.product_name || "";
+
+
+      if (item.company) {
+
+        productName =
+          `${item.company} ${productName}`;
+
+      }
+
+
+      if (item.specification) {
+
+        productName +=
+          ` ${item.specification}`;
+
+      }
+
+
+
+      return [
+
+        index + 1,
+
+        item.supplier || "",
+
+        productName,
+
+        item.category || "",
+
+        item.quantity || 0,
+
+        item.unit || "",
+
+
+        Number(item.unit_cost || 0)
+          .toLocaleString(
+            "en-IN",
+            {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }
+          ),
+
+
+
+        (
+          Number(item.quantity || 0) *
+          Number(item.unit_cost || 0)
+        )
+        .toLocaleString(
+          "en-IN",
+          {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }
+        ),
+
+      ];
+
+    }
   );
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
 
-  doc.text(
-    `Total Products : ${inventory.length}`,
-    10,
-    endY + 10
-  );
+
+
+
+  // ===============================
+  // Draw Table
+  // ===============================
+
+
+  drawTable(
+  doc,
+  columns,
+  rows,
+  75
+);
+
+
+
+
+  // ===============================
+  // Footer
+  // ===============================
+
 
   addFooter(doc);
 
-  doc.save("Inventory Report.pdf");
+
+
+  doc.save(
+    "Inventory Report.pdf"
+  );
+
 }

@@ -2,15 +2,15 @@ import { useState } from "react";
 import { supabase } from "../services/supabase";
 import { useNavigate } from "react-router-dom";
 
-
 export default function Login({setCurrentUser}) {
 
 
   const [username,setUsername] =
     useState("");
 
-  const [password,setPassword] =
-    useState("");
+  const [password, setPassword] = useState("");
+
+    const [showPassword, setShowPassword] = useState(false);
 
   const [remember,setRemember] =
     useState(false);
@@ -24,6 +24,7 @@ export default function Login({setCurrentUser}) {
 
     e.preventDefault();
 
+    
 
     try{
 
@@ -31,68 +32,42 @@ export default function Login({setCurrentUser}) {
       // Find user
 
       const {
-  data:user,
-  error:userError
-} =
-await supabase
-.from("users")
-.select(`
-  id,
-  full_name,
-  username,
-  email,
-  role,
-  active,
-  customers,
-  projects,
-  inventory,
-  used_inventory,
-  payments,
-  reports,
-  quotations,
-  settings
-`)
-.eq(
-  "username",
-  username.trim()
-)
-.single();
-
-
-      if(userError || !user){
-
-        alert(
-          "Username not found"
-        );
-
-        return;
-
-      }
+  data: loginEmail,
+  error: emailError,
+} = await supabase.rpc(
+  "get_login_email",
+  {
+    p_username: username.trim(),
+  }
+);
 
 
 
-      if(!user.active){
+if (emailError || !loginEmail) {
 
-        alert(
-          "User account is inactive"
-        );
+  alert("Username not found");
 
-        return;
+  return;
 
-      }
+}
 
+// Auth login using username converted email
 
-
-      // Auth login
-
-      const { data, error } =
+const { data, error } =
 await supabase.auth.signInWithPassword({
-  email: user.email,
+
+  email: loginEmail,
+
   password,
+
 });
 
 
+const {
+  data: { session },
+} = await supabase.auth.getSession();
 
+console.log("JWT email:", session?.user?.email);
 
 
       if(error){
@@ -105,51 +80,70 @@ await supabase.auth.signInWithPassword({
 
       }
 
+const {
+  data: user,
+  error: userError,
+} = await supabase
+  .from("users")
+  .select(`
+    id,
+    full_name,
+    username,
+    email,
+    role,
+    active,
+    customers,
+    inventory,
+    used_inventory,
+    payments,
+    reports,
+    quotations,
+    settings,
+    billing,
+    investments,
+    invoices
+  `)
+  .eq("email", loginEmail)
+  .single();
 
+  
+
+if (userError || !user) {
+
+  alert("Unable to load user profile.");
+
+  return;
+
+}
+
+if (!user.active) {
+
+  alert("User account is inactive");
+
+  return;
+
+}
 
       // Store user details
 
       const userSession = {
+  id: user.id,
+  full_name: user.full_name,
+  username: user.username,
+  email: user.email,
+  role: user.role,
 
-        id:user.id,
-
-        full_name:
-          user.full_name,
-
-        username:
-          user.username,
-
-          email:user.email,
-
-        role:
-          user.role,
-
-
-        customers:
-          user.customers,
-
-        projects:
-          user.projects,
-
-        inventory:
-          user.inventory,
-
-        used_inventory:
-          user.used_inventory,
-
-        payments:
-          user.payments,
-
-        reports:
-          user.reports,
-
-        quotations:
-          user.quotations,
-
-        settings:
-          user.settings,
-
-      };
+  customers: user.customers,
+  inventory: user.inventory,
+  used_inventory: user.used_inventory,
+  payments: user.payments,
+  reports: user.reports,
+  quotations: user.quotations,
+  settings: user.settings,
+  billing: user.billing,
+  investments: user.investments,
+  invoices: user.invoices,
+};
 
 
 
@@ -196,7 +190,6 @@ navigate("/");
 
 
   }
-
 
 
 return (
@@ -257,21 +250,25 @@ setUsername(e.target.value.trim())
 
 
 
+<div className="relative mb-2">
+
 <input
-
-type="password"
-
-className="w-full border-2 border-slate-300 rounded-xl p-3 mb-4"
-
+type={showPassword ? "text" : "password"}
+className="w-full border-2 border-slate-300 rounded-xl p-3 pr-12"
 placeholder="Password"
-
 value={password}
-
-onChange={(e)=>
-setPassword(e.target.value)
-}
-
+onChange={(e)=>setPassword(e.target.value)}
 />
+
+<button
+type="button"
+className="absolute right-3 top-3 text-slate-500"
+onClick={() => setShowPassword(!showPassword)}
+>
+{showPassword ? "🙈" : "👁"}
+</button>
+
+</div>
 
 
 

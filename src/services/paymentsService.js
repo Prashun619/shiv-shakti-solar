@@ -1,27 +1,7 @@
 import { supabase } from "./supabase";
 
 
-/* ===========================
-   GET PROJECT PAYMENTS
-=========================== */
-export async function getProjectPayments(projectId) {
 
-  const { data, error } =
-    await supabase
-      .from("payments")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("payment_date", {
-        ascending: false,
-      });
-
-
-  if (error) throw error;
-
-
-  return data || [];
-
-}
 
 /* ===========================
    GET ALL PAYMENTS
@@ -113,7 +93,38 @@ export async function addPayment(payment) {
 }
 
 
+/* ===========================
+   UPDATE PAYMENT
+=========================== */
+export async function updatePayment(
+  paymentId,
+  payment,
+  projectId
+) {
 
+  const { data, error } =
+    await supabase
+      .from("payments")
+      .update(payment)
+      .eq(
+        "id",
+        paymentId
+      )
+      .select()
+      .single();
+
+
+  if (error) throw error;
+
+
+  await updateProjectPayment(
+    projectId
+  );
+
+
+  return data;
+
+}
 
 
 
@@ -206,5 +217,32 @@ async function updateProjectPayment(projectId) {
       })
       .eq("id", projectId);
 
-  if (updateError) throw updateError;
+    if (updateError) throw updateError;
+
 }
+
+/* ===========================
+   GET PAYMENTS BY PROJECT
+=========================== */
+
+export async function getPaymentsByProject(projectId) {
+
+  const { data, error } =
+    await supabase
+      .from("payments")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("payment_date", {
+        ascending: false,
+      });
+
+
+  if(error)
+    throw error;
+
+
+  return data || [];
+
+}
+
+export const getProjectPayments = getPaymentsByProject;

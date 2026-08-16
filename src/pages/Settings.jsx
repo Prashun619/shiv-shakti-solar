@@ -1,7 +1,14 @@
 import { supabase } from "../services/supabase";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import Administration from "../components/settings/Administration";
+
+import {
+  validatePassword,
+  getPasswordStrength,
+} from "../utils/passwordValidation";
+
 import {
   getCompanySettings,
   saveCompanySettings,
@@ -17,7 +24,7 @@ import {
 
 
 export default function Settings() {
-const navigate = useNavigate();
+
 
   const [form, setForm] = useState({
 
@@ -41,7 +48,7 @@ const [logoUploading, setLogoUploading] =
   useState(false);
 
 const [activeTab, setActiveTab] =
-  useState("company");
+  useState("account");
 
   const [passwordForm, setPasswordForm] =
   useState({
@@ -57,8 +64,13 @@ const [activeTab, setActiveTab] =
 const [changingPassword, setChangingPassword] =
   useState(false);
 
+const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+const [showNewPassword, setShowNewPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 const [signatureUploading, setSignatureUploading] =
   useState(false);
+
 
   const [currentUser, setCurrentUser] =
     useState(null);
@@ -177,66 +189,22 @@ async function handleLogoUpload(e){
 
 }
 
-async function handleLogout(){
-
-  try{
-
-    await supabase.auth.signOut();
-
-    localStorage.removeItem("erp_user");
-
-    sessionStorage.removeItem("erp_user");
-
-    navigate("/login");
-
-  }
-
-  catch(error){
-
-    console.log(error);
-
-    alert(error.message);
-
-  }
-
-}
 
 async function handleChangePassword() {
 
-    
+  const validation =
+    validatePassword(passwordForm.newPassword);
 
-  const { error: loginError } =
-await supabase.auth.signInWithPassword({
-
-  email: currentUser.email,
-
-  password:
-    passwordForm.currentPassword,
-
-});
-
-
-if(loginError){
-
-  alert(
-    "Current password is incorrect."
-  );
-
-  return;
-
-}
-
-  if (
-    passwordForm.newPassword.length < 6
-  ) {
+  if (!validation.valid) {
 
     alert(
-      "Password must be at least 6 characters."
+      validation.errors.join("\n")
     );
 
     return;
 
   }
+
 
   if (
     passwordForm.newPassword !==
@@ -251,57 +219,67 @@ if(loginError){
 
   }
 
+
+  const { error: loginError } =
+    await supabase.auth.signInWithPassword({
+
+      email: currentUser.email,
+
+      password:
+        passwordForm.currentPassword,
+
+    });
+
+
+  if(loginError){
+
+    alert(
+      "Current password is incorrect."
+    );
+
+    return;
+
+  }
+
+
   try {
 
     setChangingPassword(true);
 
-   const { error } =
-await supabase.auth.updateUser({
 
-  password:
-    passwordForm.newPassword,
+    const { error } =
+      await supabase.auth.updateUser({
 
-});
+        password:
+          passwordForm.newPassword,
 
-
-if(error){
-
-  throw error;
-
-}
-
-    // Update stored user
-
-    
-
-  const storageUser =
-  localStorage.getItem("erp_user")
-    ? localStorage
-    : sessionStorage;
+      });
 
 
-storageUser.setItem(
-  "erp_user",
-  JSON.stringify(currentUser)
-);
+    if(error){
+
+      throw error;
+
+    }
+
 
     setPasswordForm({
 
       currentPassword: "",
-
       newPassword: "",
-
       confirmPassword: "",
 
     });
+
 
     alert(
       "Password changed successfully."
     );
 
+
   }
 
-  catch (error) {
+  catch(error){
 
     console.log(error);
 
@@ -406,7 +384,8 @@ async function handleSignatureUpload(e){
 
 
 
-
+const passwordStrength =
+  getPasswordStrength(passwordForm.newPassword);
 
   return (
 
@@ -426,15 +405,10 @@ async function handleSignatureUpload(e){
         ⚙️ Settings
       </h1>
 
-      <p className="text-slate-600 mt-2">
-        Manage application preferences and company information
-      </p>
+      
 
     </div>
 
-    <span className="px-4 py-2 rounded-full bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200">
-      🛡️ Administrator
-    </span>
 
   </div>
 
@@ -442,16 +416,7 @@ async function handleSignatureUpload(e){
 
 <div className="flex gap-3 flex-wrap mb-8">
 
-<button
-onClick={()=>setActiveTab("company")}
-className={`px-5 py-3 rounded-xl font-semibold transition ${
-activeTab==="company"
-? "bg-indigo-600 text-white"
-: "bg-white border border-slate-300 hover:bg-slate-100"
-}`}
->
-🏢 Company Information
-</button>
+
 
 <button
 onClick={()=>setActiveTab("account")}
@@ -494,205 +459,93 @@ activeTab==="about"
 
 </div>
 
-{activeTab==="company" && (
-<>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-
-          <input
-            name="company_name"
-            value={form.company_name}
-            onChange={handleChange}
-            placeholder="Company Name"
-            className={inputClass}
-          />
-
-
-
-          <input
-            name="mobile"
-            value={form.mobile}
-            onChange={handleChange}
-            placeholder="Mobile Number"
-            className={inputClass}
-          />
-
-
-
-          <input
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="Email"
-            className={inputClass}
-          />
-
-
-
-          <input
-            name="gstin"
-            value={form.gstin}
-            onChange={handleChange}
-            placeholder="GSTIN"
-            className={inputClass}
-          />
-
-
-
-          <input
-            name="website"
-            value={form.website}
-            onChange={handleChange}
-            placeholder="Website"
-            className={inputClass}
-          />
-
-
-
-          <div>
-
-<label className="block font-semibold text-slate-800 mb-2">
-  Company Logo
-</label>
-
-<input
-  type="file"
-  accept="image/*"
-  onChange={handleLogoUpload}
-  className={inputClass}
-/>
-
-
-{logoUploading && (
-  <p className="text-sm text-indigo-600 mt-2">
-    Uploading logo...
-  </p>
-)}
-
-
-{form.logo_url && (
-  <img
-    src={form.logo_url}
-    className="h-20 mt-3 border rounded-lg p-2"
-  />
-)}
-
-</div>
-
-
-
-          <div>
-
-<label className="block font-semibold text-slate-800 mb-2">
-  Signature
-</label>
-
-<input
-  type="file"
-  accept="image/*"
-  onChange={handleSignatureUpload}
-  className={inputClass}
-/>
-
-
-{signatureUploading && (
-  <p className="text-sm text-indigo-600 mt-2">
-    Uploading signature...
-  </p>
-)}
-
-
-{form.signature_url && (
-  <img
-    src={form.signature_url}
-    className="h-20 mt-3 border rounded-lg p-2"
-  />
-)}
-
-</div>
-
-
-
-        </div>
-
-
-
-
-        <textarea
-
-          name="address"
-
-          value={form.address}
-
-          onChange={handleChange}
-
-          placeholder="Company Address"
-
-          rows="4"
-
-          className={`${inputClass} w-full mt-5`}
-
-        />
-
-
-
-
-
-        <button
-
-          onClick={handleSave}
-
-          disabled={loading}
-
-          className="
-          mt-6
-          bg-indigo-700
-          hover:bg-indigo-800
-          text-white
-          px-8
-          py-3
-          rounded-xl
-          font-bold
-          shadow-lg
-          transition
-          "
-
-        >
-
-          {loading ? "Saving..." : "Save Settings"}
-
-        </button>
-
-</>
-
-)}
 
 {activeTab==="account" && (
 
-<div>
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-<h2 className="text-2xl font-bold mb-6">
-🔐 Change Password
-</h2>
+<div className="border rounded-xl p-5 bg-slate-50 h-full">
+  <h3 className="text-xl font-bold mb-6">
+    👤 Account Details
+  </h3>
 
-<div className="max-w-lg bg-white border rounded-2xl p-6 shadow">
+    <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+
+    <div>
+      <label className="text-sm text-slate-500">Full Name</label>
+      <div className="font-semibold mt-1">
+        {currentUser?.full_name}
+      </div>
+    </div>
+
+    <div>
+      <label className="text-sm text-slate-500">Username</label>
+      <div className="font-semibold mt-1">
+        {currentUser?.username}
+      </div>
+    </div>
+
+    <div>
+      <label className="text-sm text-slate-500">Email</label>
+      <div className="font-semibold mt-1 break-all">
+        {currentUser?.email}
+      </div>
+    </div>
+
+    <div>
+      <label className="text-sm text-slate-500">Role</label>
+      <div className="font-semibold mt-1">
+        {currentUser?.role}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+    {/* Right Side - Change Password */}
+
+    <div className="border rounded-xl p-5 bg-slate-50">
+
+  <h3 className="text-xl font-bold mb-6">
+    🔑 Change Password
+  </h3>
+
+      <div className="relative mb-4">
+
+  <input
+    type={showCurrentPassword ? "text" : "password"}
+    placeholder="Current Password"
+    value={passwordForm.currentPassword}
+    onChange={(e) =>
+      setPasswordForm({
+        ...passwordForm,
+        currentPassword: e.target.value,
+      })
+    }
+    className="w-full border rounded-lg p-3 pr-12"
+  />
+
+  <button
+    type="button"
+    onClick={() =>
+      setShowCurrentPassword(!showCurrentPassword)
+    }
+    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-indigo-600 transition"
+  >
+    {showCurrentPassword ? (
+  <EyeOff size={20} />
+) : (
+  <Eye size={20} />
+)}
+  </button>
+
+</div>
+
+     <div className="relative mb-4">
 
 <input
-type="password"
-placeholder="Current Password"
-value={passwordForm.currentPassword}
-onChange={(e)=>
-setPasswordForm({
-...passwordForm,
-currentPassword:e.target.value
-})
-}
-className="w-full border rounded-lg p-3 mb-4"
-/>
-
-<input
-type="password"
+type={showNewPassword ? "text" : "password"}
 placeholder="New Password"
 value={passwordForm.newPassword}
 onChange={(e)=>
@@ -701,11 +554,33 @@ setPasswordForm({
 newPassword:e.target.value
 })
 }
-className="w-full border rounded-lg p-3 mb-4"
+className="w-full border rounded-lg p-3 pr-12"
 />
 
+<p className={`text-sm mb-4 ${passwordStrength.color}`}>
+  Password Strength: {passwordStrength.label}
+</p>
+
+<button
+type="button"
+onClick={() =>
+setShowNewPassword(!showNewPassword)
+}
+className="absolute right-3 top-3 text-slate-500 hover:text-slate-700"
+>
+{showNewPassword ? (
+  <EyeOff size={20} />
+) : (
+  <Eye size={20} />
+)}
+</button>
+
+</div>
+
+      <div className="relative mb-4">
+
 <input
-type="password"
+type={showConfirmPassword ? "text" : "password"}
 placeholder="Confirm Password"
 value={passwordForm.confirmPassword}
 onChange={(e)=>
@@ -714,69 +589,40 @@ setPasswordForm({
 confirmPassword:e.target.value
 })
 }
-className="w-full border rounded-lg p-3"
+className="w-full border rounded-lg p-3 pr-12"
 />
 
 <button
-
-onClick={handleChangePassword}
-
-disabled={changingPassword}
-
-className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold"
-
+type="button"
+onClick={() =>
+setShowConfirmPassword(!showConfirmPassword)
+}
+className="absolute right-3 top-3 text-slate-500 hover:text-slate-700"
 >
-
-{changingPassword
-
-? "Changing Password..."
-
-: "Change Password"}
-
+{showConfirmPassword ? (
+  <EyeOff size={20} />
+) : (
+  <Eye size={20} />
+)}
 </button>
 
 </div>
 
-{/* Logout Section */}
+      <button
+        onClick={handleChangePassword}
+        disabled={changingPassword}
+        className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold"
+      >
+        {changingPassword
+          ? "Changing Password..."
+          : "Change Password"}
+      </button>
 
-<div className="max-w-lg mt-6 bg-white border rounded-2xl p-6 shadow">
+    </div>
 
-
-<h3 className="text-xl font-bold mb-3">
-🚪 Logout
-</h3>
-
-
-<p className="text-slate-600 mb-4">
-Sign out from this device.
-</p>
-
-
-<button
-
-onClick={handleLogout}
-
-className="
-bg-red-600
-hover:bg-red-700
-text-white
-px-6
-py-3
-rounded-xl
-font-semibold
-"
-
->
-
-Logout
-
-</button>
+  </div>
 
 
-</div>
-
-
-</div>
 
 )}
 

@@ -155,149 +155,173 @@ doc.addImage(
   return doc;
 }
 
-export function drawTable(doc, columns, rows, startY = 48) {
+export function drawTable(
+  doc,
+  columns,
+  rows,
+  startY = 48,
+  rowHeight = 8
+) {
 
-  const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  const totalTableWidth = columns.reduce(
-  (sum, col) => sum + col.width,
-  0
-);
-
-const margin =
-  (pageWidth - totalTableWidth) / 2;
-  const rowHeight = 9;
+  const margin = 10;
 
   let y = startY;
 
-  // ---------- Header ----------
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.2);
+
+  // ===============================
+  // Header
+  // ===============================
 
   let x = margin;
 
-  columns.forEach((column) => {
 
-    doc.setFillColor(14, 116, 144);
+  columns.forEach((column)=>{
 
-    doc.rect(
-      x,
-      y,
-      column.width,
-      rowHeight,
-      "FD"
-    );
+
+    doc.setFillColor(14,116,144);
+
+doc.setDrawColor(0,0,0);
+doc.setLineWidth(0.3);
+
+doc.rect(
+  x,
+  y,
+  column.width,
+  rowHeight,
+  "FD"
+);
 
     doc.setTextColor(255);
-    doc.setFont("helvetica", "bold");
+
+    doc.setFont(
+      "helvetica",
+      "bold"
+    );
+
     doc.setFontSize(9);
 
+
     doc.text(
-  column.title,
-  x + column.width / 2,
-  y + rowHeight / 2 + 1,
-  {
-    align: "center",
-    baseline: "middle",
-  }
-);
+      column.title,
+      x + column.width / 2,
+      y + rowHeight / 2 + 1,
+      {
+        align:"center",
+        baseline:"middle",
+      }
+    );
+
 
     x += column.width;
 
+
   });
+
 
   y += rowHeight;
 
-  // ---------- Rows ----------
 
-  rows.forEach((row, rowIndex) => {
 
-    // Automatic Page Break
-    if (y > pageHeight - 18) {
+  // ===============================
+  // Rows
+  // ===============================
+
+
+  rows.forEach((row)=>{
+
+
+    if(y > pageHeight - 18){
 
       doc.addPage();
 
       y = 20;
 
-      x = margin;
-
-      columns.forEach((column) => {
-
-        doc.setFillColor(14, 116, 144);
-
-        doc.rect(
-          x,
-          y,
-          column.width,
-          rowHeight,
-          "FD"
-        );
-
-        doc.setTextColor(255);
-
-        doc.setFont("helvetica", "bold");
-
-        doc.text(
-          column.title,
-          x + column.width / 2,
-          y + 5,
-          {
-            align: "center",
-          }
-        );
-
-        x += column.width;
-
-      });
-
-      y += rowHeight;
-
     }
+
 
     x = margin;
 
-    
 
-   row.forEach((value, index) => {
 
-  // Thin black border
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.2);
+    row.forEach((value,index)=>{
 
-  doc.rect(
-    x,
-    y,
-    columns[index].width,
-    rowHeight
-  );
 
-  // Black text
-  doc.setTextColor(0, 0, 0);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+      doc.setDrawColor(0,0,0);
 
-  doc.text(
+      doc.setLineWidth(0.2);
+
+
+
+      // Cell Border
+
+      doc.rect(
+        x,
+        y,
+        columns[index].width,
+        rowHeight
+      );
+
+
+
+      // Summary row
+      if(columns.length === 2){
+
+        doc.setFont(
+          "helvetica",
+          "bold"
+        );
+
+      }
+      else{
+
+        doc.setFont(
+          "helvetica",
+          "normal"
+        );
+
+      }
+
+
+
+      doc.setTextColor(0);
+
+      doc.setFontSize(9);
+
+
+
+      doc.text(
   String(value ?? ""),
+
   x + columns[index].width / 2,
+
   y + rowHeight / 2 + 1,
+
   {
-    align: "center",
-    baseline: "middle",
+    align:"center",
   }
+
 );
 
-  x += columns[index].width;
 
-});
+
+      x += columns[index].width;
+
+
+    });
+
 
     y += rowHeight;
 
+
   });
+
+
 
   return y;
 
-}
+}  
 
 export function addFooter(doc) {
 

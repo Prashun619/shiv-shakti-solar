@@ -1,4 +1,10 @@
-export function calculateDashboardData(projects = [], payments = [], customers = []) {
+export function calculateDashboardData(
+  projects = [],
+  payments = [],
+  customers = [],
+  usedInventory = []
+) {
+
   // TOTAL RECEIVED
   const totalReceived = payments.reduce(
     (sum, p) => sum + Number(p.amount || 0),
@@ -10,6 +16,18 @@ export function calculateDashboardData(projects = [], payments = [], customers =
     (sum, p) => sum + Number(p.total_amount || 0),
     0
   );
+
+  // TOTAL PROJECT COST
+const totalProjectCost = usedInventory.reduce(
+  (sum, item) =>
+    sum + Number(item.total_plant_cost || 0),
+  0
+);
+
+
+// TOTAL PROFIT
+const totalProfit =
+  totalProjectValue - totalProjectCost;
 
   // PENDING AMOUNT
   const totalPending = totalProjectValue - totalReceived;
@@ -60,14 +78,17 @@ export function calculateDashboardData(projects = [], payments = [], customers =
     });
 
   return {
-    totalReceived,
-    totalProjectValue,
-    totalPending,
-    completed,
-    pending,
-    active,
-    collectionRate,
-    monthlyRevenue,
-    topCustomers,
-  };
+  totalReceived,
+  totalProjectValue,
+  totalProjectCost,
+  totalProfit,
+  totalPending,
+  completed,
+  pending,
+  active,
+  collectionRate,
+  monthlyRevenue,
+  topCustomers,
+};
+
 }

@@ -8,9 +8,11 @@ export default function Payments() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [projects, setProjects] = useState([]);
 
-  const [name, setName] = useState("");
-  const [size, setSize] = useState("");
-  const [amount, setAmount] = useState("");
+  const [selectedProject, setSelectedProject] = useState(null);
+
+const [paymentAmount, setPaymentAmount] = useState("");
+const [paymentMode, setPaymentMode] = useState("Cash");
+const paymentType = "Credit";
 
   /* LOAD CUSTOMERS */
   useEffect(() => {
@@ -48,78 +50,135 @@ export default function Payments() {
     setProjects(data || []);
   }
 
-  /* ADD PROJECT */
-  async function addProject() {
-    if (!selectedCustomer || !name || !size || !amount) return;
+ 
 
-    const projectNo = "PRJ-" + Date.now();
 
-    const { data, error } = await supabase
-      .from("projects")
-      .insert([
-        {
-          customer_id: selectedCustomer.id,
-          project_no: projectNo,
-          project_name: name,
-          project_size: size,
-          total_amount: Number(amount),
-          received: 0,
-          remaining: Number(amount),
-          project_date: new Date().toISOString(),
-          status: "Pending"
-        }
-      ])
-      .select()
-      .single();
+  /* ADD PAYMENT */
+async function addPayment(){
 
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    setProjects([data, ...projects]);
-
-    setName("");
-    setSize("");
-    setAmount("");
+  if(!selectedProject || !paymentAmount){
+    alert("Enter payment amount");
+    return;
   }
 
-  /* EDIT PROJECT */
-  async function editProject(id) {
-    const project = projects.find((p) => p.id === id);
-    if (!project) return;
 
-    const newName = prompt("Project Name", project.project_name);
-    const newSize = prompt("Project Size", project.project_size);
-    const newAmount = prompt("Project Amount", project.total_amount);
+  const amount = Number(paymentAmount);
 
-    if (!newName || !newSize || !newAmount) return;
 
-    const received = project.received || 0;
-    const remaining = Number(newAmount) - received;
+ // 1. Insert payment history
+const { data: paymentData, error: paymentError } = await supabase
+  .from("payments")
+  .insert({
 
-    const { data, error } = await supabase
-      .from("projects")
-      .update({
-        project_name: newName,
-        project_size: newSize,
-        total_amount: Number(newAmount),
-        remaining
-      })
-      .eq("id", id)
-      .select()
-      .single();
+    project_id: selectedProject.id,
 
-    if (!error) {
-      setProjects(projects.map((p) => (p.id === id ? data : p)));
-    }
+    payment_date: new Date().toISOString(),
+
+    payment_type: paymentType,
+
+    payment_mode: paymentMode,
+
+    amount: amount,
+
+    remarks: "Payment received from customer"
+
+  })
+  .select()
+  .single();
+
+
+if(paymentError){
+
+  console.log(paymentError);
+
+  alert(paymentError.message);
+
+  return;
+
+}
+
+
+console.log("Payment created:", paymentData);
+
+  // 2. Update project received amount
+
+  const oldReceived =
+    Number(selectedProject.received || 0);
+
+
+  const total =
+    Number(selectedProject.total_amount || 0);
+
+
+  const newReceived =
+    oldReceived + amount;
+
+
+  const remaining =
+    Math.max(
+      total - newReceived,
+      0
+    );
+
+
+  const status =
+    remaining === 0 && total > 0
+    ?
+    "Completed"
+    :
+    "Pending";
+
+
+
+  const {data,error} = await supabase
+    .from("projects")
+    .update({
+
+      received: newReceived,
+
+      remaining: remaining,
+
+      status: status
+
+    })
+    .eq(
+      "id",
+      selectedProject.id
+    )
+    .select()
+    .single();
+
+
+
+  if(error){
+
+    console.log(error);
+    alert(error.message);
+    return;
+
   }
 
-  /* DELETE PROJECT */
-  async function deleteProject(id) {
-    await supabase.from("projects").delete().eq("id", id);
-    setProjects(projects.filter((p) => p.id !== id));
-  }
+
+
+  // update screen
+  setProjects(
+  projects.map((p)=>
+    p.id === data.id
+    ? data
+    : p
+  )
+);
+
+
+  setSelectedProject(null);
+
+  setPaymentAmount("");
+
+  alert("Payment added successfully");
+
+window.location.reload();
+
+}
 
   return (
     <div className="p-4 space-y-6">
@@ -133,42 +192,58 @@ export default function Payments() {
         onKeyDown={handleSearchKeyDown}
       />
 
-      {/* ADD PROJECT FORM */}
-      {selectedCustomer && (
-        <div className="border p-3 space-y-2">
-          <h2 className="font-bold">
-            Add Project for {selectedCustomer.customer_name}
-          </h2>
+    {selectedProject && (
 
-          <input
-            className="border p-2 w-full"
-            placeholder="Project Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+<div className="border rounded-xl p-4 bg-gray-50 space-y-3">
 
-          <input
-            className="border p-2 w-full"
-            placeholder="Project Size"
-            value={size}
-            onChange={(e) => setSize(e.target.value)}
-          />
+<h3 className="font-bold">
+Add Payment - {selectedProject.project_no}
+</h3>
 
-          <input
-            className="border p-2 w-full"
-            placeholder="Project Amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
 
-          <button
-            onClick={addProject}
-            className="bg-green-600 text-white px-4 py-1"
-          >
-            Add Project
-          </button>
-        </div>
-      )}
+<input
+className="border p-2 w-full"
+placeholder="Amount"
+type="number"
+value={paymentAmount}
+onChange={(e)=>setPaymentAmount(e.target.value)}
+/>
+
+
+<select
+className="border p-2 w-full"
+value={paymentMode}
+onChange={(e)=>setPaymentMode(e.target.value)}
+>
+
+<option>Cash</option>
+<option>Bank</option>
+<option>UPI</option>
+<option>Cheque</option>
+
+</select>
+
+
+
+<button
+onClick={addPayment}
+className="bg-blue-600 text-white px-4 py-2 rounded"
+>
+Save Payment
+</button>
+
+
+<button
+onClick={()=>setSelectedProject(null)}
+className="border px-4 py-2 rounded ml-2"
+>
+Cancel
+</button>
+
+
+</div>
+
+)}
 
       {/* PROJECT LIST */}
       <div className="border p-3">
@@ -178,9 +253,7 @@ export default function Payments() {
           <p className="text-gray-500">No projects found</p>
         ) : (
           projects.map((p) => {
-            const received = Number(p.received || 0);
-            const remaining =
-              Number(p.remaining ?? (p.total_amount - received));
+            
 
             return (
               <div
@@ -188,29 +261,24 @@ export default function Payments() {
                 className="flex justify-between items-center border-b py-2"
               >
                 {/* ONE LINE PROJECT INFO */}
+                
                 <div className="text-sm">
-                  <b>{p.project_no}</b> | {p.project_name} | ₹{p.total_amount} |
-                  Size: {p.project_size} |
-                  Received: ₹{received} |
-                  Remaining: ₹{remaining}
-                </div>
+  <b>{p.project_no}</b> | {p.project_name} | ₹{p.total_amount} |
+  Size: {p.project_size}
+</div>
 
                 {/* ACTIONS */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => editProject(p.id)}
-                    className="bg-blue-600 text-white px-2"
-                  >
-                    Edit
-                  </button>
+               
+               <div className="flex gap-2">
 
-                  <button
-                    onClick={() => deleteProject(p.id)}
-                    className="bg-red-600 text-white px-2"
-                  >
-                    Delete
-                  </button>
-                </div>
+<button
+onClick={()=>setSelectedProject(p)}
+className="bg-green-600 text-white px-2 rounded"
+>
+Add Payment
+</button>
+
+</div>
               </div>
             );
           })

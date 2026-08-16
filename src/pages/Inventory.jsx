@@ -263,11 +263,11 @@ export default function Inventory() {
   Quantity
 </th>
 
+<th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+  Unit Cost
+</th>
 
-                
-
-
-  <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+<th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
   Total Amount
 </th>
 
@@ -364,16 +364,14 @@ export default function Inventory() {
 <td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
   {item.quantity} {item.unit || ""}
 </td>
-      
-                  
-                      <td className="border border-black w-24 h-1 px-3 py-2 text-center font-bold text-green-700 whitespace-nowrap">
 
-                        ₹ {Number(
-                          item.total_amount || 0
-                        ).toLocaleString()}
+<td className="border border-black w-24 h-1 px-3 py-2 text-center font-semibold whitespace-nowrap">
+  ₹ {Number(item.unit_cost || 0).toFixed(2)}
+</td>
 
-                      </td>
-
+<td className="border border-black w-24 h-1 px-3 py-2 text-center font-bold text-green-700 whitespace-nowrap">
+  ₹ {Number(item.total_amount || 0).toLocaleString()}
+</td>
 
 
                       <td className="border border-black w-20 h-1 px-1 py-1 text-center whitespace-nowrap">

@@ -1,5 +1,7 @@
 import { supabase } from "./supabase";
 import jsPDF from "jspdf";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 export async function getCustomerReport() {
   const { data, error } = await supabase
@@ -34,16 +36,25 @@ export async function getProjectReport() {
       status,
       total_amount,
       received,
-      remaining,
       customers (
         customer_name
       )
     `)
-    .order("project_date", { ascending: false });
+    .order("id", { ascending: true });
+
 
   if (error) throw error;
 
-  return data || [];
+
+  return (data || []).map(project => ({
+    ...project,
+
+    remaining:
+      Number(project.total_amount || 0) -
+      Number(project.received || 0)
+
+  }));
+
 }
 
 export function exportProjectReport(projects, payments) {
@@ -73,45 +84,279 @@ export function exportProjectReport(projects, payments) {
 
   doc.save("report.pdf");
 }
-export function exportCustomerCSV(customers) {
 
-  const headers = [
-  "S.No",
-  "Customer Name",
-  "Mobile",
-  "Location",
-  "Plant Size",
-  "Payment Type",
-];
+export async function exportCustomerCSV(customers) {
 
-  const rows = customers.map((customer, index) => [
-  index + 1,
-  customer.customer_name || "",
-  customer.mobile || "",
-  customer.location || "",
-  customer.plant_size || "",
-  customer.payment_type || "",
-]);
+  const workbook = new ExcelJS.Workbook();
 
-  const csv = [
-    headers,
-    ...rows,
-  ]
-    .map(row =>
-      row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(",")
-    )
-    .join("\n");
+  const sheet = workbook.addWorksheet(
+    "Customer Report"
+  );
 
-  const blob = new Blob([csv], {
-    type: "text/csv;charset=utf-8;",
+
+  const thinBorder = {
+    top: { style: "thin" },
+    left: { style: "thin" },
+    bottom: { style: "thin" },
+    right: { style: "thin" },
+  };
+
+
+  const center = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+
+
+  function styleHeader(cell) {
+
+    cell.font = {
+      bold: true,
+      color: {
+        argb: "FFFFFF",
+      },
+    };
+
+
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: {
+        argb: "0F766E",
+      },
+    };
+
+
+    cell.alignment = center;
+    cell.border = thinBorder;
+
+  }
+
+
+  function styleCell(cell) {
+
+    cell.alignment = center;
+    cell.border = thinBorder;
+
+  }
+
+
+
+  // Company Header
+
+  sheet.mergeCells("A1:H1");
+
+  const company = sheet.getCell("A1");
+
+  company.value =
+    "SHIV SHAKTI SOLAR ENERGY";
+
+
+  company.font = {
+    size:18,
+    bold:true,
+    color:{
+      argb:"FFFFFF",
+    },
+  };
+
+
+  company.alignment = center;
+
+
+  company.fill = {
+    type:"pattern",
+    pattern:"solid",
+    fgColor:{
+      argb:"1E3A8A",
+    },
+  };
+
+
+  sheet.getRow(1).height = 28;
+
+
+
+  // Report Title
+
+  sheet.mergeCells("A2:H2");
+
+
+  const title = sheet.getCell("A2");
+
+
+  title.value =
+    "Customer Report";
+
+
+  title.font = {
+    size:14,
+    bold:true,
+  };
+
+
+  title.alignment=center;
+
+
+
+  // Summary
+
+  sheet.addRow([]);
+
+
+  sheet.addRow([
+    "Total Customers",
+    "Cash Customers",
+    "Finance Customers",
+  ]);
+
+
+  sheet.addRow([
+
+    customers.length,
+
+    customers.filter(
+      c=>c.payment_type==="Cash"
+    ).length,
+
+
+    customers.filter(
+      c=>c.payment_type==="Finance"
+    ).length,
+
+  ]);
+
+
+
+  sheet.getRow(4).eachCell(cell=>{
+    styleHeader(cell);
   });
 
-  const link = document.createElement("a");
 
-  link.href = URL.createObjectURL(blob);
+  sheet.getRow(5).eachCell(cell=>{
+    styleCell(cell);
+  });
 
-  link.download = "Customer Report.csv";
 
-  link.click();
+
+  sheet.addRow([]);
+  sheet.addRow([]);
+
+
+
+  // Table Header
+
+  const headerRow = sheet.addRow([
+
+    "S.No",
+
+    "Customer Name",
+
+    "Mobile",
+
+    "Email",
+
+    "Address",
+
+    "Location",
+
+    "Plant Size",
+
+    "Payment Type",
+
+  ]);
+
+
+
+  headerRow.eachCell(cell=>{
+    styleHeader(cell);
+  });
+
+
+
+  // Data
+
+  customers.forEach((customer,index)=>{
+
+
+    const row = sheet.addRow([
+
+      index+1,
+
+      customer.customer_name || "",
+
+      customer.mobile || "",
+
+      customer.email || "",
+
+      customer.address || "",
+
+      customer.location || "",
+
+      customer.plant_size || "",
+
+      customer.payment_type || "",
+
+    ]);
+
+
+
+    row.eachCell(cell=>{
+      styleCell(cell);
+    });
+
+
+  });
+
+
+
+  // Auto Width
+
+  sheet.columns.forEach(column=>{
+
+    let max = 15;
+
+
+    column.eachCell(
+      {includeEmpty:true},
+      cell=>{
+
+        const length =
+        String(cell.value ?? "").length + 4;
+
+
+        if(length > max)
+          max = length;
+
+      }
+    );
+
+
+    column.width=max;
+
+  });
+
+
+
+  // Freeze
+
+  sheet.views=[
+    {
+      state:"frozen",
+      ySplit:7,
+    }
+  ];
+
+
+
+  const buffer =
+    await workbook.xlsx.writeBuffer();
+
+
+  saveAs(
+    new Blob([buffer]),
+    "Customer Report.xlsx"
+  );
+
 }
 

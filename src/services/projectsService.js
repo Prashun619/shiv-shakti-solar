@@ -272,12 +272,30 @@ export async function createProject(project){
 
 
 
-  if(error)
-    throw error;
+  if (error)
+  throw error;
 
 
+// ======================================
+// LINK CUSTOMER TO PROJECT
+// ======================================
+if (data?.customer_id) {
 
-  return data;
+  const { error: customerError } =
+    await supabase
+      .from("customers")
+      .update({
+        project_id: data.id,
+      })
+      .eq("id", data.customer_id);
+
+  if (customerError)
+    throw customerError;
+
+}
+
+
+return data;
 
 }
 

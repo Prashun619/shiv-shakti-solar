@@ -1,3 +1,4 @@
+import { generateProjectNumber } from "./projectsService";
 import { supabase } from "./supabase";
 
 
@@ -54,7 +55,42 @@ export async function getCustomers(search = "") {
 
 }
 
+export async function getCustomerWithProject(id){
 
+  const { data: customer, error } =
+  await supabase
+  .from("customers")
+  .select("*")
+  .eq("id", id)
+  .single();
+
+  if(error) throw error;
+
+  const { data: project } =
+  await supabase
+  .from("projects")
+  .select("*")
+  .eq("customer_id", id)
+  .single();
+
+ return {
+  ...customer,
+
+  project_id: project?.id || null,
+  project_no: project?.project_no || "",
+
+  project_size: project?.project_size || "",
+  total_amount: project?.total_amount || 0,
+
+  received: project?.received || 0,
+  remaining: project?.remaining || 0,
+
+  status: project?.status || "Pending",
+
+  remarks: project?.remarks || "",
+};
+
+}
 
 
 
@@ -64,64 +100,83 @@ export async function getCustomers(search = "") {
    ADD CUSTOMER
 =========================== */
 
-export async function addCustomer(customer){
+export async function addCustomer(customer) {
 
+  // Save customer
+  const customerPayload = {
 
-  const payload = {
+    customer_name: customer.customer_name,
+    mobile: customer.mobile,
+    email: customer.email,
+    address: customer.address,
+    location: customer.location,
+    plant_size: customer.plant_size,
+    payment_type: customer.payment_type,
 
-  customer_name: customer.customer_name,
-
-  mobile: customer.mobile,
-
-  email: customer.email,
-
-  address: customer.address,
-
-  location: customer.location,
-
-  plant_size: customer.plant_size,
-
-  payment_type: customer.payment_type,
-
-};
-
-
-
-
-
+  };
 
   const {
-    data,
-    error
+    data: newCustomer,
+    error: customerError
   } = await supabase
-
     .from("customers")
-
-    .insert(payload)
-
+    .insert(customerPayload)
     .select()
-
     .single();
 
+  if (customerError)
+    throw customerError;
+
+  // Automatically create project
+
+const generatedProjectNo = await generateProjectNumber();
+
+console.log("GENERATED PROJECT NO:", generatedProjectNo);
 
 
+const {
+  data: newProject,
+  error: projectError
+} = await supabase
+  .from("projects")
+  .insert({
+
+    customer_id: newCustomer.id,
+
+    project_no: generatedProjectNo,
+
+    project_size: customer.plant_size,
+
+    total_amount:
+      Number(customer.total_amount || 0),
+
+    initial_received: 0,
+
+    received: 0,
+
+    remaining:
+      Number(customer.total_amount || 0),
+
+    status:
+      Number(customer.total_amount || 0) > 0
+      ? "Pending"
+      : "Pending",
+
+    remarks:
+      customer.remarks || "",
+
+  })
+  .select()
+  .single();
 
 
+if (projectError)
+  throw projectError;
 
-  if(error)
-    throw error;
+  
 
-
-
-  return data;
-
-
-}
-
-
-
-
-
+  return newCustomer;
+   }
 
 
 /* ===========================
@@ -133,69 +188,77 @@ export async function updateCustomer(
   customer
 ){
 
+  // Update customer
+  const customerPayload = {
 
-  const payload = {
+    customer_name: customer.customer_name,
 
-  customer_name: customer.customer_name,
+    mobile: customer.mobile,
 
-  mobile: customer.mobile,
+    email: customer.email,
 
-  email: customer.email,
+    address: customer.address,
 
-  address: customer.address,
+    location: customer.location,
 
-  location: customer.location,
+    plant_size: customer.plant_size,
 
-  plant_size: customer.plant_size,
+    payment_type: customer.payment_type,
 
-  payment_type: customer.payment_type,
-
-};
-
-
-
-
-
+  };
 
   const {
     data,
     error
   } = await supabase
-
     .from("customers")
-
-    .update(payload)
-
-    .eq(
-      "id",
-      id
-    )
-
+    .update(customerPayload)
+    .eq("id", id)
     .select()
-
     .single();
-
-
-
-
-
-
 
   if(error)
     throw error;
 
+  // Get existing project
+  const {
+    data: project,
+    error: projectError
+  } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("customer_id", id)
+    .single();
 
+  if(projectError)
+    throw projectError;
+
+  // Update project
+  const updatePayload = {
+
+  project_size: customer.plant_size,
+
+  total_amount:
+    Number(customer.total_amount || 0),
+
+  remarks:
+    customer.remarks || "",
+
+};
+
+  const {
+    error: updateProjectError
+  } = await supabase
+    .from("projects")
+    .update(updatePayload)
+    .eq("id", project.id);
+
+  if(updateProjectError)
+    throw updateProjectError;
 
   return data;
 
-
 }
-
-
-
-
-
-
 
 /* ===========================
    DELETE CUSTOMER

@@ -64,7 +64,61 @@ const allProducts = Object.values(
 }));
 
 
-  const plantCost = Number(item.total_plant_cost || 0);
+ const plantCost = Number(item.total_plant_cost || 0);
+
+
+const additionalCharges = [
+
+  {
+    name: "Civil Material",
+    amount: Number(item.civil_material || 0)
+  },
+
+  {
+    name: "Installation Charges",
+    amount: Number(item.installation_charges || 0)
+  },
+
+  {
+    name: "Vendor Charges",
+    amount: Number(item.vendor_charges || 0)
+  },
+
+  {
+    name: "JE Charges",
+    amount: Number(item.je_charges || 0)
+  },
+
+  {
+    name: "Load Extension Charges",
+    amount: Number(item.load_extension_charges || 0)
+  },
+
+  {
+    name: "Net Metering Charges",
+    amount: Number(item.net_metering_charges || 0)
+  }
+
+].filter(
+  item => item.amount > 0
+);
+
+
+const productCost = allProducts.reduce(
+  (sum, product)=>
+    sum + product.total,
+  0
+);
+
+
+const extraCost = additionalCharges.reduce(
+  (sum, charge)=>
+    sum + charge.amount,
+  0
+);
+
+
+const grandTotal = productCost + extraCost;
 
 
   return (
@@ -78,7 +132,7 @@ const allProducts = Object.values(
         <div className="bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-700 p-5 rounded-t-2xl">
 
   <h2 className="text-2xl font-bold text-white">
-    Used Inventory Details
+    Material Consumption Details
   </h2>
 
   <p className="text-blue-100 text-sm mt-1">
@@ -96,45 +150,33 @@ const allProducts = Object.values(
 
   <div className="grid grid-cols-2 gap-4 text-sm">
 
-    <div>
-      <span className="font-semibold">
-        Customer Name:
-      </span>
-
-      <span className="ml-2">
+    <div className="font-bold text-slate-800">
+      Customer Name:
+      <span className="ml-2 font-bold text-slate-900">
         {item.customers?.customer_name || item.customer_name || "-"}
       </span>
     </div>
 
 
-    <div>
-      <span className="font-semibold">
-        Plant Size:
-      </span>
-
-      <span className="ml-2">
+    <div className="font-bold text-slate-800">
+      Plant Size:
+      <span className="ml-2 font-bold text-slate-900">
         {item.plant_size || "-"} kW
       </span>
     </div>
 
 
-    <div>
-      <span className="font-semibold">
-        Location:
-      </span>
-
-      <span className="ml-2">
+    <div className="font-bold text-slate-800">
+      Location:
+      <span className="ml-2 font-bold text-slate-900">
         {item.location || "-"}
       </span>
     </div>
 
 
-    <div>
-      <span className="font-semibold">
-        Plant Cost:
-      </span>
-
-      <span className="ml-2 text-green-700 font-bold">
+    <div className="font-bold text-slate-800">
+      Plant Cost:
+      <span className="ml-2 font-bold text-green-700">
         ₹ {Number(plantCost || 0).toFixed(2)}
       </span>
     </div>
@@ -243,12 +285,106 @@ const allProducts = Object.values(
 
                 }
 
+{
+additionalCharges.map((charge,index)=>(
+
+<tr
+key={"charge-"+index}
+className="hover:bg-blue-50 transition border border-black"
+>
+
+<td className="border border-black px-3 py-2 font-semibold text-center text-sm">
+
+{charge.name}
+
+</td>
+
+
+<td className="border border-black px-3 py-2 text-center text-sm">
+
+Additional Charges
+
+</td>
+
+
+<td className="border border-black px-3 py-2 text-center text-sm">
+
+1
+
+</td>
+
+
+<td className="border border-black px-3 py-2 text-center font-semibold text-indigo-700">
+
+₹ {charge.amount.toFixed(2)}
+
+</td>
+
+
+<td className="border border-black px-3 py-2 text-center font-bold text-emerald-700 text-sm">
+
+₹ {charge.amount.toFixed(2)}
+
+</td>
+
+
+</tr>
+
+))
+}
+
               </tbody>
 
             </table>
 
           </div>
 
+<div className="flex justify-end mt-6">
+
+<div className="border border-black rounded-xl overflow-hidden w-96 text-sm">
+
+<div className="flex justify-between px-4 py-2 border-b">
+
+<span className="font-semibold">
+Product Cost
+</span>
+
+<span className="font-bold">
+₹ {productCost.toFixed(2)}
+</span>
+
+</div>
+
+
+<div className="flex justify-between px-4 py-2 border-b">
+
+<span className="font-semibold">
+Additional Charges
+</span>
+
+<span className="font-bold">
+₹ {extraCost.toFixed(2)}
+</span>
+
+</div>
+
+
+<div className="flex justify-between px-4 py-3 bg-indigo-700 text-white">
+
+<span className="font-bold">
+Total
+</span>
+
+<span className="font-bold">
+₹ {grandTotal.toFixed(2)}
+</span>
+
+</div>
+
+
+</div>
+
+</div>
 
           <div className="flex justify-end mt-8">
 

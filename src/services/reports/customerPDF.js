@@ -9,22 +9,35 @@ export function exportCustomerPDF(customers) {
   const doc = createReportPDF("Customer Report");
 
   const columns = [
-    { title: "S.No", width: 15 },
-    { title: "Customer Name", width: 65 },
-    { title: "Mobile", width: 45 },
-    { title: "Location", width: 45 },
-    { title: "Plant Size", width: 30 },
-    { title: "Payment Type", width: 40 },
-  ];
+  { title: "S.No", width: 12 },
+  { title: "Customer", width: 40 },
+  { title: "Mobile", width: 30 },
+  { title: "Email", width: 45 },
+  { title: "Address", width: 50 },
+  { title: "Location", width: 30 },
+  { title: "Plant Size", width: 20 },
+  { title: "Payment Type", width: 30 },
+];
 
-  const rows = customers.map((customer, index) => [
-    index + 1,
-    customer.customer_name || "",
-    customer.mobile || "",
-    customer.location || "",
-    customer.plant_size || "",
-    customer.payment_type || "",
-  ]);
+ const rows = customers.map((customer, index) => [
+
+  index + 1,
+
+  customer.customer_name || "",
+
+  customer.mobile || "",
+
+  customer.email || "",
+
+  customer.address || "",
+
+  customer.location || "",
+
+  customer.plant_size || "",
+
+  customer.payment_type || "",
+
+]);
 
   const endY = drawTable(
     doc,

@@ -42,10 +42,19 @@ export default function PaymentModal({
   const [loading, setLoading] =
     useState(false);
 
+const [customers, setCustomers] = useState([]);
+
+const [selectedCustomer, setSelectedCustomer] = useState("");
+
+const [selectedProject, setSelectedProject] = useState("");
 
 useEffect(() => {
 
   if (open) {
+
+
+    loadCustomers();
+
 
     setPaymentDate(
       new Date().toISOString().split("T")[0]
@@ -61,10 +70,82 @@ useEffect(() => {
 
     setRemarks("");
 
+    setSelectedCustomer("");
+
+    setSelectedProject("");
+
+
   }
 
 }, [open]);
 
+async function loadCustomers(){
+
+  try {
+
+    // Get customers
+    const { data: customersData, error: customerError } =
+      await supabase
+        .from("customers")
+        .select(`
+          id,
+          customer_name
+        `)
+        .order("customer_name");
+
+
+    if(customerError)
+      throw customerError;
+
+
+
+    // Get projects
+    const { data: projectsData, error: projectError } =
+      await supabase
+        .from("projects")
+        .select(`
+          id,
+          project_no,
+          customer_id
+        `);
+
+
+    if(projectError)
+      throw projectError;
+
+
+
+    // Attach projects manually
+    const finalCustomers =
+      customersData.map((customer)=>({
+
+        ...customer,
+
+        projects:
+          projectsData.filter(
+            (project)=>
+              project.customer_id === customer.id
+          )
+
+      }));
+
+
+    setCustomers(finalCustomers);
+
+
+  }
+  
+  catch(error){
+
+  console.error("FULL CUSTOMER LOAD ERROR:", error);
+
+  alert(
+    error.message || "Failed to load customers."
+  );
+
+}
+
+}
 
   async function handleSubmit(e) {
 
@@ -95,7 +176,7 @@ useEffect(() => {
       const payment = {
 
 
-        project_id: projectId,
+        project_id: projectId || selectedProject,
 
 
         payment_date:
@@ -173,10 +254,10 @@ console.log("Payment Payload Before Save:", payment);
   return (
 
 
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
 
 
-      <div className="bg-white w-full max-w-md rounded-xl p-6">
+      <div className="bg-white w-full max-w-md rounded-xl p-6 max-h-[90vh] overflow-y-auto">
 
 
 
@@ -223,9 +304,97 @@ console.log("Payment Payload Before Save:", payment);
           </div>
 
 
+<div>
+
+<label>
+Customer
+</label>
+
+
+<select
+
+className="border p-2 w-full rounded"
+
+value={selectedCustomer}
+
+onChange={(e)=>{
+
+const customerId = e.target.value;
+
+setSelectedCustomer(customerId);
+
+
+const customer = customers.find(
+(c)=>c.id === customerId
+);
+
+
+const project = customer?.projects?.[0];
 
 
 
+setSelectedProject(
+  project?.id || ""
+);
+
+
+}}
+
+>
+
+
+<option value="">
+Select Customer
+</option>
+
+
+{customers.map((customer)=>(
+
+<option
+key={customer.id}
+value={customer.id}
+>
+
+{customer.customer_name}
+
+</option>
+
+))}
+
+
+</select>
+
+
+</div>
+
+<div>
+
+<label>
+Project No
+</label>
+
+
+<input
+
+type="text"
+
+className="border p-2 w-full rounded bg-slate-50"
+
+value={
+  customers
+    .find(
+      (customer)=>customer.id === selectedCustomer
+    )
+    ?.projects?.[0]?.project_no || ""
+}
+
+readOnly
+
+placeholder="Select customer first"
+
+/>
+
+</div>
 
           <div>
 
