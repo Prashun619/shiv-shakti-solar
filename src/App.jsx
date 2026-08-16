@@ -204,7 +204,7 @@ hasPermission("customers") && (
   
 
 {
-hasPermission("master-inventory") && (
+hasPermission("inventory") && (
 
 <Link 
   className="block px-3 py-2 rounded hover:bg-gray-700" 
@@ -402,28 +402,30 @@ element={
 </ProtectedRoute>
 }
 />
-          <Route
-path="/master-inventory"
-element={
-<ProtectedRoute permission="inventory">
-<MasterInventory />
-</ProtectedRoute>
-}
-/>
-          <Route
-path="/finance"
-element={
-<ProtectedRoute permission="payments">
-<FinanceLedger />
-</ProtectedRoute>
-}
+          
+<Route
+  path="/master-inventory"
+  element={
+    <ProtectedRoute permission="inventory">
+      <MasterInventory />
+    </ProtectedRoute>
+  }
 />
 
 <Route
-  path="/investments"
+  path="/inventory"
   element={
-    <ProtectedRoute permission="investments">
-      <Investments />
+    <ProtectedRoute permission="inventory">
+      <Inventory />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/used-inventory"
+  element={
+    <ProtectedRoute permission="used_inventory">
+      <UsedInventory />
     </ProtectedRoute>
   }
 />
@@ -433,6 +435,15 @@ element={
   element={
     <ProtectedRoute permission="billing">
       <FinanceLedger />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/investments"
+  element={
+    <ProtectedRoute permission="investments">
+      <Investments />
     </ProtectedRoute>
   }
 />
@@ -481,11 +492,6 @@ element={
     </ProtectedRoute>
   }
 />
-<Route
-  path="/invoice/new"
-  element={<CreateInvoice />}
-/>
-
 
 
 <Route
