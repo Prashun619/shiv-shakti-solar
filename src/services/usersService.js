@@ -40,17 +40,17 @@ export async function createUser(user) {
     );
 
   if (error) {
-    console.error(
-      "CREATE USER ERROR:",
-      error
-    );
+    console.error("CREATE USER ERROR:", error);
 
     let responseBody = null;
 
     try {
       if (error.context) {
-        responseBody =
-          await error.context.json();
+        responseBody = await error.context.json();
+        console.error(
+          "CREATE USER RESPONSE:",
+          responseBody
+        );
       }
     } catch (parseError) {
       console.error(
@@ -59,20 +59,29 @@ export async function createUser(user) {
       );
     }
 
-    console.error(
-      "CREATE USER RESPONSE BODY:",
-      responseBody
-    );
-
-    throw new Error(
+    const message =
+      responseBody?.error?.message ||
       responseBody?.error ||
       error.message ||
-      "Unable to create user."
+      "Unable to create user.";
+
+    throw new Error(
+      typeof message === "string"
+        ? message
+        : JSON.stringify(message)
     );
   }
 
   if (data?.error) {
-    throw new Error(data.error);
+    const message =
+      data.error?.message ||
+      data.error;
+
+    throw new Error(
+      typeof message === "string"
+        ? message
+        : JSON.stringify(message)
+    );
   }
 
   return data;

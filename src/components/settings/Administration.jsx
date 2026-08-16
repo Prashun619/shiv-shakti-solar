@@ -224,11 +224,15 @@ async function handleCreateUser() {
 
   catch (error) {
 
-    console.log(error);
+  console.error("CREATE USER ERROR:", error);
 
-    alert(error.message);
+  alert(
+    typeof error?.message === "string"
+      ? error.message
+      : JSON.stringify(error)
+  );
 
-  }
+}
 
 }
 
