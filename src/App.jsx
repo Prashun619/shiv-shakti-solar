@@ -124,44 +124,13 @@ shadow-2xl
 >
         <div
 className="
-p-5
+p-0
 border-b
 border-white/20
 "
 >
 
-<div className="flex items-center gap-3">
 
-<div
-className="
-h-12
-w-12
-rounded-2xl
-bg-white/20
-backdrop-blur
-flex
-items-center
-justify-center
-shadow-lg
-"
->
-⚡
-</div>
-
-
-<div>
-
-<h1 className="text-xl font-bold">
-Solar ERP
-</h1>
-
-<p className="text-xs text-emerald-100">
-Shiv Shakti Solar
-</p>
-
-</div>
-
-</div>
 
 </div>
 

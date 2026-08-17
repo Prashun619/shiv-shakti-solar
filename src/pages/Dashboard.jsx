@@ -377,7 +377,7 @@ text-white
 tracking-tight
 "
 >
-Shiv Shakti Solar ERP
+Shiv Shakti Solar
 </h1>
 
 

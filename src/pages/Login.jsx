@@ -214,7 +214,7 @@ className="h-24 mx-auto mb-4"
 
 <h1 className="text-2xl font-bold text-slate-900">
 
-Shiv Shakti Solar ERP
+Shiv Shakti Solar
 
 </h1>
 
