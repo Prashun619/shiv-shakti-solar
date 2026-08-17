@@ -1,8 +1,8 @@
 import { supabase } from "./supabase";
 
-/* ======================================
-   CALCULATE PRODUCT BASE
-====================================== */
+// =====================================================
+// PRODUCT BASE
+// =====================================================
 
 export function calculateProductBase(item) {
   const quantity =
@@ -13,7 +13,9 @@ export function calculateProductBase(item) {
 
   if (item.unit === "Kg") {
     const totalWeight =
-      Number(item.total_weight || 0);
+      Number(
+        item.total_weight || 0
+      );
 
     return (
       quantity *
@@ -22,30 +24,32 @@ export function calculateProductBase(item) {
     );
   }
 
-  return quantity * price;
+  return (
+    quantity * price
+  );
 }
 
-/* ======================================
-   CALCULATE PRODUCT GST
-====================================== */
+// =====================================================
+// PRODUCT GST
+// =====================================================
 
 export function calculateProductGST(item) {
-  const baseAmount =
+  const base =
     calculateProductBase(item);
 
   const gst =
     Number(item.gst || 0);
 
   return (
-    baseAmount *
+    base *
     gst /
     100
   );
 }
 
-/* ======================================
-   GET ALL INVENTORY
-====================================== */
+// =====================================================
+// GET INVENTORY
+// =====================================================
 
 export async function getInventory() {
   const {
@@ -65,23 +69,231 @@ export async function getInventory() {
   return data || [];
 }
 
-/* ======================================
-   ADD INVENTORY
-   Multiple products = multiple rows
-   Same batch_id
-   Transportation only on first row
-====================================== */
+// =====================================================
+// ADD INVENTORY
+// =====================================================
 
-export async function addInventory(purchase) {
+export async function addInventory(
+  purchase
+) {
   const {
     date,
     supplier,
-    transportation,
-    products,
+    transportation = 0,
+    purchase_type = "Product",
+    products = [],
+    kit_name = null,
+    kit_panel_watt = null,
+    kit_panel_qty = 0,
+    kit_inverter_brand = null,
+    kit_overall_value = 0,
+    kit_gst = 0,
   } = purchase;
 
+  // ===================================================
+  // SOLAR KIT
+  // ===================================================
+
   if (
-    !Array.isArray(products) ||
+    purchase_type ===
+    "Kit"
+  ) {
+    if (!kit_name) {
+      throw new Error(
+        "Kit name is required."
+      );
+    }
+
+    if (!kit_panel_watt) {
+      throw new Error(
+        "Panel watt is required."
+      );
+    }
+
+    if (
+      Number(
+        kit_panel_qty
+      ) <= 0
+    ) {
+      throw new Error(
+        "Panel quantity is required."
+      );
+    }
+
+    if (!kit_inverter_brand) {
+      throw new Error(
+        "Inverter is required."
+      );
+    }
+
+    if (
+      Number(
+        kit_overall_value
+      ) <= 0
+    ) {
+      throw new Error(
+        "Overall kit value is required."
+      );
+    }
+
+    const kitValue =
+      Number(
+        kit_overall_value
+      );
+
+    const kitGST =
+      Number(
+        kit_gst || 0
+      );
+
+    const transport =
+      Number(
+        transportation || 0
+      );
+
+    const kitGSTAmount =
+      kitValue *
+      kitGST /
+      100;
+
+    const totalAmount =
+      kitValue +
+      kitGSTAmount +
+      transport;
+
+    const batchId =
+      `PUR${Date.now()}${Math.floor(
+        Math.random() * 1000
+      )}`;
+
+    // One single inventory row.
+    const payload = {
+      date,
+
+      supplier,
+
+      product_name:
+        kit_name,
+
+      category:
+        "Kit",
+
+      company:
+        kit_name
+          .replace(
+            /\s+Kit$/i,
+            ""
+          )
+          .trim(),
+
+      specification:
+        kit_panel_watt,
+
+      quantity:
+        Number(
+          kit_panel_qty
+        ),
+
+      purchased_quantity:
+        Number(
+          kit_panel_qty
+        ),
+
+      used_quantity: 0,
+
+      unit: "Kit",
+
+      price:
+        kitValue,
+
+      total_weight: 0,
+
+      // Keep product GST equal to
+      // overall kit GST for compatibility.
+      gst:
+        kitGST,
+
+      cgst: 0,
+
+      sgst: 0,
+
+      transportation:
+        transport,
+
+      total_amount:
+        totalAmount,
+
+      unit_cost:
+        Number(
+          kit_panel_qty
+        ) > 0
+          ? totalAmount /
+            Number(
+              kit_panel_qty
+            )
+          : 0,
+
+      remarks:
+        `Includes Panel, Inverter, ACDB, DCDB and Earthing Kit`,
+
+      active: true,
+
+      is_default: false,
+
+      batch_id:
+        batchId,
+
+      purchase_type:
+        "Kit",
+
+      kit_name,
+
+      kit_panel_watt,
+
+      kit_panel_qty:
+        Number(
+          kit_panel_qty
+        ),
+
+      kit_inverter_brand,
+
+      kit_overall_value:
+        kitValue,
+
+      kit_gst:
+        kitGST,
+
+      kit_component:
+        false,
+
+      kit_price_locked:
+        false,
+    };
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  // ===================================================
+  // NORMAL MULTIPLE PRODUCTS
+  // ===================================================
+
+  if (
+    !Array.isArray(
+      products
+    ) ||
     products.length === 0
   ) {
     throw new Error(
@@ -94,127 +306,166 @@ export async function addInventory(purchase) {
       Math.random() * 1000
     )}`;
 
-  const transportAmount =
-    Number(transportation || 0);
+  const transport =
+    Number(
+      transportation || 0
+    );
 
-  const payload = products.map(
-    (item, index) => {
-      const quantity =
-        Number(item.quantity || 0);
+  const rows =
+    products.map(
+      (item, index) => {
+        const quantity =
+          Number(
+            item.quantity || 0
+          );
 
-      const price =
-        Number(item.price || 0);
+        const price =
+          Number(
+            item.price || 0
+          );
 
-      const totalWeight =
-        Number(
-          item.total_weight || 0
-        );
+        const totalWeight =
+          Number(
+            item.total_weight ||
+              0
+          );
 
-      const gst =
-        Number(item.gst || 0);
+        const gst =
+          Number(
+            item.gst || 0
+          );
 
-      const baseAmount =
-        calculateProductBase({
-          ...item,
+        const baseAmount =
+          calculateProductBase({
+            ...item,
+            quantity,
+            price,
+            total_weight:
+              totalWeight,
+          });
+
+        const gstAmount =
+          baseAmount *
+          gst /
+          100;
+
+        const rowTransportation =
+          index === 0
+            ? transport
+            : 0;
+
+        const totalAmount =
+          baseAmount +
+          gstAmount +
+          rowTransportation;
+
+        const totalUnits =
+          item.unit === "Kg"
+            ? quantity *
+              totalWeight
+            : quantity;
+
+        const unitCost =
+          totalUnits > 0
+            ? totalAmount /
+              totalUnits
+            : 0;
+
+        return {
+          date,
+
+          supplier,
+
+          product_name:
+            item.product_name,
+
+          category:
+            item.category,
+
+          company:
+            item.company || "",
+
+          specification:
+            item.specification ||
+            "",
+
           quantity,
+
+          purchased_quantity:
+            quantity,
+
+          used_quantity: 0,
+
+          unit:
+            item.unit ||
+            "Nos",
+
           price,
+
           total_weight:
             totalWeight,
-        });
 
-      const gstAmount =
-        baseAmount *
-        gst /
-        100;
+          gst,
 
-      // Transportation is added only once.
-      const rowTransportation =
-        index === 0
-          ? transportAmount
-          : 0;
+          cgst: 0,
 
-      const totalAmount =
-        baseAmount +
-        gstAmount +
-        rowTransportation;
+          sgst: 0,
 
-      const totalUnits =
-  item.unit === "Kg"
-    ? quantity *
-      Number(item.total_weight || 0)
-    : quantity;
+          transportation:
+            rowTransportation,
 
-const unitCost =
-  totalUnits > 0
-    ? totalAmount / totalUnits
-    : 0;
+          total_amount:
+            totalAmount,
 
-      return {
-        date,
+          unit_cost:
+            unitCost,
 
-        supplier,
+          remarks:
+            item.remarks ||
+            "",
 
-        product_name:
-          item.product_name,
+          active: true,
 
-        category:
-          item.category,
+          is_default: false,
 
-        company:
-          item.company || "",
+          batch_id:
+            batchId,
 
-        specification:
-          item.specification || "",
+          purchase_type:
+            "Product",
 
-        quantity,
+          kit_name: null,
 
-        purchased_quantity:
-          quantity,
+          kit_panel_watt:
+            null,
 
-        used_quantity: 0,
+          kit_panel_qty:
+            0,
 
-        unit:
-          item.unit || "Nos",
+          kit_inverter_brand:
+            null,
 
-        price,
+          kit_overall_value:
+            0,
 
-        total_weight:
-          totalWeight,
+          kit_gst:
+            0,
 
-        gst,
+          kit_component:
+            false,
 
-        // Keep legacy fields zero.
-        cgst: 0,
-        sgst: 0,
-
-        transportation:
-          rowTransportation,
-
-        total_amount:
-          totalAmount,
-
-        unit_cost:
-          unitCost,
-
-        remarks:
-          item.remarks || "",
-
-        active: true,
-
-        is_default: false,
-
-        batch_id:
-          batchId,
-      };
-    }
-  );
+          kit_price_locked:
+            false,
+        };
+      }
+    );
 
   const {
     data,
     error,
   } = await supabase
     .from("inventory")
-    .insert(payload)
+    .insert(rows)
     .select();
 
   if (error) {
@@ -224,28 +475,176 @@ const unitCost =
   return data || [];
 }
 
-/* ======================================
-   UPDATE INVENTORY
-====================================== */
+// =====================================================
+// UPDATE INVENTORY
+// =====================================================
 
 export async function updateInventory(
   id,
   item
 ) {
+  const isKit =
+    item.purchase_type ===
+    "Kit";
+
+  // ===================================================
+  // KIT UPDATE
+  // ===================================================
+
+  if (isKit) {
+    const kitValue =
+      Number(
+        item.kit_overall_value ||
+          item.price ||
+          0
+      );
+
+    const kitGST =
+      Number(
+        item.kit_gst ??
+          item.gst ??
+          0
+      );
+
+    const transport =
+      Number(
+        item.transportation ||
+          0
+      );
+
+    const kitGSTAmount =
+      kitValue *
+      kitGST /
+      100;
+
+    const totalAmount =
+      kitValue +
+      kitGSTAmount +
+      transport;
+
+    const panelQty =
+      Number(
+        item.kit_panel_qty ??
+          item.quantity ??
+          0
+      );
+
+    const payload = {
+      ...item,
+
+      product_name:
+        item.kit_name ||
+        item.product_name,
+
+      category:
+        "Kit",
+
+      specification:
+        item.kit_panel_watt ||
+        item.specification ||
+        "",
+
+      quantity:
+        panelQty,
+
+      purchased_quantity:
+        panelQty,
+
+      used_quantity:
+        Number(
+          item.used_quantity || 0
+        ),
+
+      unit: "Kit",
+
+      price:
+        kitValue,
+
+      total_weight: 0,
+
+      gst:
+        kitGST,
+
+      cgst: 0,
+
+      sgst: 0,
+
+      transportation:
+        transport,
+
+      total_amount:
+        totalAmount,
+
+      unit_cost:
+        panelQty > 0
+          ? totalAmount /
+            panelQty
+          : 0,
+
+      purchase_type:
+        "Kit",
+
+      kit_panel_qty:
+        panelQty,
+
+      kit_overall_value:
+        kitValue,
+
+      kit_gst:
+        kitGST,
+
+      kit_component:
+        false,
+
+      kit_price_locked:
+        false,
+    };
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .update(payload)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  // ===================================================
+  // NORMAL PRODUCT UPDATE
+  // ===================================================
+
   const quantity =
-    Number(item.quantity || 0);
+    Number(
+      item.quantity || 0
+    );
 
   const price =
-    Number(item.price || 0);
+    Number(
+      item.price || 0
+    );
 
   const totalWeight =
-    Number(item.total_weight || 0);
+    Number(
+      item.total_weight || 0
+    );
 
   const gst =
-    Number(item.gst || 0);
+    Number(
+      item.gst || 0
+    );
 
   const transportation =
-    Number(item.transportation || 0);
+    Number(
+      item.transportation || 0
+    );
 
   const baseAmount =
     calculateProductBase({
@@ -267,15 +666,16 @@ export async function updateInventory(
     transportation;
 
   const totalUnits =
-  item.unit === "Kg"
-    ? quantity *
-      Number(item.total_weight || 0)
-    : quantity;
+    item.unit === "Kg"
+      ? quantity *
+        totalWeight
+      : quantity;
 
-const unitCost =
-  totalUnits > 0
-    ? totalAmount / totalUnits
-    : 0;
+  const unitCost =
+    totalUnits > 0
+      ? totalAmount /
+        totalUnits
+      : 0;
 
   const payload = {
     ...item,
@@ -303,6 +703,32 @@ const unitCost =
 
     total_amount:
       totalAmount,
+
+    purchase_type:
+      "Product",
+
+    kit_name: null,
+
+    kit_panel_watt:
+      null,
+
+    kit_panel_qty:
+      0,
+
+    kit_inverter_brand:
+      null,
+
+    kit_overall_value:
+      0,
+
+    kit_gst:
+      0,
+
+    kit_component:
+      false,
+
+    kit_price_locked:
+      false,
   };
 
   const {
@@ -322,9 +748,9 @@ const unitCost =
   return data;
 }
 
-/* ======================================
-   DELETE INVENTORY
-====================================== */
+// =====================================================
+// DELETE INVENTORY
+// =====================================================
 
 export async function deleteInventory(
   id
@@ -341,15 +767,23 @@ export async function deleteInventory(
   }
 }
 
-/* ======================================
-   CALCULATE UNIT COST
-====================================== */
+// =====================================================
+// UNIT COST
+// =====================================================
 
 export function calculateUnitCost(
   product
 ) {
   const quantity =
-    Number(product.quantity || 0);
+    Number(
+      product.quantity || 0
+    );
+
+  const totalWeight =
+    Number(
+      product.total_weight ||
+        0
+    );
 
   const baseAmount =
     calculateProductBase(
@@ -363,7 +797,8 @@ export function calculateUnitCost(
 
   const transportation =
     Number(
-      product.transportation || 0
+      product.transportation ||
+        0
     );
 
   const totalAmount =
@@ -371,14 +806,21 @@ export function calculateUnitCost(
     gstAmount +
     transportation;
 
-  return quantity > 0
-    ? totalAmount / quantity
+  const totalUnits =
+    product.unit === "Kg"
+      ? quantity *
+        totalWeight
+      : quantity;
+
+  return totalUnits > 0
+    ? totalAmount /
+        totalUnits
     : 0;
 }
 
-/* ======================================
-   GET INVENTORY PRODUCTS
-====================================== */
+// =====================================================
+// GET INVENTORY PRODUCTS
+// =====================================================
 
 export async function getInventoryProducts() {
   const {
@@ -404,11 +846,23 @@ export async function getInventoryProducts() {
       transportation,
       unit_cost,
       total_amount,
-      batch_id
+      batch_id,
+      purchase_type,
+      kit_name,
+      kit_panel_watt,
+      kit_panel_qty,
+      kit_inverter_brand,
+      kit_overall_value,
+      kit_gst,
+      kit_component,
+      kit_price_locked
     `)
-    .order("product_name", {
-      ascending: true,
-    });
+    .order(
+      "product_name",
+      {
+        ascending: true,
+      }
+    );
 
   if (error) {
     throw error;
@@ -417,9 +871,9 @@ export async function getInventoryProducts() {
   return data || [];
 }
 
-/* ======================================
-   GET LATEST INVENTORY BY PRODUCT
-====================================== */
+// =====================================================
+// LATEST INVENTORY
+// =====================================================
 
 export async function getLatestInventoryByProduct(
   productName
@@ -434,10 +888,16 @@ export async function getLatestInventoryByProduct(
       "product_name",
       productName
     )
-    .eq("active", true)
-    .order("date", {
-      ascending: false,
-    })
+    .eq(
+      "active",
+      true
+    )
+    .order(
+      "date",
+      {
+        ascending: false,
+      }
+    )
     .limit(1);
 
   if (error) {
@@ -447,9 +907,9 @@ export async function getLatestInventoryByProduct(
   return data?.[0] || null;
 }
 
-/* ======================================
-   GET INVENTORY BY PRODUCT
-====================================== */
+// =====================================================
+// INVENTORY BY PRODUCT
+// =====================================================
 
 export async function getInventoryByProduct(
   productName
@@ -464,10 +924,16 @@ export async function getInventoryByProduct(
       "product_name",
       productName
     )
-    .eq("active", true)
-    .order("company", {
-      ascending: true,
-    });
+    .eq(
+      "active",
+      true
+    )
+    .order(
+      "company",
+      {
+        ascending: true,
+      }
+    );
 
   if (error) {
     throw error;
