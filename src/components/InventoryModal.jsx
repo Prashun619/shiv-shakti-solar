@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { addInventory, updateInventory } from "../services/inventoryService";
+import {
+  addInventory,
+  updateInventory,
+  getInventoryByBatch,
+  updateInventoryBatch,
+} from "../services/inventoryService";
 
 // =====================================================
 // NORMAL INVENTORY PRODUCTS
@@ -135,13 +140,22 @@ const kitOptions = [
 // KIT PANEL OPTIONS
 // =====================================================
 
-const kitPanelOptions = ["610Wp", "605Wp", "585Wp", "580Wp"];
+const kitPanelOptions = [
+  "610Wp",
+  "605Wp",
+  "585Wp",
+  "580Wp",
+];
 
 // =====================================================
 // KIT INVERTER OPTIONS
 // =====================================================
 
-const kitInverterOptions = ["Waaree", "Luminous", "Polycab"];
+const kitInverterOptions = [
+  "Waaree",
+  "Luminous",
+  "Polycab",
+];
 
 // =====================================================
 // EMPTY NORMAL PRODUCT
@@ -149,6 +163,9 @@ const kitInverterOptions = ["Waaree", "Luminous", "Polycab"];
 
 function createEmptyProduct() {
   return {
+
+    id: crypto.randomUUID(),
+
     product_name: "",
     category: "",
     company: "",
@@ -162,38 +179,59 @@ function createEmptyProduct() {
   };
 }
 
-export default function InventoryModal({ open, onClose, onSaved, product }) {
-  const [products, setProducts] = useState([createEmptyProduct()]);
+export default function InventoryModal({
+  open,
+  onClose,
+  onSaved,
+  product,
+}) {
+  const [products, setProducts] = useState([
+    createEmptyProduct(),
+  ]);
 
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
   const [supplier, setSupplier] = useState("");
 
-  const [transportation, setTransportation] = useState("");
+  const [transportation, setTransportation] =
+    useState("");
 
   // ===================================================
   // PURCHASE TYPE
   // ===================================================
 
-  const [purchaseType, setPurchaseType] = useState("Product");
+  const [purchaseType, setPurchaseType] =
+    useState("Product");
 
   // ===================================================
   // KIT STATE
   // ===================================================
 
-  const [selectedKitId, setSelectedKitId] = useState("");
+  const [selectedKitId, setSelectedKitId] =
+    useState("");
 
-  const [kitPanelWatt, setKitPanelWatt] = useState("");
+  const [kitPanelWatt, setKitPanelWatt] =
+    useState("");
 
-  const [kitPanelQty, setKitPanelQty] = useState("");
+  const [kitPanelQty, setKitPanelQty] =
+    useState("");
 
-  const [kitInverterBrand, setKitInverterBrand] = useState("");
+  const [kitInverterBrand, setKitInverterBrand] =
+    useState("");
 
-  const [kitOverallValue, setKitOverallValue] = useState("");
+  const [kitOverallValue, setKitOverallValue] =
+    useState("");
 
-  const [kitGST, setKitGST] = useState("");
+  const [kitGST, setKitGST] =
+    useState("");
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
+
+    const [loadingBatch, setLoadingBatch] =
+  useState(false);
 
   const isEditMode = Boolean(product);
 
@@ -202,7 +240,9 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
   // ===================================================
 
   const selectedKit = useMemo(() => {
-    return kitOptions.find((kit) => kit.id === selectedKitId) || null;
+    return kitOptions.find(
+      (kit) => kit.id === selectedKitId
+    ) || null;
   }, [selectedKitId]);
 
   // ===================================================
@@ -210,7 +250,11 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
   // ===================================================
 
   function resetForm() {
-    setDate(new Date().toISOString().split("T")[0]);
+    setDate(
+      new Date()
+        .toISOString()
+        .split("T")[0]
+    );
 
     setSupplier("");
 
@@ -230,7 +274,9 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
 
     setKitGST("");
 
-    setProducts([createEmptyProduct()]);
+    setProducts([
+      createEmptyProduct(),
+    ]);
   }
 
   // ===================================================
@@ -238,78 +284,289 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
   // ===================================================
 
   useEffect(() => {
-    if (!open) return;
+  if (!open) {
+    return;
+  }
 
-    if (product) {
-      const isKit = product.purchase_type === "Kit";
+  async function loadForm() {
+    // =================================================
+    // NEW PURCHASE
+    // =================================================
 
-      setDate(product.date || new Date().toISOString().split("T")[0]);
+    if (!product) {
+      resetForm();
+      return;
+    }
 
-      setSupplier(product.supplier || "");
+    // =================================================
+    // EDIT EXISTING PURCHASE
+    // =================================================
 
-      setTransportation(product.transportation || "");
+    try {
+      setLoadingBatch(true);
 
-      setPurchaseType(product.purchase_type || "Product");
+      const batchId =
+        product.batch_id;
 
-      // -----------------------------------------------
-      // FIND KIT ID FROM SAVED KIT NAME
-      // -----------------------------------------------
+      // ------------------------------------------------
+      // If batch ID exists, load the complete batch.
+      // ------------------------------------------------
 
-      const matchedKit = kitOptions.find(
-        (kit) => kit.label === product.kit_name,
+      const batchRows =
+        batchId
+          ? await getInventoryByBatch(
+              batchId
+            )
+          : [product];
+
+      const rows =
+        batchRows.length
+          ? batchRows
+          : [product];
+
+      const firstRow =
+        rows[0];
+
+      const isKit =
+        firstRow.purchase_type ===
+        "Kit";
+
+      // =================================================
+      // COMMON HEADER
+      // =================================================
+
+      setDate(
+        firstRow.date ||
+          new Date()
+            .toISOString()
+            .split("T")[0]
       );
 
-      setSelectedKitId(matchedKit?.id || "");
+      setSupplier(
+        firstRow.supplier || ""
+      );
 
-      setKitPanelWatt(product.kit_panel_watt || "");
+      // =================================================
+      // TRANSPORTATION
+      //
+      // For a batch, add all row allocations back
+      // together so the edit form shows the original
+      // transportation amount.
+      // =================================================
 
-      setKitPanelQty(product.kit_panel_qty ?? "");
+      const batchTransportation =
+        rows.reduce(
+          (sum, row) =>
+            sum +
+            Number(
+              row.transportation || 0
+            ),
+          0
+        );
 
-      setKitInverterBrand(product.kit_inverter_brand || "");
+      setTransportation(
+        batchTransportation
+      );
 
-      setKitOverallValue(product.kit_overall_value ?? "");
+      setPurchaseType(
+        isKit
+          ? "Kit"
+          : "Product"
+      );
 
-      setKitGST(product.kit_gst ?? "");
+      // =================================================
+      // KIT
+      // =================================================
 
-      setProducts([
-        {
-          product_name: product.product_name || "",
+      if (isKit) {
+        const matchedKit =
+          kitOptions.find(
+            (kit) =>
+              kit.label ===
+              firstRow.kit_name
+          );
 
-          category:
-            product.category || productCategoryMap[product.product_name] || "",
+        setSelectedKitId(
+          matchedKit?.id || ""
+        );
 
-          company: product.company || "",
+        setKitPanelWatt(
+          firstRow.kit_panel_watt ||
+            ""
+        );
 
-          specification: product.specification || "",
+        setKitPanelQty(
+          firstRow.kit_panel_qty ??
+            firstRow.quantity ??
+            ""
+        );
 
-          quantity: isKit
-            ? (product.kit_panel_qty ?? product.quantity ?? "")
-            : (product.quantity ?? ""),
+        setKitInverterBrand(
+          firstRow.kit_inverter_brand ||
+            ""
+        );
 
-          unit: isKit ? "Kit" : product.unit || "Nos",
+        setKitOverallValue(
+          firstRow.kit_overall_value ??
+            firstRow.price ??
+            ""
+        );
 
-          price: product.price ?? product.unit_cost ?? "",
+        setKitGST(
+          firstRow.kit_gst ??
+            firstRow.gst ??
+            ""
+        );
 
-          total_weight: product.total_weight ?? "",
+        setProducts([
+          {
+            product_name:
+              firstRow.product_name ||
+              "",
 
-          gst: isKit
-            ? (product.kit_gst ?? 0)
-            : (product.gst ??
-              Number(product.cgst || 0) + Number(product.sgst || 0)),
+            category:
+              "Kit",
 
-          remarks: product.remarks || "",
-        },
-      ]);
-    } else {
-      resetForm();
+            company:
+              firstRow.company ||
+              "",
+
+            specification:
+              firstRow.specification ||
+              "",
+
+            quantity:
+              firstRow.kit_panel_qty ??
+              firstRow.quantity ??
+              "",
+
+            unit:
+              "Kit",
+
+            price:
+              firstRow.price ??
+              "",
+
+            total_weight: 0,
+
+            gst:
+              firstRow.gst ??
+              firstRow.kit_gst ??
+              0,
+
+            remarks:
+              firstRow.remarks ||
+              "",
+          },
+        ]);
+
+      } else {
+        // =================================================
+        // NORMAL MULTI-PRODUCT BATCH
+        // =================================================
+
+        setSelectedKitId("");
+        setKitPanelWatt("");
+        setKitPanelQty("");
+        setKitInverterBrand("");
+        setKitOverallValue("");
+        setKitGST("");
+
+        setProducts(
+          rows.map((row) => ({
+            id:
+              row.id,
+
+            product_name:
+              row.product_name ||
+              "",
+
+            category:
+              row.category ||
+              productCategoryMap[
+                row.product_name
+              ] ||
+              "",
+
+            company:
+              row.company ||
+              "",
+
+            specification:
+              row.specification ||
+              "",
+
+            quantity:
+              row.quantity ??
+              "",
+
+            unit:
+              row.unit ||
+              "Nos",
+
+            price:
+              row.price ??
+              row.unit_cost ??
+              "",
+
+            total_weight:
+              row.total_weight ??
+              "",
+
+            gst:
+              row.gst ??
+              Number(
+                row.cgst || 0
+              ) +
+                Number(
+                  row.sgst || 0
+                ),
+
+            remarks:
+              row.remarks ||
+              "",
+
+            active:
+              row.active ??
+              true,
+
+            is_default:
+              row.is_default ??
+              false,
+          }))
+        );
+      }
+
+    } catch (error) {
+      console.error(
+        "LOAD INVENTORY BATCH ERROR:",
+        error
+      );
+
+      alert(
+        error?.message ||
+          "Unable to load purchase."
+      );
+
+      onClose();
+
+    } finally {
+      setLoadingBatch(false);
     }
-  }, [open, product]);
+  }
+
+  loadForm();
+}, [open, product]);
 
   // ===================================================
   // UPDATE NORMAL PRODUCT
   // ===================================================
 
-  function updateProduct(index, field, value) {
+  function updateProduct(
+    index,
+    field,
+    value
+  ) {
     setProducts((prev) =>
       prev.map((item, itemIndex) =>
         itemIndex === index
@@ -317,8 +574,8 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
               ...item,
               [field]: value,
             }
-          : item,
-      ),
+          : item
+      )
     );
   }
 
@@ -326,18 +583,28 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
   // HANDLE NORMAL PRODUCT CHANGE
   // ===================================================
 
-  function handleProductChange(index, field, value) {
-    if (field === "product_name") {
+  function handleProductChange(
+    index,
+    field,
+    value
+  ) {
+    if (
+      field === "product_name"
+    ) {
       setProducts((prev) =>
-        prev.map((item, itemIndex) =>
-          itemIndex === index
-            ? {
-                ...item,
-                product_name: value,
-                category: productCategoryMap[value] || "",
-              }
-            : item,
-        ),
+        prev.map(
+          (item, itemIndex) =>
+            itemIndex === index
+              ? {
+                  ...item,
+                  product_name: value,
+                  category:
+                    productCategoryMap[
+                      value
+                    ] || "",
+                }
+              : item
+        )
       );
 
       return;
@@ -345,21 +612,29 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
 
     if (field === "unit") {
       setProducts((prev) =>
-        prev.map((item, itemIndex) =>
-          itemIndex === index
-            ? {
-                ...item,
-                unit: value,
-                total_weight: value === "Kg" ? item.total_weight : "",
-              }
-            : item,
-        ),
+        prev.map(
+          (item, itemIndex) =>
+            itemIndex === index
+              ? {
+                  ...item,
+                  unit: value,
+                  total_weight:
+                    value === "Kg"
+                      ? item.total_weight
+                      : "",
+                }
+              : item
+        )
       );
 
       return;
     }
 
-    updateProduct(index, field, value);
+    updateProduct(
+      index,
+      field,
+      value
+    );
   }
 
   // ===================================================
@@ -367,27 +642,44 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
   // ===================================================
 
   function addProductRow() {
-    setProducts((prev) => [...prev, createEmptyProduct()]);
-  }
-
+  setProducts((prev) => [
+    createEmptyProduct(),
+    ...prev,
+  ]);
+}
   // ===================================================
   // REMOVE NORMAL PRODUCT ROW
   // ===================================================
 
-  function removeProductRow(index) {
-    if (products.length === 1) {
+  function removeProductRow(
+    index
+  ) {
+    if (
+      products.length === 1
+    ) {
       return;
     }
 
-    setProducts((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+    setProducts((prev) =>
+      prev.filter(
+        (_, itemIndex) =>
+          itemIndex !== index
+      )
+    );
   }
 
   // ===================================================
   // KIT CHANGE
   // ===================================================
 
-  function handleKitChange(kitId) {
-    const selected = kitOptions.find((kit) => kit.id === kitId);
+  function handleKitChange(
+    kitId
+  ) {
+    const selected =
+      kitOptions.find(
+        (kit) =>
+          kit.id === kitId
+      );
 
     setSelectedKitId(kitId);
 
@@ -395,7 +687,9 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
 
     // Panel Qty is editable.
     // Start with the kit's default quantity.
-    setKitPanelQty(selected?.panelQty ?? "");
+    setKitPanelQty(
+      selected?.panelQty ?? ""
+    );
 
     setKitInverterBrand("");
 
@@ -411,127 +705,256 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
   // ===================================================
 
   function calculateProductBase(item) {
-    const quantity = Number(item.quantity || 0);
+  const quantity =
+    Number(item.quantity || 0);
 
-    const price = Number(item.price || 0);
+  const price =
+    Number(item.price || 0);
 
-    // KG FORMULA:
-    // Qty × Total Weight × Price per Kg
-    if (item.unit === "Kg") {
-      const totalWeight = Number(item.total_weight || 0);
+  // For KG products:
+  // Total Weight is the combined weight
+  // of all pieces/items.
+  //
+  // Example:
+  // Qty = 8
+  // Total Weight = 72 Kg
+  // Price per Kg = 109.75
+  //
+  // Base = 72 × 109.75
+  if (item.unit === "Kg") {
+    const totalWeight =
+      Number(item.total_weight || 0);
 
-      return quantity * totalWeight * price;
-    }
-
-    return quantity * price;
+    return totalWeight * price;
   }
+
+  return quantity * price;
+}
 
   // ===================================================
   // PRODUCT GST
   // ===================================================
 
-  function calculateProductGST(item) {
-    const base = calculateProductBase(item);
+  function calculateProductGST(
+    item
+  ) {
+    const base =
+      calculateProductBase(
+        item
+      );
 
-    const gst = Number(item.gst || 0);
+    const gst =
+      Number(
+        item.gst || 0
+      );
 
-    return (base * gst) / 100;
+    return (
+      base *
+      gst /
+      100
+    );
   }
 
   // ===================================================
   // NORMAL PURCHASE SUMMARY
   // ===================================================
 
-  const normalBaseAmount = useMemo(() => {
-    return products.reduce((sum, item) => sum + calculateProductBase(item), 0);
-  }, [products]);
+  const normalBaseAmount =
+    useMemo(() => {
+      return products.reduce(
+        (sum, item) =>
+          sum +
+          calculateProductBase(
+            item
+          ),
+        0
+      );
+    }, [products]);
 
-  const normalGSTAmount = useMemo(() => {
-    return products.reduce((sum, item) => sum + calculateProductGST(item), 0);
-  }, [products]);
+  const normalGSTAmount =
+    useMemo(() => {
+      return products.reduce(
+        (sum, item) =>
+          sum +
+          calculateProductGST(
+            item
+          ),
+        0
+      );
+    }, [products]);
 
   // ===================================================
   // KIT SUMMARY
   // ===================================================
 
-  const numericKitValue = Number(kitOverallValue || 0);
+  const numericKitValue =
+    Number(
+      kitOverallValue || 0
+    );
 
-  const numericKitGST = Number(kitGST || 0);
+  const numericKitGST =
+    Number(
+      kitGST || 0
+    );
 
-  const kitGSTAmount = (numericKitValue * numericKitGST) / 100;
+  const kitGSTAmount =
+    (
+      numericKitValue *
+      numericKitGST
+    ) / 100;
 
   const kitTotalAmount =
-    numericKitValue + kitGSTAmount + Number(transportation || 0);
+    numericKitValue +
+    kitGSTAmount +
+    Number(
+      transportation || 0
+    );
 
   // ===================================================
   // FINAL SUMMARY
   // ===================================================
 
   const totalBaseAmount =
-    purchaseType === "Kit" ? numericKitValue : normalBaseAmount;
+    purchaseType === "Kit"
+      ? numericKitValue
+      : normalBaseAmount;
 
   const totalGSTAmount =
-    purchaseType === "Kit" ? kitGSTAmount : normalGSTAmount;
+    purchaseType === "Kit"
+      ? kitGSTAmount
+      : normalGSTAmount;
 
   const totalAmount =
     purchaseType === "Kit"
       ? kitTotalAmount
-      : totalBaseAmount + totalGSTAmount + Number(transportation || 0);
+      : totalBaseAmount +
+        totalGSTAmount +
+        Number(
+          transportation || 0
+        );
 
   // ===================================================
   // VALIDATE NORMAL PRODUCTS
   // ===================================================
 
   function validateNormalProducts() {
-    if (!products.length) {
-      alert("Please add at least one product.");
+    if (
+      !products.length
+    ) {
+      alert(
+        "Please add at least one product."
+      );
 
       return false;
     }
 
-    for (let index = 0; index < products.length; index++) {
-      const item = products[index];
+    for (
+      let index = 0;
+      index < products.length;
+      index++
+    ) {
+      const item =
+        products[index];
 
-      if (!item.product_name) {
-        alert(`Please select Product for row ${index + 1}.`);
+      if (
+        !item.product_name
+      ) {
+        alert(
+          `Please select Product for row ${
+            index + 1
+          }.`
+        );
 
         return false;
       }
 
-      if (!item.category) {
-        alert(`Please select Category for row ${index + 1}.`);
+      if (
+        !item.category
+      ) {
+        alert(
+          `Please select Category for row ${
+            index + 1
+          }.`
+        );
 
         return false;
       }
 
-      if (["Panel", "Inverter"].includes(item.product_name)) {
-        if (!String(item.company || "").trim()) {
-          alert(`Please enter Company for row ${index + 1}.`);
+      if (
+        ["Panel", "Inverter"].includes(
+          item.product_name
+        )
+      ) {
+        if (
+          !String(
+            item.company || ""
+          ).trim()
+        ) {
+          alert(
+            `Please enter Company for row ${
+              index + 1
+            }.`
+          );
 
           return false;
         }
 
-        if (!String(item.specification || "").trim()) {
-          alert(`Please enter Specification for row ${index + 1}.`);
+        if (
+          !String(
+            item.specification ||
+              ""
+          ).trim()
+        ) {
+          alert(
+            `Please enter Specification for row ${
+              index + 1
+            }.`
+          );
 
           return false;
         }
       }
 
-      if (Number(item.quantity || 0) <= 0) {
-        alert(`Please enter a valid Quantity for row ${index + 1}.`);
+      if (
+        Number(
+          item.quantity || 0
+        ) <= 0
+      ) {
+        alert(
+          `Please enter a valid Quantity for row ${
+            index + 1
+          }.`
+        );
 
         return false;
       }
 
-      if (item.unit === "Kg" && Number(item.total_weight || 0) <= 0) {
-        alert(`Please enter Total Weight for row ${index + 1}.`);
+      if (
+        item.unit === "Kg" &&
+        Number(
+          item.total_weight ||
+            0
+        ) <= 0
+      ) {
+        alert(
+          `Please enter Total Weight for row ${
+            index + 1
+          }.`
+        );
 
         return false;
       }
 
-      if (Number(item.price || 0) < 0) {
-        alert(`Please enter a valid Price for row ${index + 1}.`);
+      if (
+        Number(
+          item.price || 0
+        ) < 0
+      ) {
+        alert(
+          `Please enter a valid Price for row ${
+            index + 1
+          }.`
+        );
 
         return false;
       }
@@ -547,8 +970,14 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    if (!String(supplier || "").trim()) {
-      alert("Please enter Supplier.");
+    if (
+      !String(
+        supplier || ""
+      ).trim()
+    ) {
+      alert(
+        "Please enter Supplier."
+      );
 
       return;
     }
@@ -557,39 +986,61 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
     // KIT VALIDATION
     // =================================================
 
-    if (purchaseType === "Kit") {
+    if (
+      purchaseType === "Kit"
+    ) {
       if (!selectedKitId) {
-        alert("Please select Kit.");
+        alert(
+          "Please select Kit."
+        );
 
         return;
       }
 
       if (!kitPanelWatt) {
-        alert("Please select Panel Watt.");
+        alert(
+          "Please select Panel Watt."
+        );
 
         return;
       }
 
-      if (Number(kitPanelQty || 0) <= 0) {
-        alert("Please enter a valid Panel Qty.");
+      if (
+        Number(
+          kitPanelQty || 0
+        ) <= 0
+      ) {
+        alert(
+          "Please enter a valid Panel Qty."
+        );
 
         return;
       }
 
       if (!kitInverterBrand) {
-        alert("Please select Inverter.");
+        alert(
+          "Please select Inverter."
+        );
 
         return;
       }
 
-      if (numericKitValue <= 0) {
-        alert("Please enter Overall Kit Value.");
+      if (
+        numericKitValue <= 0
+      ) {
+        alert(
+          "Please enter Overall Kit Value."
+        );
 
         return;
       }
 
-      if (numericKitGST < 0) {
-        alert("Please enter a valid Kit GST.");
+      if (
+        numericKitGST < 0
+      ) {
+        alert(
+          "Please enter a valid Kit GST."
+        );
 
         return;
       }
@@ -599,8 +1050,13 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
     // NORMAL PRODUCT VALIDATION
     // =================================================
 
-    if (purchaseType === "Product") {
-      if (!validateNormalProducts()) {
+    if (
+      purchaseType ===
+      "Product"
+    ) {
+      if (
+        !validateNormalProducts()
+      ) {
         return;
       }
     }
@@ -613,104 +1069,162 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
       // ===============================================
 
       if (isEditMode) {
-        const item = products[0];
+  // =================================================
+  // EDIT KIT
+  // =================================================
 
-        const payload = {
-          date,
+  if (
+    purchaseType ===
+    "Kit"
+  ) {
+    const item =
+      products[0];
 
-          supplier,
+    const payload = {
+      date,
 
-          product_name:
-            purchaseType === "Kit"
-              ? selectedKit?.label || item.product_name
-              : item.product_name,
+      supplier,
 
-          category: purchaseType === "Kit" ? "Kit" : item.category,
+      product_name:
+        selectedKit?.label ||
+        item.product_name,
 
-          company:
-            purchaseType === "Kit"
-              ? selectedKit?.label || ""
-              : item.company || "",
+      category:
+        "Kit",
 
-          specification:
-            purchaseType === "Kit" ? kitPanelWatt : item.specification || "",
+      company:
+        selectedKit?.label ||
+        item.company ||
+        "",
 
-          quantity:
-            purchaseType === "Kit"
-              ? Number(kitPanelQty || 0)
-              : Number(item.quantity || 0),
+      specification:
+        kitPanelWatt,
 
-          unit: purchaseType === "Kit" ? "Kit" : item.unit,
+      quantity:
+        Number(
+          kitPanelQty || 0
+        ),
 
-          price:
-            purchaseType === "Kit" ? numericKitValue : Number(item.price || 0),
+      unit:
+        "Kit",
 
-          total_weight:
-            purchaseType === "Kit" ? 0 : Number(item.total_weight || 0),
+      price:
+        numericKitValue,
 
-          gst: purchaseType === "Kit" ? numericKitGST : Number(item.gst || 0),
+      total_weight: 0,
 
-          cgst: 0,
-          sgst: 0,
+      gst:
+        numericKitGST,
 
-          transportation: Number(transportation || 0),
+      cgst: 0,
+      sgst: 0,
 
-          total_amount: totalAmount,
+      transportation:
+        Number(
+          transportation || 0
+        ),
 
-          remarks:
-            purchaseType === "Kit"
-              ? "Includes Panel, Inverter, ACDB, DCDB and Earthing Kit"
-              : item.remarks || "",
+      total_amount:
+        kitTotalAmount,
 
-          purchase_type: purchaseType,
+      remarks:
+        "Includes Panel, Inverter, ACDB, DCDB and Earthing Kit",
 
-          kit_name: purchaseType === "Kit" ? selectedKit?.label || null : null,
+      purchase_type:
+        "Kit",
 
-          kit_panel_watt: purchaseType === "Kit" ? kitPanelWatt : null,
+      kit_name:
+        selectedKit?.label ||
+        null,
 
-          kit_panel_qty: purchaseType === "Kit" ? Number(kitPanelQty || 0) : 0,
+      kit_panel_watt:
+        kitPanelWatt,
 
-          kit_inverter_brand: purchaseType === "Kit" ? kitInverterBrand : null,
+      kit_panel_qty:
+        Number(
+          kitPanelQty || 0
+        ),
 
-          kit_overall_value: purchaseType === "Kit" ? numericKitValue : 0,
+      kit_inverter_brand:
+        kitInverterBrand,
 
-          kit_gst: purchaseType === "Kit" ? numericKitGST : 0,
+      kit_overall_value:
+        numericKitValue,
 
-          kit_component: false,
+      kit_gst:
+        numericKitGST,
+    };
 
-          active: true,
+    await updateInventory(
+      product.id,
+      payload
+    );
 
-          is_default: false,
-        };
+  } else {
+    // =================================================
+    // EDIT COMPLETE NORMAL BATCH
+    // =================================================
 
-        await updateInventory(product.id, payload);
+    await updateInventoryBatch(
+      product.batch_id,
+      {
+        date,
+
+        supplier,
+
+        transportation:
+          Number(
+            transportation || 0
+          ),
+
+        products,
       }
+    );
+  }
+}
 
       // ===============================================
       // ADD
       // ===============================================
+
       else {
-        if (purchaseType === "Kit") {
+        if (
+          purchaseType ===
+          "Kit"
+        ) {
           await addInventory({
             date,
 
             supplier,
 
-            purchase_type: "Kit",
+            purchase_type:
+              "Kit",
 
-            kit_name: selectedKit?.label || null,
+            kit_name:
+              selectedKit?.label ||
+              null,
 
-            kit_panel_watt: kitPanelWatt,
+            kit_panel_watt:
+              kitPanelWatt,
 
-            kit_panel_qty: Number(kitPanelQty || 0),
+            kit_panel_qty:
+              Number(
+                kitPanelQty || 0
+              ),
 
-            kit_inverter_brand: kitInverterBrand,
+            kit_inverter_brand:
+              kitInverterBrand,
 
-            kit_overall_value: numericKitValue,
+            kit_overall_value:
+              numericKitValue,
 
-            kit_gst: numericKitGST,
+            kit_gst:
+              numericKitGST,
 
-            transportation: Number(transportation || 0),
+            transportation:
+              Number(
+                transportation || 0
+              ),
           });
         } else {
           await addInventory({
@@ -718,21 +1232,32 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
 
             supplier,
 
-            purchase_type: "Product",
+            purchase_type:
+              "Product",
 
             products,
 
-            transportation: Number(transportation || 0),
+            transportation:
+              Number(
+                transportation || 0
+              ),
           });
         }
       }
 
       onSaved();
       onClose();
-    } catch (error) {
-      console.error("INVENTORY SAVE ERROR:", error);
 
-      alert(error?.message || "Unable to save inventory.");
+    } catch (error) {
+      console.error(
+        "INVENTORY SAVE ERROR:",
+        error
+      );
+
+      alert(
+        error?.message ||
+          "Unable to save inventory."
+      );
     } finally {
       setLoading(false);
     }
@@ -742,11 +1267,18 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
   // FORMAT
   // ===================================================
 
-  function formatAmount(value) {
-    return Number(value || 0).toLocaleString("en-IN", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  function formatAmount(
+    value
+  ) {
+    return Number(
+      value || 0
+    ).toLocaleString(
+      "en-IN",
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    );
   }
 
   if (!open) {
@@ -755,42 +1287,65 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+
       <div className="bg-white w-full max-w-5xl rounded-xl shadow-lg p-5 max-h-[94vh] overflow-y-auto">
+
         {/* =================================================
             HEADER
         ================================================= */}
 
         <div className="flex justify-between items-center mb-4">
+
           <h2 className="text-xl font-bold">
-            {isEditMode ? "Edit Purchase" : "Add Purchase"}
+            {isEditMode
+              ? "Edit Purchase"
+              : "Add Purchase"}
           </h2>
 
-          {!isEditMode && purchaseType === "Product" && (
-            <button
-              type="button"
-              onClick={addProductRow}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-            >
-              + Add Product
-            </button>
-          )}
+          {!isEditMode &&
+            purchaseType ===
+              "Product" && (
+              <button
+                type="button"
+                onClick={
+                  addProductRow
+                }
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+              >
+                + Add Product
+              </button>
+            )}
+
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={
+            handleSubmit
+          }
+          className="space-y-4"
+        >
+
           {/* =================================================
               HEADER FIELDS
           ================================================= */}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
             {/* DATE */}
 
             <div>
-              <label className="block mb-1 font-medium">Date</label>
+              <label className="block mb-1 font-medium">
+                Date
+              </label>
 
               <input
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) =>
+                  setDate(
+                    e.target.value
+                  )
+                }
                 className="border rounded-lg p-2 w-full"
                 required
               />
@@ -799,12 +1354,18 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
             {/* SUPPLIER */}
 
             <div>
-              <label className="block mb-1 font-medium">Supplier</label>
+              <label className="block mb-1 font-medium">
+                Supplier
+              </label>
 
               <input
                 type="text"
                 value={supplier}
-                onChange={(e) => setSupplier(e.target.value)}
+                onChange={(e) =>
+                  setSupplier(
+                    e.target.value
+                  )
+                }
                 className="border rounded-lg p-2 w-full"
                 required
               />
@@ -813,107 +1374,193 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
             {/* PURCHASE TYPE */}
 
             <div>
-              <label className="block mb-1 font-medium">Purchase Type</label>
+              <label className="block mb-1 font-medium">
+                Purchase Type
+              </label>
 
               <select
-                value={purchaseType}
-                disabled={isEditMode}
+                value={
+                  purchaseType
+                }
+                disabled={
+                  isEditMode
+                }
                 onChange={(e) => {
-                  const value = e.target.value;
+                  const value =
+                    e.target.value;
 
-                  setPurchaseType(value);
+                  setPurchaseType(
+                    value
+                  );
 
-                  if (value === "Product") {
-                    setSelectedKitId("");
+                  if (
+                    value ===
+                    "Product"
+                  ) {
+                    setSelectedKitId(
+                      ""
+                    );
 
-                    setKitPanelWatt("");
+                    setKitPanelWatt(
+                      ""
+                    );
 
-                    setKitPanelQty("");
+                    setKitPanelQty(
+                      ""
+                    );
 
-                    setKitInverterBrand("");
+                    setKitInverterBrand(
+                      ""
+                    );
 
-                    setKitOverallValue("");
+                    setKitOverallValue(
+                      ""
+                    );
 
-                    setKitGST("");
+                    setKitGST(
+                      ""
+                    );
 
-                    setProducts([createEmptyProduct()]);
+                    setProducts([
+                      createEmptyProduct(),
+                    ]);
                   } else {
                     setProducts([]);
                   }
                 }}
                 className="border rounded-lg p-2 w-full disabled:bg-slate-200"
               >
-                <option value="Product">Normal Product</option>
+                <option value="Product">
+                  Normal Product
+                </option>
 
-                <option value="Kit">Solar Kit</option>
+                <option value="Kit">
+                  Solar Kit
+                </option>
               </select>
             </div>
+
           </div>
 
           {/* =================================================
               KIT FIELDS
           ================================================= */}
 
-          {purchaseType === "Kit" && (
+          {purchaseType ===
+            "Kit" && (
             <div className="border border-blue-300 rounded-xl p-4 bg-blue-50">
+
               <h3 className="font-bold text-blue-900 mb-3">
                 Solar Kit Details
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+
                 {/* KIT */}
 
                 <div>
-                  <label className="block mb-1 font-medium">Kit</label>
+                  <label className="block mb-1 font-medium">
+                    Kit
+                  </label>
 
                   <select
-                    value={selectedKitId}
-                    onChange={(e) => handleKitChange(e.target.value)}
+                    value={
+                      selectedKitId
+                    }
+                    onChange={(e) =>
+                      handleKitChange(
+                        e.target.value
+                      )
+                    }
                     className="border border-slate-300 rounded-lg px-2 w-44 h-8 bg-white text-sm leading-none"
                   >
-                    <option value="">Select Kit</option>
+                    <option value="">
+                      Select Kit
+                    </option>
 
-                    {kitOptions.map((kit) => (
-                      <option key={kit.id} value={kit.id}>
-                        {kit.label}
-                      </option>
-                    ))}
+                    {kitOptions.map(
+                      (kit) => (
+                        <option
+                          key={
+                            kit.id
+                          }
+                          value={
+                            kit.id
+                          }
+                        >
+                          {
+                            kit.label
+                          }
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
                 {/* PANEL WATT */}
 
                 <div>
-                  <label className="block mb-1 font-medium">Panel Watt</label>
+                  <label className="block mb-1 font-medium">
+                    Panel Watt
+                  </label>
 
                   <select
-                    value={kitPanelWatt}
-                    onChange={(e) => setKitPanelWatt(e.target.value)}
-                    disabled={!selectedKitId}
+                    value={
+                      kitPanelWatt
+                    }
+                    onChange={(e) =>
+                      setKitPanelWatt(
+                        e.target.value
+                      )
+                    }
+                    disabled={
+                      !selectedKitId
+                    }
                     className="border border-slate-300 rounded-lg px-2 w-44 h-8 bg-white text-sm leading-none disabled:bg-slate-100"
                   >
-                    <option value="">Select Panel</option>
+                    <option value="">
+                      Select Panel
+                    </option>
 
-                    {kitPanelOptions.map((watt) => (
-                      <option key={watt} value={watt}>
-                        {watt}
-                      </option>
-                    ))}
+                    {kitPanelOptions.map(
+                      (watt) => (
+                        <option
+                          key={
+                            watt
+                          }
+                          value={
+                            watt
+                          }
+                        >
+                          {watt}
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
                 {/* PANEL QUANTITY */}
 
                 <div>
-                  <label className="block mb-1 font-medium">Panel Qty</label>
+                  <label className="block mb-1 font-medium">
+                    Panel Qty
+                  </label>
 
                   <input
                     type="number"
                     min="1"
                     step="1"
-                    value={kitPanelQty}
-                    onChange={(e) => setKitPanelQty(e.target.value)}
-                    disabled={!selectedKitId}
+                    value={
+                      kitPanelQty
+                    }
+                    onChange={(e) =>
+                      setKitPanelQty(
+                        e.target.value
+                      )
+                    }
+                    disabled={
+                      !selectedKitId
+                    }
                     className="border border-slate-300 rounded-lg px-2 w-24 h-8 bg-white text-sm disabled:bg-slate-100"
                   />
                 </div>
@@ -921,21 +1568,46 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
                 {/* INVERTER */}
 
                 <div>
-                  <label className="block mb-1 font-medium">Inverter</label>
+                  <label className="block mb-1 font-medium">
+                    Inverter
+                  </label>
 
                   <select
-                    value={kitInverterBrand}
-                    onChange={(e) => setKitInverterBrand(e.target.value)}
-                    disabled={!selectedKitId}
+                    value={
+                      kitInverterBrand
+                    }
+                    onChange={(e) =>
+                      setKitInverterBrand(
+                        e.target.value
+                      )
+                    }
+                    disabled={
+                      !selectedKitId
+                    }
                     className="border border-slate-300 rounded-lg px-2 w-36 h-8 bg-white text-sm leading-none disabled:bg-slate-100"
                   >
-                    <option value="">Select Inverter</option>
+                    <option value="">
+                      Select Inverter
+                    </option>
 
-                    {kitInverterOptions.map((brand) => (
-                      <option key={brand} value={brand}>
-                        {brand}
-                      </option>
-                    ))}
+                    {kitInverterOptions.map(
+                      (
+                        brand
+                      ) => (
+                        <option
+                          key={
+                            brand
+                          }
+                          value={
+                            brand
+                          }
+                        >
+                          {
+                            brand
+                          }
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
@@ -950,30 +1622,50 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
                     type="number"
                     min="0"
                     step="any"
-                    value={kitOverallValue}
-                    onChange={(e) => setKitOverallValue(e.target.value)}
-                    disabled={!selectedKitId}
+                    value={
+                      kitOverallValue
+                    }
+                    onChange={(e) =>
+                      setKitOverallValue(
+                        e.target.value
+                      )
+                    }
+                    disabled={
+                      !selectedKitId
+                    }
                     placeholder="Kit value"
                     className="border border-slate-300 rounded-lg px-2 w-full h-8 bg-white text-sm disabled:bg-slate-100"
                   />
                 </div>
+
               </div>
 
               {/* SECOND KIT ROW */}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+
                 {/* KIT GST */}
 
                 <div>
-                  <label className="block mb-1 font-medium">Kit GST %</label>
+                  <label className="block mb-1 font-medium">
+                    Kit GST %
+                  </label>
 
                   <input
                     type="number"
                     min="0"
                     step="any"
-                    value={kitGST}
-                    onChange={(e) => setKitGST(e.target.value)}
-                    disabled={!selectedKitId}
+                    value={
+                      kitGST
+                    }
+                    onChange={(e) =>
+                      setKitGST(
+                        e.target.value
+                      )
+                    }
+                    disabled={
+                      !selectedKitId
+                    }
                     placeholder="GST %"
                     className="border border-slate-300 rounded-lg px-2 w-full h-8 bg-white text-sm disabled:bg-slate-100"
                   />
@@ -982,15 +1674,20 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
                 {/* INCLUDED */}
 
                 <div className="md:col-span-2">
+
                   <label className="block mb-1 font-medium">
                     Included In Kit
                   </label>
 
                   <div className="border border-slate-300 rounded-lg px-3 h-8 flex items-center bg-white text-sm text-slate-700">
-                    Panel + Inverter + ACDB + DCDB + Earthing Kit
+                    Panel + Inverter + ACDB +
+                    DCDB + Earthing Kit
                   </div>
+
                 </div>
+
               </div>
+
             </div>
           )}
 
@@ -998,277 +1695,423 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
               NORMAL PRODUCTS
           ================================================= */}
 
-          {purchaseType === "Product" && (
+          {purchaseType ===
+            "Product" && (
             <>
-              {products.map((item, index) => {
-                const itemBase = calculateProductBase(item);
+              {products.map(
+                (
+                  item,
+                  index
+                ) => {
 
-                const itemGST = calculateProductGST(item);
+                  const itemBase =
+                    calculateProductBase(
+                      item
+                    );
 
-                return (
-                  <div
-                    key={index}
-                    className="border border-slate-300 rounded-xl p-4 bg-slate-50"
-                  >
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="font-semibold">Product {index + 1}</h3>
+                  const itemGST =
+                    calculateProductGST(
+                      item
+                    );
 
-                      {products.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeProductRow(index)}
-                          className="text-red-600 font-semibold"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
+                  return (
+                    <div
+                      key={item.id}
+                      className="border border-slate-300 rounded-xl p-4 bg-slate-50"
+                    >
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {/* PRODUCT */}
+                      <div className="flex justify-between items-center mb-3">
 
-                      <div>
-                        <label className="block mb-1 font-medium">
-                          Product
-                        </label>
+                        <h3 className="font-semibold">
+                          Product{" "}
+                          {index + 1}
+                        </h3>
 
-                        <select
-                          value={item.product_name}
-                          onChange={(e) =>
-                            handleProductChange(
-                              index,
-                              "product_name",
-                              e.target.value,
-                            )
-                          }
-                          className="border rounded-lg p-2 w-full"
-                          required
-                        >
-                          <option value="">Select Product</option>
+                        {products.length >
+                          1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removeProductRow(
+                                index
+                              )
+                            }
+                            className="text-red-600 font-semibold"
+                          >
+                            Remove
+                          </button>
+                        )}
 
-                          {inventoryProducts.map((name) => (
-                            <option key={name} value={name}>
-                              {name}
-                            </option>
-                          ))}
-                        </select>
                       </div>
 
-                      {/* CATEGORY */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 
-                      <div>
-                        <label className="block mb-1 font-medium">
-                          Category
-                        </label>
+                        {/* PRODUCT */}
 
-                        <select
-                          value={item.category}
-                          onChange={(e) =>
-                            handleProductChange(
-                              index,
-                              "category",
-                              e.target.value,
-                            )
-                          }
-                          className="border rounded-lg p-2 w-full"
-                          required
-                        >
-                          <option value="">Select Category</option>
-
-                          {categories.map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* COMPANY */}
-
-                      {["Panel", "Inverter"].includes(item.product_name) && (
                         <div>
                           <label className="block mb-1 font-medium">
-                            Company
+                            Product
                           </label>
 
-                          <input
-                            type="text"
-                            value={item.company}
+                          <select
+                            value={
+                              item.product_name
+                            }
                             onChange={(e) =>
                               handleProductChange(
                                 index,
-                                "company",
-                                e.target.value,
+                                "product_name",
+                                e.target.value
                               )
                             }
                             className="border rounded-lg p-2 w-full"
                             required
-                          />
+                          >
+                            <option value="">
+                              Select Product
+                            </option>
+
+                            {inventoryProducts.map(
+                              (
+                                name
+                              ) => (
+                                <option
+                                  key={
+                                    name
+                                  }
+                                  value={
+                                    name
+                                  }
+                                >
+                                  {
+                                    name
+                                  }
+                                </option>
+                              )
+                            )}
+                          </select>
                         </div>
-                      )}
 
-                      {/* SPECIFICATION */}
+                        {/* CATEGORY */}
 
-                      {["Panel", "Inverter"].includes(item.product_name) && (
                         <div>
                           <label className="block mb-1 font-medium">
-                            Specification
+                            Category
                           </label>
 
-                          <input
-                            type="text"
-                            value={item.specification}
+                          <select
+                            value={
+                              item.category
+                            }
                             onChange={(e) =>
                               handleProductChange(
                                 index,
-                                "specification",
-                                e.target.value,
+                                "category",
+                                e.target.value
                               )
                             }
                             className="border rounded-lg p-2 w-full"
                             required
-                          />
-                        </div>
-                      )}
-
-                      {/* QUANTITY */}
-
-                      <div>
-                        <label className="block mb-1 font-medium">Qty</label>
-
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            handleProductChange(
-                              index,
-                              "quantity",
-                              e.target.value,
-                            )
-                          }
-                          className="border rounded-lg p-2 w-full"
-                          required
-                        />
-                      </div>
-
-                      {/* UNIT */}
-
-                      <div>
-                        <label className="block mb-1 font-medium">Unit</label>
-
-                        <select
-                          value={item.unit}
-                          onChange={(e) =>
-                            handleProductChange(index, "unit", e.target.value)
-                          }
-                          className="border rounded-lg p-2 w-full"
-                        >
-                          {units.map((unit) => (
-                            <option key={unit} value={unit}>
-                              {unit}
+                          >
+                            <option value="">
+                              Select Category
                             </option>
-                          ))}
-                        </select>
-                      </div>
 
-                      {/* KG TOTAL WEIGHT */}
+                            {categories.map(
+                              (
+                                category
+                              ) => (
+                                <option
+                                  key={
+                                    category
+                                  }
+                                  value={
+                                    category
+                                  }
+                                >
+                                  {
+                                    category
+                                  }
+                                </option>
+                              )
+                            )}
+                          </select>
+                        </div>
 
-                      {item.unit === "Kg" && (
+                        {/* COMPANY */}
+
+                        {[
+                          "Panel",
+                          "Inverter",
+                        ].includes(
+                          item.product_name
+                        ) && (
+                          <div>
+                            <label className="block mb-1 font-medium">
+                              Company
+                            </label>
+
+                            <input
+                              type="text"
+                              value={
+                                item.company
+                              }
+                              onChange={(e) =>
+                                handleProductChange(
+                                  index,
+                                  "company",
+                                  e.target.value
+                                )
+                              }
+                              className="border rounded-lg p-2 w-full"
+                              required
+                            />
+                          </div>
+                        )}
+
+                        {/* SPECIFICATION */}
+
+                        {[
+                          "Panel",
+                          "Inverter",
+                        ].includes(
+                          item.product_name
+                        ) && (
+                          <div>
+                            <label className="block mb-1 font-medium">
+                              Specification
+                            </label>
+
+                            <input
+                              type="text"
+                              value={
+                                item.specification
+                              }
+                              onChange={(e) =>
+                                handleProductChange(
+                                  index,
+                                  "specification",
+                                  e.target.value
+                                )
+                              }
+                              className="border rounded-lg p-2 w-full"
+                              required
+                            />
+                          </div>
+                        )}
+
+                        {/* QUANTITY */}
+
                         <div>
                           <label className="block mb-1 font-medium">
-                            Total Weight / Item (Kg)
+                            Qty
                           </label>
 
                           <input
                             type="number"
                             min="0"
                             step="any"
-                            value={item.total_weight}
+                            value={
+                              item.quantity
+                            }
                             onChange={(e) =>
                               handleProductChange(
                                 index,
-                                "total_weight",
-                                e.target.value,
+                                "quantity",
+                                e.target.value
                               )
                             }
                             className="border rounded-lg p-2 w-full"
                             required
                           />
                         </div>
-                      )}
 
-                      {/* PRICE */}
+                        {/* UNIT */}
 
-                      <div>
-                        <label className="block mb-1 font-medium">
-                          {item.unit === "Kg" ? "Price per Kg" : "Price"}
-                        </label>
+                        <div>
+                          <label className="block mb-1 font-medium">
+                            Unit
+                          </label>
 
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={item.price}
-                          onChange={(e) =>
-                            handleProductChange(index, "price", e.target.value)
-                          }
-                          className="border rounded-lg p-2 w-full"
-                          required
-                        />
-                      </div>
-
-                      {/* GST */}
-
-                      <div>
-                        <label className="block mb-1 font-medium">GST %</label>
-
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={item.gst}
-                          onChange={(e) =>
-                            handleProductChange(index, "gst", e.target.value)
-                          }
-                          className="border rounded-lg p-2 w-full"
-                        />
-                      </div>
-                    </div>
-
-                    {/* KG CALCULATION */}
-
-                    {item.unit === "Kg" && (
-                      <div className="mt-3 rounded-lg bg-blue-50 border border-blue-200 p-3 text-blue-800">
-                        <div className="font-semibold">Calculation</div>
-
-                        <div className="mt-1">
-                          {Number(item.quantity || 0)}
-                          {" × "}
-                          {Number(item.total_weight || 0)}
-                          {" Kg × ₹"}
-                          {Number(item.price || 0).toFixed(2)}
+                          <select
+                            value={
+                              item.unit
+                            }
+                            onChange={(e) =>
+                              handleProductChange(
+                                index,
+                                "unit",
+                                e.target.value
+                              )
+                            }
+                            className="border rounded-lg p-2 w-full"
+                          >
+                            {units.map(
+                              (
+                                unit
+                              ) => (
+                                <option
+                                  key={
+                                    unit
+                                  }
+                                  value={
+                                    unit
+                                  }
+                                >
+                                  {
+                                    unit
+                                  }
+                                </option>
+                              )
+                            )}
+                          </select>
                         </div>
 
-                        <div>Base Amount = ₹ {formatAmount(itemBase)}</div>
+                        {/* KG TOTAL WEIGHT */}
+
+                        {item.unit ===
+                          "Kg" && (
+                          <div>
+                            <label className="block mb-1 font-medium">
+  Total Weight (Kg)
+</label>
+
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={
+                                item.total_weight
+                              }
+                              onChange={(e) =>
+                                handleProductChange(
+                                  index,
+                                  "total_weight",
+                                  e.target.value
+                                )
+                              }
+                              className="border rounded-lg p-2 w-full"
+                              required
+                            />
+                          </div>
+                        )}
+
+                        {/* PRICE */}
+
+                        <div>
+                          <label className="block mb-1 font-medium">
+                            {item.unit ===
+                            "Kg"
+                              ? "Price per Kg"
+                              : "Price"}
+                          </label>
+
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={
+                              item.price
+                            }
+                            onChange={(e) =>
+                              handleProductChange(
+                                index,
+                                "price",
+                                e.target.value
+                              )
+                            }
+                            className="border rounded-lg p-2 w-full"
+                            required
+                          />
+                        </div>
+
+                        {/* GST */}
+
+                        <div>
+                          <label className="block mb-1 font-medium">
+                            GST %
+                          </label>
+
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={
+                              item.gst
+                            }
+                            onChange={(e) =>
+                              handleProductChange(
+                                index,
+                                "gst",
+                                e.target.value
+                              )
+                            }
+                            className="border rounded-lg p-2 w-full"
+                          />
+                        </div>
+
                       </div>
-                    )}
 
-                    {/* PRODUCT SUMMARY */}
+                      {/* KG CALCULATION */}
 
-                    <div className="flex justify-between flex-wrap gap-2 mt-3 text-sm">
-                      <span>Base: ₹ {formatAmount(itemBase)}</span>
+                      {item.unit ===
+                        "Kg" && (
+                        <div className="mt-3 rounded-lg bg-blue-50 border border-blue-200 p-3 text-blue-800">
 
-                      <span>GST: ₹ {formatAmount(itemGST)}</span>
+  <div className="font-semibold">
+    Calculation
+  </div>
 
-                      <span className="font-semibold">
-                        Product Total: ₹ {formatAmount(itemBase + itemGST)}
-                      </span>
+  <div className="mt-1">
+    {Number(
+      item.total_weight || 0
+    ).toFixed(2)}
+    {" Kg × ₹"}
+    {Number(
+      item.price || 0
+    ).toFixed(2)}
+  </div>
+
+  <div>
+    Base Amount = ₹{" "}
+    {formatAmount(itemBase)}
+  </div>
+
+</div>
+                      )}
+
+                      {/* PRODUCT SUMMARY */}
+
+                      <div className="flex justify-between flex-wrap gap-2 mt-3 text-sm">
+
+                        <span>
+                          Base: ₹{" "}
+                          {formatAmount(
+                            itemBase
+                          )}
+                        </span>
+
+                        <span>
+                          GST: ₹{" "}
+                          {formatAmount(
+                            itemGST
+                          )}
+                        </span>
+
+                        <span className="font-semibold">
+                          Product Total: ₹{" "}
+                          {formatAmount(
+                            itemBase +
+                              itemGST
+                          )}
+                        </span>
+
+                      </div>
+
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                }
+              )}
             </>
           )}
 
@@ -1277,20 +2120,30 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
           ================================================= */}
 
           <div className="border border-slate-300 rounded-xl p-4">
-            <label className="block mb-1 font-medium">Transportation</label>
+
+            <label className="block mb-1 font-medium">
+              Transportation
+            </label>
 
             <input
               type="number"
               min="0"
               step="any"
-              value={transportation}
-              onChange={(e) => setTransportation(e.target.value)}
+              value={
+                transportation
+              }
+              onChange={(e) =>
+                setTransportation(
+                  e.target.value
+                )
+              }
               className="border rounded-lg p-2 w-full md:w-1/3"
             />
 
             <p className="text-xs text-slate-500 mt-1">
               Transportation is applied only once to this purchase.
             </p>
+
           </div>
 
           {/* =================================================
@@ -1298,63 +2151,122 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
           ================================================= */}
 
           <div className="bg-gray-50 rounded-lg p-4 border">
-            {purchaseType === "Kit" ? (
+
+            {purchaseType ===
+            "Kit" ? (
               <>
                 <div className="flex justify-between mb-2">
-                  <span>Overall Kit Value</span>
+                  <span>
+                    Overall Kit Value
+                  </span>
 
-                  <strong>₹ {formatAmount(numericKitValue)}</strong>
+                  <strong>
+                    ₹{" "}
+                    {formatAmount(
+                      numericKitValue
+                    )}
+                  </strong>
                 </div>
 
                 <div className="flex justify-between mb-2">
-                  <span>GST Amount</span>
+                  <span>
+                    GST Amount
+                  </span>
 
-                  <strong>₹ {formatAmount(kitGSTAmount)}</strong>
+                  <strong>
+                    ₹{" "}
+                    {formatAmount(
+                      kitGSTAmount
+                    )}
+                  </strong>
                 </div>
 
                 <div className="flex justify-between mb-2">
-                  <span>Transportation</span>
+                  <span>
+                    Transportation
+                  </span>
 
-                  <strong>₹ {formatAmount(transportation)}</strong>
+                  <strong>
+                    ₹{" "}
+                    {formatAmount(
+                      transportation
+                    )}
+                  </strong>
                 </div>
 
                 <hr className="my-2" />
 
                 <div className="flex justify-between text-xl font-bold text-green-700">
-                  <span>Total Amount</span>
+                  <span>
+                    Total Amount
+                  </span>
 
-                  <span>₹ {formatAmount(kitTotalAmount)}</span>
+                  <span>
+                    ₹{" "}
+                    {formatAmount(
+                      kitTotalAmount
+                    )}
+                  </span>
                 </div>
               </>
             ) : (
               <>
                 <div className="flex justify-between mb-2">
-                  <span>Base Amount</span>
+                  <span>
+                    Base Amount
+                  </span>
 
-                  <strong>₹ {formatAmount(totalBaseAmount)}</strong>
+                  <strong>
+                    ₹{" "}
+                    {formatAmount(
+                      totalBaseAmount
+                    )}
+                  </strong>
                 </div>
 
                 <div className="flex justify-between mb-2">
-                  <span>GST Amount</span>
+                  <span>
+                    GST Amount
+                  </span>
 
-                  <strong>₹ {formatAmount(totalGSTAmount)}</strong>
+                  <strong>
+                    ₹{" "}
+                    {formatAmount(
+                      totalGSTAmount
+                    )}
+                  </strong>
                 </div>
 
                 <div className="flex justify-between mb-2">
-                  <span>Transportation</span>
+                  <span>
+                    Transportation
+                  </span>
 
-                  <strong>₹ {formatAmount(transportation)}</strong>
+                  <strong>
+                    ₹{" "}
+                    {formatAmount(
+                      transportation
+                    )}
+                  </strong>
                 </div>
 
                 <hr className="my-2" />
 
                 <div className="flex justify-between text-xl font-bold text-green-700">
-                  <span>Total Amount</span>
+                  <span>
+                    Total Amount
+                  </span>
 
-                  <span>₹ {formatAmount(totalAmount)}</span>
+                  <span>
+                    ₹{" "}
+                    {formatAmount(
+                      totalAmount
+                    )}
+                  </span>
                 </div>
               </>
             )}
+
           </div>
 
           {/* =================================================
@@ -1362,9 +2274,12 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
           ================================================= */}
 
           <div className="flex justify-end gap-3 pt-2">
+
             <button
               type="button"
-              onClick={onClose}
+              onClick={
+                onClose
+              }
               className="px-5 py-2 rounded-lg border"
             >
               Cancel
@@ -1372,17 +2287,22 @@ export default function InventoryModal({ open, onClose, onSaved, product }) {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading
+              }
               className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg disabled:opacity-60"
             >
               {loading
                 ? "Saving..."
                 : isEditMode
-                  ? "Update Purchase"
-                  : "Save Purchase"}
+                ? "Update Purchase"
+                : "Save Purchase"}
             </button>
+
           </div>
+
         </form>
+
       </div>
     </div>
   );
