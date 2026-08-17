@@ -1,7 +1,60 @@
+export const panelOptions = [
+  {
+    id: "waaree-610wp",
+    label: "Waaree 610Wp",
+    price: 0,
+    gst: 0,
+  },
+  {
+    id: "waaree-605wp",
+    label: "Waaree 605Wp",
+    price: 0,
+    gst: 0,
+  },
+  {
+    id: "waaree-585wp",
+    label: "Waaree 585Wp",
+    price: 0,
+    gst: 0,
+  },
+  {
+    id: "adani-585wp",
+    label: "Adani 585Wp",
+    price: 0,
+    gst: 0,
+  },
+  {
+    id: "adani-580wp",
+    label: "Adani 580Wp",
+    price: 0,
+    gst: 0,
+  },
+];
+
+export const inverterOptions = [
+  {
+    id: "waaree",
+    label: "Waaree",
+    price: 0,
+    gst: 0,
+  },
+  {
+    id: "polycab",
+    label: "Polycab",
+    price: 0,
+    gst: 0,
+  },
+  {
+    id: "luminous",
+    label: "Luminous",
+    price: 0,
+    gst: 0,
+  },
+];
+
 export const plantTemplates = {
 
   "3KW": [
-
     { item: "Panel", qty: 6 },
     { item: "Inverter", qty: 1 },
 
@@ -42,13 +95,52 @@ export const plantTemplates = {
     { item: "Catchup 12mm", qty: 10 },
 
     { item: "Earthing Kit", qty: 1 },
+  ],
 
-   
+  "3.5KW": [
+    { item: "Panel", qty: 6 },
+    { item: "Inverter", qty: 1 },
 
+    { item: "Rafter", qty: 6 },
+    { item: "Perlin", qty: 6 },
+
+    { item: "Leg 6ft", qty: 6 },
+    { item: "Leg 8ft", qty: 0 },
+    { item: "Leg 10ft", qty: 0 },
+
+    { item: "Base Plate", qty: 6 },
+    { item: "Fastener", qty: 20 },
+    { item: "Nut Bolts", qty: 20 },
+
+    { item: "Spring Bolt", qty: 20 },
+    { item: "Spring", qty: 20 },
+
+    { item: "ACDB", qty: 1 },
+    { item: "DCDB", qty: 1 },
+
+    { item: "DC Wire", qty: 30 },
+    { item: "AC Wire", qty: 20 },
+    { item: "LA Wire", qty: 10 },
+    { item: "Armoured Wire", qty: 20 },
+
+    { item: "L Clamp", qty: 10 },
+    { item: "U Clamp", qty: 10 },
+
+    { item: "MC4 Connector", qty: 4 },
+
+    { item: "PVC Pipe", qty: 20 },
+
+    { item: "L Bend", qty: 4 },
+    { item: "U Bend", qty: 4 },
+    { item: "T Bend", qty: 2 },
+
+    { item: "Catchup 25mm", qty: 10 },
+    { item: "Catchup 12mm", qty: 10 },
+
+    { item: "Earthing Kit", qty: 1 },
   ],
 
   "5KW": [
-
     { item: "Panel", qty: 10 },
     { item: "Inverter", qty: 1 },
 
@@ -89,11 +181,7 @@ export const plantTemplates = {
     { item: "Catchup 12mm", qty: 15 },
 
     { item: "Earthing Kit", qty: 1 },
-
-    
-
-  ]
-
+  ],
 };
 
 export const manualCostItems = [
@@ -103,5 +191,5 @@ export const manualCostItems = [
   "Vendor Charges",
   "Load Extension Charges",
   "Net Metering Charges",
-  "JE Charges"
+  "JE Charges",
 ];

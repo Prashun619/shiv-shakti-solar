@@ -1,201 +1,202 @@
-import { useEffect, useState } from "react";
-import { getInventory } from "../services/inventoryService";
+import { useEffect, useMemo, useState } from "react";
+
 import {
   plantTemplates,
   manualCostItems,
-} from "../utils/plantTemplates"; 
+  panelOptions,
+  inverterOptions,
+} from "../utils/plantTemplates";
 
 export default function PlantCosting() {
-
   const [selectedSize, setSelectedSize] = useState("");
   const [items, setItems] = useState([]);
 
-  const materialTotal = items.reduce(
-  (sum, row) =>
-    sum +
-    (
-      Number(row.qty || 0) *
-      Number(row.price || 0)
-    ),
-  0
-);
+  const [showChargesModal, setShowChargesModal] =
+    useState(false);
 
+  const [selectedCharges, setSelectedCharges] =
+    useState([]);
 
-const gstTotal = items.reduce((sum, row) => {
-
-  const amount =
-    Number(row.qty || 0) *
-    Number(row.price || 0);
-
-
-  const gstRate =
-    Number(row.cgst || 0) +
-    Number(row.sgst || 0);
-
-
-  const gstAmount =
-    amount * gstRate / 100;
-
-
-  return sum + gstAmount;
-
-}, 0);
-
-
-const grandTotal =
-  materialTotal + gstTotal;
-
-const [inventory, setInventory] = useState([]);
-const [panelOptions, setPanelOptions] = useState([]);
-const [inverterOptions, setInverterOptions] = useState([]);
-
-const [selectedPanel, setSelectedPanel] = useState(null);
-const [selectedInverter, setSelectedInverter] = useState(null);
-const [showChargesModal, setShowChargesModal] = useState(false);
-
-const [selectedCharges, setSelectedCharges] = useState([]);
   const plantSizes = Object.keys(plantTemplates);
 
-  
-
-  useEffect(() => {
-  loadInventory();
-}, []);
-
-useEffect(() => {
-  if (selectedSize && inventory.length > 0) {
-    loadTemplate(selectedSize);
-  }
-}, [selectedSize, inventory]);
-
-async function loadInventory() {
-
-  try {
-
-    const data = await getInventory();
-console.log(data);
-    const inventoryData = data || [];
-
-setInventory(inventoryData);
-
-setPanelOptions(
-  inventoryData.filter(
-    item => item.product_name === "Panel"
-  )
-);
-
-setInverterOptions(
-  inventoryData.filter(
-    item => item.product_name === "Inverter"
-  )
-);
-
-  } catch (error) {
-
-    console.log(error);
-
-  }
-
-}
+  // =====================================================
+  // LOAD TEMPLATE
+  // =====================================================
 
   function loadTemplate(size) {
-
-setSelectedPanel(null);
-setSelectedInverter(null);
-
     const template = plantTemplates[size];
 
-    if (!template) return;
+    if (!template) {
+      setItems([]);
+      return;
+    }
 
-   const rows = template.map((templateItem) => {
+    const rows = template.map((templateItem) => ({
+  item: templateItem.item,
+  qty: Number(templateItem.qty || 0),
+  templateQty: Number(templateItem.qty || 0),
 
+  options:
+    templateItem.item === "Panel"
+      ? panelOptions
+      : templateItem.item === "Inverter"
+      ? inverterOptions
+      : [],
 
-  let inventoryItem = null;
+  selectedOptionId: "",
 
-
-  // Normal items
-  if (
-    templateItem.item !== "Panel" &&
-    templateItem.item !== "Inverter"
-  ) {
-
-    inventoryItem = inventory.find(
-      (inv) =>
-        inv.product_name === templateItem.item
-    );
-
-  }
-
-
-  return {
-
-    item: templateItem.item,
-
-    qty: 0,
-templateQty: templateItem.qty,
-
-    price: Number(
-      inventoryItem?.unit_cost || 0
-    ),
-
-    cgst: Number(
-      inventoryItem?.cgst || 0
-    ),
-
-    sgst: Number(
-      inventoryItem?.sgst || 0
-    ),
-
-    amount: 0,  
-
-  };
-
-
-});
+  price: 0,
+  gst: 0,
+  amount: 0,
+}));
 
     setItems(rows);
+  }
+
+  // =====================================================
+  // PLANT SIZE CHANGE
+  // =====================================================
+
+  function handlePlantSize(size) {
+    setSelectedSize(size);
+    setSelectedCharges([]);
+    loadTemplate(size);
+  }
+
+  // =====================================================
+  // UPDATE ROW
+  // =====================================================
+
+  function updateRow(index, changes) {
+    setItems((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              ...changes,
+            }
+          : item
+      )
+    );
+  }
+
+  // =====================================================
+  // CALCULATIONS
+  // =====================================================
+
+  const materialTotal = useMemo(() => {
+    return items.reduce((sum, row) => {
+      return (
+        sum +
+        Number(row.qty || 0) *
+          Number(row.price || 0)
+      );
+    }, 0);
+  }, [items]);
+
+  const gstTotal = useMemo(() => {
+    return items.reduce((sum, row) => {
+      const base =
+        Number(row.qty || 0) *
+        Number(row.price || 0);
+
+      const gstRate =
+        Number(row.gst || 0);
+
+      return (
+        sum +
+        (base * gstRate) / 100
+      );
+    }, 0);
+  }, [items]);
+
+  const grandTotal =
+    materialTotal + gstTotal;
+
+  // =====================================================
+  // DISPLAY
+  // =====================================================
+
+  function formatAmount(value) {
+    return Number(value || 0).toLocaleString(
+      "en-IN",
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    );
+  }
+
+  // =====================================================
+  // ADD OTHER CHARGES
+  // =====================================================
+
+  function addSelectedCharges() {
+    const newCharges =
+      selectedCharges
+        .filter(
+          (charge) =>
+            !items.some(
+              (item) =>
+                item.item === charge
+            )
+        )
+        .map((charge) => ({
+          item: charge,
+          qty: 1,
+          templateQty: 1,
+          price: 0,
+          gst: 0,
+          amount: 0,
+          manual: true,
+        }));
+
+    setItems((prev) => [
+      ...prev,
+      ...newCharges,
+    ]);
+
+    setSelectedCharges([]);
+    setShowChargesModal(false);
   }
 
   return (
     <div className="p-3">
 
-      {/* Header */}
+      {/* =================================================
+          HEADER
+      ================================================= */}
+
       <div className="bg-gradient-to-r from-slate-900 via-green-800 to-green-600 rounded-lg px-4 py-3 shadow border-2 border-black">
 
-       <h1 className="text-2xl font-bold text-white">
+        <h1 className="text-2xl font-bold text-white">
           Plant Costing
         </h1>
 
         <p className="text-green-100 mt-2">
-          Select Plant Size
+          Independent Plant Cost Calculation
         </p>
 
       </div>
 
-      {/* Plant Size Buttons */}
+      {/* =================================================
+          PLANT SIZE
+      ================================================= */}
+
       <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-4">
 
         {plantSizes.map((size) => (
 
           <button
             key={size}
-            onClick={() => {
-
-  setSelectedSize(size);
-
-  setSelectedPanel(null);
-
-  setSelectedInverter(null);
-
-  setItems([]);
-
-}}
-            className={`rounded-lg py-3 text-base font-semibold border-2 border-black transition-all  
-              ${
-                selectedSize === size
-                  ? "bg-green-700 text-white"
-                  : "bg-white border-2 border-green-600 text-green-700 hover:bg-green-50"
-              }`}
+            onClick={() =>
+              handlePlantSize(size)
+            }
+            className={`rounded-lg py-3 text-base font-semibold border-2 border-black transition-all ${
+              selectedSize === size
+                ? "bg-green-700 text-white"
+                : "bg-white border-green-600 text-green-700 hover:bg-green-50"
+            }`}
           >
             {size}
           </button>
@@ -204,541 +205,532 @@ templateQty: templateItem.qty,
 
       </div>
 
-      {/* Selected Plant */}
+      {/* =================================================
+          SELECTED PLANT
+      ================================================= */}
+
       {selectedSize && (
 
         <div className="mt-4 bg-white rounded-lg shadow border-2 border-black p-3">
 
-          <h2 className="text-2xl font-bold text-green-700 mb-2">
-            {selectedSize} Solar Plant
-          </h2> 
+          <div className="flex justify-between items-center mb-3">
 
-          <div className="flex justify-end mb-2">
+            <h2 className="text-2xl font-bold text-green-700">
+              {selectedSize} Solar Plant
+            </h2>
 
-  <button
-    onClick={() => setShowChargesModal(true)}
-    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded-lg font-semibold"
-  >
-    + Add Other Charges
-  </button>
+            <button
+              onClick={() =>
+                setShowChargesModal(true)
+              }
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold"
+            >
+              + Add Other Charges
+            </button>
 
-</div>
+          </div>
+
+          {/* =================================================
+              TABLE
+          ================================================= */}
 
           <div className="overflow-x-auto rounded-lg border-2 border-black">
 
-            <table className="w-full border-collapse text-xs" >
+            <table className="w-full border-collapse text-xs">
 
               <thead className="bg-slate-900 text-white">
 
-<tr>
+                <tr>
 
-<th className="border-2 border-black px-1 py-1 w-8 text-center font-semibold">
-#
-</th>
+                  <th className="border-2 border-black px-2 py-2 text-center">
+                    #
+                  </th>
 
-<th className="border-2 border-black px-1 py-1 w-56 text-center font-semibold">
-  Item
-</th>
+                  <th className="border-2 border-black px-2 py-2 text-center min-w-[220px]">
+                    Item
+                  </th>
 
+                  <th className="border-2 border-black px-2 py-2 text-center">
+                    Qty
+                  </th>
 
+                  <th className="border-2 border-black px-2 py-2 text-center min-w-[120px]">
+                    Price
+                  </th>
 
-<th className="border-2 border-black px-1 py-1 w-10 text-center font-semibold">
-  Qty
-</th>
+                  <th className="border-2 border-black px-2 py-2 text-center min-w-[100px]">
+                    GST %
+                  </th>
 
-<th className="border-2 border-black px-1 py-1 w-32 text-center font-semibold">
-  Price
-</th>
+                  <th className="border-2 border-black px-2 py-2 text-center min-w-[150px]">
+                    Amount
+                  </th>
 
-<th className="border-2 border-black px-1 py-1 w-56 text-center font-semibold">
-CGST %
-</th>
+                </tr>
 
-<th className="border-2 border-black px-1 py-1 w-56 text-center font-semibold">
-SGST %
-</th>
-
-<th className="border-2 border-black px-1 py-1 w-56  text-center font-semibold">  
-Amount
-</th>
-
-</tr>
-
-</thead>
+              </thead>
 
               <tbody>
-  {items.map((row, index) => (
-    <tr
-      key={index}
-      className={index % 2 === 0 ? "bg-white" : "bg-green-50"}
-    >
-      {/* Sr No */}
-      <td className="border-2 border-black px-1 py-1 text-black text-center">
-        {index + 1}
-      </td>
 
-      {/* Item */}
-      <td className="border-2 border-black px-1 py-1 text-red-700 font-bold text-center">
+                {items.map((row, index) => {
 
-        {row.item === "Panel" ? (
+                  const qty =
+                    Number(row.qty || 0);
 
-          <div>
-            <div className="font-medium font-bold mb-2">Panel</div>
+                  const price =
+                    Number(row.price || 0);
 
-            <select
-  className="border border-black rounded px-1 py-1 text-red-700 font-bold text-sx w-full"
-  value={selectedPanel?.id || ""}
-              onChange={(e) => {
-                const panel = panelOptions.find(
-                  (p) => p.id === e.target.value
-                );
+                  const base =
+                    qty * price;
 
-                setSelectedPanel(panel);
+                  const gst =
+                    Number(row.gst || 0);
 
-                setItems((prev) =>
-                  prev.map((item) =>
-                    item.item === "Panel"
-                      ? {
-                          ...item,
-                          price: Number(panel?.unit_cost || 0),
-                          cgst: Number(panel?.cgst || 0),
-                          sgst: Number(panel?.sgst || 0),
-                          amount:
-                            Number(panel?.unit_cost || 0) *
-                            Number(item.qty),
-                        }
-                      : item
-                  )
-                );
-              }}
-            >
-              <option value="">Select Panel</option>
+                  const gstAmount =
+                    (base * gst) / 100;
 
-              {panelOptions.map((panel) => (
-                <option
-                  key={panel.id}
-                  value={panel.id}
-                >
-                  {panel.company} {panel.specification}
-                </option>
-              ))}
-            </select>
-          </div>
+                  const total =
+                    base + gstAmount;
 
-        ) : row.item === "Inverter" ? (
+                  return (
 
-          <div>
-            <div className="font-medium font-bold mb-2">Inverter</div>
-
-            <select
-              className="border border-black rounded px-1 py-1 text-red-700 font-bold text-xs w-full"
-              value={selectedInverter?.id || ""}
-              onChange={(e) => {
-                const inverter = inverterOptions.find(
-                  (i) => i.id === e.target.value
-                );
-
-                console.log("Selected inverter:", inverter);
-
-                setSelectedInverter(inverter);
-
-                setItems((prev) =>
-                  
-                  prev.map((item) =>
-                    
-                    item.item === "Inverter"
-                  
-                    ? {
-                          ...item,
-                          price: Number(inverter?.unit_cost || 0),
-                          cgst: Number(inverter?.cgst || 0),
-                          sgst: Number(inverter?.sgst || 0),
-                          amount:
-                            Number(inverter?.unit_cost || 0) *
-                            Number(item.qty),
-                  }
-          
-                  : item
-                  )
-                );
-              }}
-            >
-              <option value="">Select Inverter</option>
-
-              {inverterOptions.map((inv) => (
-                <option
-                  key={inv.id}
-                  value={inv.id}
-                >
-                  {inv.company} {inv.specification}
-                </option>
-              ))}
-            </select>
-          </div>
-
-        ) : (
-
-          <div>
-            <div>{row.item}</div>
-
-            
-          </div>
-
-        )}
-
-      </td>
-
-     
-
-     {/* Qty */}
-<td className="border-2 border-black px-2 py-1 text-center">
-
-  {manualCostItems.includes(row.item) ? (
-
-    <span className="font-semibold text-gray-700">
-      1
-    </span>
-
-  ) : (
-
-    <input
-  type="number"
-  min="0"
-  value={row.qty === 0 ? "" : row.qty}
-  className="border border-black rounded w-16 px-1 py-1 text-center no-spinner"
-  
-  onChange={(e) => {
-
-  const value = e.target.value;
-
-  setItems(prev =>
-    prev.map((item, i) => {
-
-      if (i !== index) return item;
-
-      const qty = value === "" ? 0 : Number(value);
-
-      return {
-        ...item,
-        qty,
-        amount: qty * Number(item.price || 0),
-      };
-
-    })
-  );
-
-}}
-
-/>
-
-  )}
-
-</td>
-
-      {/* Price */}
-      <td className="border-2 border-black px-1 py-1 text-center">
-        {[
-          "Civil Material",
-          "Transportation",
-          "Installation Charges",
-          "Vendor Charges",
-          "Load Extension Charges",
-          "Net Metering Charges",
-          "JE Charges",
-        ].includes(row.item) ? (
-          <input
-  type="number"
-  
-            value={row.price}
-            className="border rounded-md w-20 px-1 py-1 text-center"
-            onChange={(e) => {
-              const price = Number(e.target.value);
-
-              setItems((prev) =>
-                prev.map((item, i) =>
-                  i === index
-                    ? {
-                        ...item,
-                        price,
-                        amount: Number(item.qty) * price,
+                    <tr
+                      key={`${row.item}-${index}`}
+                      className={
+                        index % 2 === 0
+                          ? "bg-white"
+                          : "bg-green-50"
                       }
-                    : item
-                )
-              );
-            }}
-          />
-        ) : (
-          <>₹ {Number(row.price).toLocaleString("en-IN")}</>
-        )}
-      </td>
+                    >
 
-      {/* CGST */}
-      <td className="border-2 border-black px-1 py-1 text-center">
-        {row.cgst || 0}%
-      </td>
+                      {/* NUMBER */}
 
-      {/* SGST */}
-      <td className="border-2 border-black px-1 py-1 text-center">
-        {row.sgst || 0}%
-      </td>
+                      <td className="border-2 border-black px-2 py-2 text-center">
+                        {index + 1}
+                      </td>
 
-      {/* Amount */}
-      <td className="border-2 border-black px-1 py-1 text-center font-semibold text-green-700">
-        ₹ {Number(row.amount).toLocaleString("en-IN")}
-      </td>
+                      {/* ITEM */}
 
-    </tr>
-  ))}
-</tbody>
+                      <td className="border-2 border-black px-2 py-2">
+
+                        <div className="font-semibold text-slate-800">
+                          {row.item}
+                        </div>
+
+                        {row.item === "Panel" ? (
+  <div>
+    <div className="font-semibold mb-2">
+      Panel
+    </div>
+
+    <select
+      value={row.selectedOptionId || ""}
+      onChange={(e) => {
+        const selected =
+          panelOptions.find(
+            (option) =>
+              option.id === e.target.value
+          );
+
+        updateRow(index, {
+          selectedOptionId:
+            selected?.id || "",
+          price:
+            Number(selected?.price || 0),
+          gst:
+            Number(selected?.gst || 0),
+        });
+      }}
+      className="border border-black rounded px-2 py-1 w-full"
+    >
+      <option value="">
+        Select Panel
+      </option>
+
+      {panelOptions.map((option) => (
+        <option
+          key={option.id}
+          value={option.id}
+        >
+          {option.label}
+        </option>
+      ))}
+    </select>
+  </div>
+
+) : row.item === "Inverter" ? (
+
+  <div>
+    <div className="font-semibold mb-2">
+      Inverter
+    </div>
+
+    <select
+      value={row.selectedOptionId || ""}
+      onChange={(e) => {
+        const selected =
+          inverterOptions.find(
+            (option) =>
+              option.id === e.target.value
+          );
+
+        updateRow(index, {
+          selectedOptionId:
+            selected?.id || "",
+          price:
+            Number(selected?.price || 0),
+          gst:
+            Number(selected?.gst || 0),
+        });
+      }}
+      className="border border-black rounded px-2 py-1 w-full"
+    >
+      <option value="">
+        Select Inverter
+      </option>
+
+      {inverterOptions.map((option) => (
+        <option
+          key={option.id}
+          value={option.id}
+        >
+          {option.label}
+        </option>
+      ))}
+    </select>
+  </div>
+
+) : (
+  <div className="font-semibold">
+    {row.item}
+  </div>
+)}
+
+                        {row.item === "Inverter" && (
+                          <div className="text-xs text-slate-500 mt-1">
+                            Enter the selected inverter
+                            price manually.
+                          </div>
+                        )}
+
+                      </td>
+
+                      {/* QTY */}
+
+                      <td className="border-2 border-black px-2 py-2 text-center">
+
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={
+                            row.qty === 0
+                              ? ""
+                              : row.qty
+                          }
+                          onChange={(e) => {
+
+                            const qty =
+                              e.target.value === ""
+                                ? 0
+                                : Number(
+                                    e.target.value
+                                  );
+
+                            updateRow(
+                              index,
+                              {
+                                qty,
+                              }
+                            );
+                          }}
+                          className="border border-black rounded px-2 py-1 w-20 text-center"
+                        />
+
+                      </td>
+
+                      {/* PRICE */}
+
+                      <td className="border-2 border-black px-2 py-2 text-center">
+
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={row.price}
+                          onChange={(e) => {
+
+                            const price =
+                              e.target.value === ""
+                                ? 0
+                                : Number(
+                                    e.target.value
+                                  );
+
+                            updateRow(
+                              index,
+                              {
+                                price,
+                              }
+                            );
+                          }}
+                          className="border border-black rounded px-2 py-1 w-28 text-center"
+                        />
+
+                      </td>
+
+                      {/* GST */}
+
+                      <td className="border-2 border-black px-2 py-2 text-center">
+
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={row.gst}
+                          onChange={(e) => {
+
+                            const gst =
+                              e.target.value === ""
+                                ? 0
+                                : Number(
+                                    e.target.value
+                                  );
+
+                            updateRow(
+                              index,
+                              {
+                                gst,
+                              }
+                            );
+                          }}
+                          className="border border-black rounded px-2 py-1 w-20 text-center"
+                        />
+
+                      </td>
+
+                      {/* TOTAL */}
+
+                      <td className="border-2 border-black px-2 py-2 text-center font-semibold text-green-700">
+
+                        ₹{" "}
+                        {formatAmount(
+                          total
+                        )}
+
+                      </td>
+
+                    </tr>
+
+                  );
+                })}
+
+              </tbody>
 
             </table>
 
           </div>
 
-           <div className="mt-4 flex justify-end">
+          {/* =================================================
+              SUMMARY
+          ================================================= */}
 
-  <div className="w-72 border-2 border-black rounded-xl shadow-lg overflow-hidden"  >
+          <div className="mt-4 flex justify-end">
 
-    <div className="bg-slate-900 text-white text-center py-3 font-bold">
-      Cost Summary
-    </div>
+            <div className="w-80 border-2 border-black rounded-xl shadow-lg overflow-hidden">
 
-    <div className="bg-white">
+              <div className="bg-slate-900 text-white text-center py-3 font-bold">
+                Cost Summary
+              </div>
 
-      <div className="grid grid-cols-2 border-t-2 border-black">
+              <div className="bg-white">
 
-  <div className="border-r-2 border-black px-3 py-2 font-medium">
-    Material Total
-  </div>
+                <div className="grid grid-cols-2 border-t-2 border-black">
 
-  <div className="px-3 py-2 text-right font-semibold">
-    ₹ {materialTotal.toLocaleString("en-IN")}
-  </div>
+                  <div className="border-r-2 border-black px-3 py-2 font-medium">
+                    Material Total
+                  </div>
 
-</div>
+                  <div className="px-3 py-2 text-right font-semibold">
+                    ₹{" "}
+                    {formatAmount(
+                      materialTotal
+                    )}
+                  </div>
 
-      <div className="grid grid-cols-2 border-t-2 border-black">
+                </div>
 
-  <div className="border-r-2 border-black px-3 py-2 font-medium">
-    Total GST
-  </div>
+                <div className="grid grid-cols-2 border-t-2 border-black">
 
-  <div className="px-3 py-2 text-right font-semibold">
-    ₹ {gstTotal.toLocaleString("en-IN")}
-  </div>
+                  <div className="border-r-2 border-black px-3 py-2 font-medium">
+                    Total GST
+                  </div>
 
-</div>  
+                  <div className="px-3 py-2 text-right font-semibold">
+                    ₹{" "}
+                    {formatAmount(
+                      gstTotal
+                    )}
+                  </div>
 
-<div className="grid grid-cols-2 border-t-2 border-black bg-green-100">
+                </div>
 
-  <div className="border-r-2 border-black px-3 py-3 text-lg font-bold">
-    Grand Total
-  </div>
+                <div className="grid grid-cols-2 border-t-2 border-black bg-green-100">
 
-  <div className="px-3 py-3 text-right text-lg font-bold text-green-700">
-    ₹ {grandTotal.toLocaleString("en-IN")}
-  </div>
+                  <div className="border-r-2 border-black px-3 py-3 text-lg font-bold">
+                    Grand Total
+                  </div>
 
-</div>
+                  <div className="px-3 py-3 text-right text-lg font-bold text-green-700">
+                    ₹{" "}
+                    {formatAmount(
+                      grandTotal
+                    )}
+                  </div>
 
-    </div>
+                </div>
 
-  </div>
+              </div>
 
-</div>
+            </div>
+
+          </div>
 
         </div>
 
       )}
 
-{/* Other Charges Modal */}
+      {/* =================================================
+          OTHER CHARGES MODAL
+      ================================================= */}
 
-{showChargesModal && (
+      {showChargesModal && (
 
-<div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
 
-  <div className="bg-white rounded-xl shadow-2xl border-2 border-black w-[700px] max-h-[80vh] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl border-2 border-black w-[700px] max-w-[95vw] max-h-[80vh] overflow-hidden">
 
-    {/* Header */}
-    <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+            <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
 
-      <h2 className="text-xl font-bold">
-        Add Other Charges
-      </h2>
+              <h2 className="text-xl font-bold">
+                Add Other Charges
+              </h2>
 
-      <button
-        onClick={() => {
-          setSelectedCharges([]);
-          setShowChargesModal(false);
-        }}
-        className="text-2xl hover:text-red-400"
-      >
-        ✕
-      </button>
+              <button
+                onClick={() => {
+                  setSelectedCharges([]);
+                  setShowChargesModal(false);
+                }}
+                className="text-2xl hover:text-red-400"
+              >
+                ✕
+              </button>
 
-    </div>
+            </div>
 
-    {/* Search + Select All */}
-    <div className="p-5 border-b">
+            <div className="p-5 border-b">
 
-      <div className="flex gap-4">
+              <button
+                className="bg-green-600 text-white px-4 py-2 rounded-lg"
+                onClick={() =>
+                  setSelectedCharges([
+                    ...manualCostItems,
+                  ])
+                }
+              >
+                Select All
+              </button>
 
-        <input
-          type="text"
-          placeholder="🔍 Search charges..."
-          className="flex-1 border border-gray-400 rounded-lg px-3 py-2"
-          onChange={(e)=>{
+            </div>
 
-            const keyword=e.target.value.toLowerCase();
+            <div className="grid grid-cols-2 gap-3 p-5 max-h-[380px] overflow-y-auto">
 
-            document.querySelectorAll(".charge-item").forEach(card=>{
+              {manualCostItems.map(
+                (charge) => (
 
-              card.style.display=
-                card.dataset.name.includes(keyword)
-                ? "flex"
-                : "none";
+                  <label
+                    key={charge}
+                    className="border rounded-lg p-3 hover:bg-green-50 cursor-pointer flex items-center gap-3"
+                  >
 
-            });
+                    <input
+                      type="checkbox"
+                      checked={selectedCharges.includes(
+                        charge
+                      )}
+                      onChange={(e) => {
 
-          }}
-        />
+                        if (
+                          e.target.checked
+                        ) {
 
-        <button
+                          setSelectedCharges(
+                            (prev) => [
+                              ...prev,
+                              charge,
+                            ]
+                          );
 
-          className="bg-green-600 text-white px-4 rounded-lg"
+                        } else {
 
-          onClick={()=>{
-            setSelectedCharges([...manualCostItems]);
-          }}
+                          setSelectedCharges(
+                            (prev) =>
+                              prev.filter(
+                                (item) =>
+                                  item !==
+                                  charge
+                              )
+                          );
 
-        >
-          Select All
-        </button>
+                        }
 
-      </div>
+                      }}
+                    />
 
-    </div>
+                    <div className="text-xl">
+                      💰
+                    </div>
 
-    {/* Charges */}
+                    <div className="font-medium">
+                      {charge}
+                    </div>
 
-    <div className="grid grid-cols-2 gap-3 p-5 max-h-[380px] overflow-y-auto">
+                  </label>
 
-      {manualCostItems.map((charge)=>(
+                )
+              )}
 
-        <label
+            </div>
 
-          key={charge}
+            <div className="border-t p-4 flex justify-end gap-3">
 
-          data-name={charge.toLowerCase()}
+              <button
+                className="px-5 py-2 border rounded-lg"
+                onClick={() => {
+                  setSelectedCharges([]);
+                  setShowChargesModal(false);
+                }}
+              >
+                Cancel
+              </button>
 
-          className="charge-item border rounded-lg p-3 hover:bg-green-50 cursor-pointer flex items-center gap-3"
+              <button
+                className="bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-lg"
+                onClick={
+                  addSelectedCharges
+                }
+              >
+                Add Selected
+              </button>
 
-        >
-
-          <input
-
-            type="checkbox"
-
-            checked={selectedCharges.includes(charge)}
-
-            onChange={(e)=>{
-
-              if(e.target.checked){
-
-                setSelectedCharges(prev=>[
-                  ...prev,
-                  charge
-                ]);
-
-              }else{
-
-                setSelectedCharges(prev=>
-                  prev.filter(item=>item!==charge)
-                );
-
-              }
-
-            }}
-
-          />
-
-          <div className="text-2xl">
-
-            💰
+            </div>
 
           </div>
 
-          <div className="font-medium">
+        </div>
 
-            {charge}
-
-          </div>
-
-        </label>
-
-      ))}
+      )}
 
     </div>
-
-    {/* Footer */}
-
-    <div className="border-t p-4 flex justify-end gap-3">
-
-      <button
-
-        className="px-5 py-2 border rounded-lg"
-
-        onClick={()=>{
-          setSelectedCharges([]);
-          setShowChargesModal(false);
-        }}
-
-      >
-        Cancel
-      </button>
-
-      <button
-
-        className="bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-lg"
-
-        onClick={() => {
-
-          const newCharges = selectedCharges
-            .filter(
-              charge =>
-                !items.some(item => item.item === charge)
-            )
-            .map(charge => ({
-
-              item: charge,
-              qty: 1,
-              price: 0,
-              cgst: 0,
-              sgst: 0,
-              amount: 0,
-
-            }));
-
-          setItems(prev => [...prev, ...newCharges]);
-
-          setSelectedCharges([]);
-
-          setShowChargesModal(false);
-
-        }}
-
-      >
-        Add Selected
-      </button>
-
-    </div>
-
-  </div>
-
-</div>
-
-)}
-
-</div>
   );
 }
