@@ -362,7 +362,7 @@ export default function Inventory() {
 </td>
 
 <td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
-  {item.quantity} {item.unit || ""}
+  {item.quantity ?? "-"}
 </td>
 
 <td className="border border-black w-24 h-1 px-3 py-2 text-center font-semibold whitespace-nowrap">
