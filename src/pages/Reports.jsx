@@ -2858,90 +2858,352 @@ if (selectedReport === "investment") {
 
           {/* ================= CUSTOMER REPORT ================= */}
 
-          {selectedReport === "customers" && (
+{selectedReport === "customers" && (
 
-            <div className="overflow-x-auto rounded-2xl border border-slate-300">
+  <div className="space-y-5">
 
-              <table className="min-w-full border-collapse text-sm">
+    {/* ================= CUSTOMER SUMMARY ================= */}
 
-                <thead className="bg-blue-600 text-white">
+    <div className="overflow-x-auto rounded-2xl border border-slate-300 shadow-lg">
 
-                  <tr>
+      <table className="min-w-full border-collapse text-sm">
 
-                    <th className="border border-black p-3 text-center">S.No</th>
-                    <th className="border border-black p-3 text-center">Customer Name</th>
-                    <th className="border border-black p-3 text-center">Mobile</th>
-                    <th className="border border-black p-3 text-center">Location</th>
-                    <th className="border border-black p-3 text-center">Plant Size</th>
-                    <th className="border border-black p-3 text-center">Payment Type</th>
+        <thead className="bg-violet-600 text-white">
+
+          <tr>
+
+            <th className="border border-black p-3 text-center">
+              Total Customers
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Cash Customers
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Finance Customers
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Total Project Value
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Total Received
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Total Pending Amount
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr>
+
+            <td className="border border-black p-3 text-center font-bold">
+              {filteredCustomers.length}
+            </td>
+
+            <td className="border border-black p-3 text-center font-bold">
+              {
+                filteredCustomers.filter(
+                  (customer) =>
+                    String(
+                      customer.payment_type || ""
+                    ).toLowerCase() === "cash"
+                ).length
+              }
+            </td>
+
+            <td className="border border-black p-3 text-center font-bold">
+              {
+                filteredCustomers.filter(
+                  (customer) =>
+                    String(
+                      customer.payment_type || ""
+                    ).toLowerCase() === "finance"
+                ).length
+              }
+            </td>
+
+            <td className="border border-black p-3 text-center font-bold">
+              ₹{" "}
+              {filteredCustomers
+                .reduce(
+                  (sum, customer) =>
+                    sum +
+                    Number(
+                      customer.total_amount ||
+                        customer.total_cost ||
+                        0
+                    ),
+                  0
+                )
+                .toLocaleString("en-IN")}
+            </td>
+
+            <td className="border border-black p-3 text-center font-bold text-green-700">
+              ₹{" "}
+              {filteredCustomers
+                .reduce(
+                  (sum, customer) =>
+                    sum +
+                    Number(
+                      customer.received || 0
+                    ),
+                  0
+                )
+                .toLocaleString("en-IN")}
+            </td>
+
+            <td className="border border-black p-3 text-center font-bold text-red-700">
+              ₹{" "}
+              {filteredCustomers
+                .reduce(
+                  (sum, customer) =>
+                    sum +
+                    Number(
+                      customer.remaining ??
+                        (
+                          Number(
+                            customer.total_amount ||
+                              customer.total_cost ||
+                              0
+                          ) -
+                          Number(
+                            customer.received || 0
+                          )
+                        )
+                    ),
+                  0
+                )
+                .toLocaleString("en-IN")}
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    {/* ================= CUSTOMER DATA TABLE ================= */}
+
+    <div className="overflow-x-auto rounded-2xl border border-slate-300 shadow-xl bg-white">
+
+      <table className="min-w-full border-collapse text-sm">
+
+        <thead className="bg-blue-600 text-white">
+
+          <tr>
+
+            <th className="border border-black p-3 text-center">
+              S.No
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Project No
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Customer Name
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Mobile
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Payment Type
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Plant Size (KW)
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Total Cost
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Received
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Remaining
+            </th>
+
+            <th className="border border-black p-3 text-center">
+              Status
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          {filteredCustomers.length === 0 ? (
+
+            <tr>
+
+              <td
+                colSpan="10"
+                className="border border-black text-center py-6"
+              >
+                No Customers Found
+              </td>
+
+            </tr>
+
+          ) : (
+
+            filteredCustomers.map(
+              (customer, index) => {
+
+                const totalCost =
+                  Number(
+                    customer.total_amount ||
+                      customer.total_cost ||
+                      0
+                  );
+
+                const received =
+                  Number(
+                    customer.received || 0
+                  );
+
+                const remaining =
+                  customer.remaining !==
+                    undefined &&
+                  customer.remaining !==
+                    null
+                    ? Number(
+                        customer.remaining
+                      )
+                    : totalCost -
+                      received;
+
+                const plantSize =
+                  customer.plant_size ??
+                  customer.project_size ??
+                  "";
+
+                return (
+
+                  <tr
+                    key={customer.id}
+                    className="hover:bg-blue-50"
+                  >
+
+                    {/* S.NO */}
+
+                    <td className="border border-black p-3 text-center">
+                      {index + 1}
+                    </td>
+
+                    {/* PROJECT NO */}
+
+                    <td className="border border-black p-3 text-center">
+                      {customer.project_no || "-"}
+                    </td>
+
+                    {/* CUSTOMER NAME */}
+
+                    <td className="border border-black p-3 text-center">
+                      {customer.customer_name || "-"}
+                    </td>
+
+                    {/* MOBILE */}
+
+                    <td className="border border-black p-3 text-center">
+                      {customer.mobile || "-"}
+                    </td>
+
+                    {/* PAYMENT TYPE */}
+
+                    <td className="border border-black p-3 text-center">
+                      {customer.payment_type || "-"}
+                    </td>
+
+                    {/* PLANT SIZE */}
+
+                    <td className="border border-black p-3 text-center">
+                      {plantSize
+                        ? String(plantSize).toLowerCase().includes("kw")
+                          ? plantSize
+                          : `${plantSize} KW`
+                        : "-"}
+                    </td>
+
+                    {/* TOTAL COST */}
+
+                    <td className="border border-black p-3 text-center font-semibold">
+                      ₹{" "}
+                      {totalCost.toLocaleString(
+                        "en-IN"
+                      )}
+                    </td>
+
+                    {/* RECEIVED */}
+
+                    <td className="border border-black p-3 text-center font-semibold text-green-700">
+                      ₹{" "}
+                      {received.toLocaleString(
+                        "en-IN"
+                      )}
+                    </td>
+
+                    {/* REMAINING */}
+
+                    <td className="border border-black p-3 text-center font-semibold text-red-700">
+                      ₹{" "}
+                      {remaining.toLocaleString(
+                        "en-IN"
+                      )}
+                    </td>
+
+                    {/* STATUS */}
+
+                    <td className="border border-black p-3 text-center">
+
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          customer.status ===
+                          "Completed"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-orange-100 text-orange-700"
+                        }`}
+                      >
+                        {customer.status ||
+                          "-"}
+                      </span>
+
+                    </td>
 
                   </tr>
 
-                </thead>
+                );
 
-                <tbody>
-
-                  {filteredCustomers.length === 0 ? (
-
-                    <tr>
-
-                      <td
-                        colSpan="6"
-                        className="text-center py-6"
-                      >
-                        No Customers Found
-                      </td>
-
-                    </tr>
-
-                  ) : (
-
-                    filteredCustomers.map((customer, index) => (
-
-                      <tr
-                        key={customer.id}
-                        className="border-b hover:bg-blue-50"
-                      >
-
-                        <td className="border border-black p-3 text-center">
-                          {index + 1}
-                        </td>
-
-                        <td className="border border-black p-3 text-center">
-                          {customer.customer_name}
-                        </td>
-
-                        <td className="border border-black p-3 text-center">
-                          {customer.mobile}
-                        </td>
-
-                        
-
-                        <td className="border border-black p-3 text-center">
-                          {customer.location}
-                        </td>
-
-                        <td className="border border-black p-3 text-center">
-                          {customer.plant_size}
-                        </td>
-
-                       <td className="border border-black p-3 text-center">
-                          {customer.payment_type}
-                        </td>
-
-                      </tr>
-
-                    ))
-
-                  )}
-
-                </tbody>
-
-              </table>
-
-            </div>
+              }
+            )
 
           )}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+)}  
 
           {/* ================= PROJECT REPORT ================= */}
 
@@ -3243,12 +3505,12 @@ if (selectedReport === "investment") {
               </td>
 
               <td className="p-3 border border-black text-center">
-                {payment.projects?.customers?.customer_name || "-"}
-              </td>
+  {payment.projects?.project_no || "-"}
+</td>
 
-              <td className="p-3 border border-black text-center">
-                {payment.projects?.project_no || "-"}
-              </td>
+<td className="p-3 border border-black text-center">
+  {payment.projects?.customers?.customer_name || "-"}
+</td>
 
               <td className="p-3 border border-black text-center">
                 {payment.payment_type || "-"}

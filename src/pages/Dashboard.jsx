@@ -20,6 +20,8 @@ import {
   Badge,
 } from "../components/ui";
 
+
+
 export default function Dashboard() {
   const navigate = useNavigate();
  const [stats, setStats] = useState({
@@ -300,7 +302,8 @@ setStats({
     }
   }
 
- 
+ const formatIndianAmount = (value) =>
+  Number(value || 0).toLocaleString("en-IN");
 
   return (
   <div className="min-h-screen bg-gradient-to-br from-white via-teal-50 to-cyan-100 p-6">
@@ -622,7 +625,7 @@ Welcome back, Admin
 
   <KpiCard
     title="Project Value"
-    value={`₹ ${stats.projectValue.toLocaleString()}`}
+    value={`₹ ${formatIndianAmount(stats.projectValue)}`}
     icon={<IndianRupee size={30} strokeWidth={2.2} />}
     subtitle="Total Project Value"
     color="purple"
@@ -630,7 +633,7 @@ Welcome back, Admin
 
   <KpiCard
     title="Received"
-    value={`₹ ${stats.received.toLocaleString()}`}
+    value={`₹ ${formatIndianAmount(stats.received)}`}
     icon={<Wallet size={30} strokeWidth={2.2} />}
     subtitle="Payments Received"
     color="green"
@@ -638,7 +641,7 @@ Welcome back, Admin
 
   <KpiCard
     title="Pending Amount"
-    value={`₹ ${stats.pending.toLocaleString()}`}
+    value={`₹ ${formatIndianAmount(stats.pending)}`}
     icon={<Clock3 size={30} strokeWidth={2.2} />}
     subtitle="Outstanding Payments"
     color="red"
@@ -647,7 +650,7 @@ Welcome back, Admin
 
 <KpiCard
   title="Profit"
-  value={`₹ ${stats.profit.toLocaleString()}`}
+  value={`₹ ${formatIndianAmount(stats.profit)}`}
   icon={<TrendingUp size={30} strokeWidth={2.2} />}
   color="green"
   subtitle="Overall Business Profit"
@@ -680,7 +683,7 @@ Welcome back, Admin
           </p>
 
           <h3 className="mt-2 text-4xl font-bold tracking-tight text-white">
-            ₹ {stats.income.toLocaleString()}
+            ₹ {formatIndianAmount(stats.income)}
           </h3>
 
         </div>
@@ -692,7 +695,7 @@ Welcome back, Admin
           </p>
 
           <h3 className="mt-2 text-4xl font-bold tracking-tight text-white">
-            ₹ {stats.expenses.toLocaleString()}
+            ₹ {formatIndianAmount(stats.expenses)}
           </h3>
 
         </div>
@@ -704,7 +707,7 @@ Welcome back, Admin
           </p>
 
           <h3 className="mt-2 text-4xl font-bold tracking-tight text-white">
-            ₹ {stats.balance.toLocaleString()}
+            ₹ {formatIndianAmount(stats.balance)}
           </h3>
 
         </div>

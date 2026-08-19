@@ -5,182 +5,241 @@ import {
 } from "./pdfTable";
 
 
-export function exportProjectPDF(projects) {
+export function exportProjectPDF(projects = []) {
 
-  projects = [...projects].sort(
-    (a, b) =>
-      Number(a.project_no.replace(/\D/g, "")) -
-      Number(b.project_no.replace(/\D/g, ""))
-  );
+  // =====================================================
+  // SORT PROJECTS BY PROJECT NUMBER
+  // =====================================================
+
+  projects = [...projects].sort((a, b) => {
+    const numA = Number(
+      String(a.project_no || "").replace(/\D/g, "")
+    );
+
+    const numB = Number(
+      String(b.project_no || "").replace(/\D/g, "")
+    );
+
+    return numA - numB;
+  });
+
+  // =====================================================
+  // CREATE PDF
+  // =====================================================
 
   const doc = createReportPDF("Project Report");
 
-
-  const columns = [
-    { title: "S.No", width: 12 },
-    { title: "Project No", width: 28 },
-    { title: "Customer", width: 45 },
-    { title: "Size", width: 20 },
-    { title: "Status", width: 25 },
-    { title: "Total", width: 30 },
-    { title: "Received", width: 30 },
-    { title: "Balance", width: 30 },
-  ];
-
+  // =====================================================
+  // NUMBER FORMAT
+  // =====================================================
 
   const formatAmount = (value) =>
-    Number(value || 0).toLocaleString(
-      "en-US",
+    Number(value || 0).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+  // =====================================================
+  // TOTAL CALCULATIONS
+  // =====================================================
+
+  const totalProjectValue = projects.reduce(
+    (sum, project) =>
+      sum + Number(project.total_amount || 0),
+    0
+  );
+
+  const totalReceived = projects.reduce(
+    (sum, project) =>
+      sum + Number(project.received || 0),
+    0
+  );
+
+  const totalPending = projects.reduce(
+    (sum, project) =>
+      sum +
+      (
+        project.remaining !== undefined &&
+        project.remaining !== null
+          ? Number(project.remaining || 0)
+          : Number(project.total_amount || 0) -
+            Number(project.received || 0)
+      ),
+    0
+  );
+
+  // =====================================================
+  // SUMMARY SECTION
+  // =====================================================
+
+  const summaryStartY = 45;
+
+  const summaryColumns = [
+    {
+      title: "TOTAL PROJECT VALUE",
+      value: `Rs. ${formatAmount(totalProjectValue)}`,
+    },
+    {
+      title: "TOTAL RECEIVED",
+      value: `Rs. ${formatAmount(totalReceived)}`,
+    },
+    {
+      title: "TOTAL PENDING AMOUNT",
+      value: `Rs. ${formatAmount(totalPending)}`,
+    },
+  ];
+
+  const summaryWidth = 88;
+  const summaryHeight = 24;
+  const summaryGap = 8;
+  const summaryStartX = 15;
+
+  summaryColumns.forEach((item, index) => {
+
+    const x =
+      summaryStartX +
+      index * (summaryWidth + summaryGap);
+
+    // -----------------------------------------------
+    // HEADER
+    // -----------------------------------------------
+
+    doc.setFillColor(30, 58, 138);
+
+    doc.roundedRect(
+      x,
+      summaryStartY,
+      summaryWidth,
+      9,
+      2,
+      2,
+      "F"
+    );
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+
+    doc.text(
+      item.title,
+      x + summaryWidth / 2,
+      summaryStartY + 6,
       {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+        align: "center",
       }
     );
 
-    
+    // -----------------------------------------------
+    // VALUE
+    // -----------------------------------------------
 
-const totalValue = projects.reduce(
-  (sum, item) => sum + Number(item.total_amount || 0),
-  0
-);
+    doc.setFillColor(245, 247, 250);
 
-const totalReceived = projects.reduce(
-  (sum, item) => sum + Number(item.received || 0),
-  0
-);
+    doc.roundedRect(
+      x,
+      summaryStartY + 9,
+      summaryWidth,
+      15,
+      2,
+      2,
+      "F"
+    );
 
-const totalBalance = projects.reduce(
-  (sum, item) => sum + Number(item.remaining || 0),
-  0
-);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(0, 0, 0);
 
-  const rows = projects.map(
-    (project, index) => [
+    doc.text(
+      item.value,
+      x + summaryWidth / 2,
+      summaryStartY + 19,
+      {
+        align: "center",
+      }
+    );
+  });
 
-      index + 1,
+  // =====================================================
+  // PROJECT TABLE
+  // =====================================================
 
+  const columns = [
+    {
+      title: "Project No",
+      width: 35,
+    },
+    {
+      title: "Total Cost",
+      width: 40,
+    },
+    {
+      title: "Received",
+      width: 40,
+    },
+    {
+      title: "Remaining",
+      width: 40,
+    },
+    {
+      title: "Status",
+      width: 35,
+    },
+  ];
+
+  // =====================================================
+  // TABLE ROWS
+  // =====================================================
+
+  const rows = projects.map((project) => {
+
+    const totalCost =
+      Number(project.total_amount || 0);
+
+    const received =
+      Number(project.received || 0);
+
+    const remaining =
+      project.remaining !== undefined &&
+      project.remaining !== null
+        ? Number(project.remaining || 0)
+        : totalCost - received;
+
+    return [
       project.project_no || "",
 
-      project.customers?.customer_name || "",
+      formatAmount(totalCost),
 
+      formatAmount(received),
 
-      project.project_size
-        ? `${project.project_size} kW`
-        : "",
-
+      formatAmount(remaining),
 
       project.status || "",
+    ];
+  });
 
+  // =====================================================
+  // DRAW TABLE
+  // =====================================================
 
-      formatAmount(
-        project.total_amount
-      ),
+  const tableStartY =
+    summaryStartY + summaryHeight + 12;
 
-
-      formatAmount(
-        project.received
-      ),
-
-
-      formatAmount(
-        project.remaining
-      ),
-
-    ]
+  const endY = drawTable(
+    doc,
+    columns,
+    rows,
+    tableStartY
   );
 
+  // =====================================================
+  // FOOTER
+  // =====================================================
 
-// ===============================
-// PROJECT SUMMARY CARDS
-// ===============================
+  addFooter(doc);
 
-let startX = 10;
-let startY = 48;
+  // =====================================================
+  // SAVE
+  // =====================================================
 
-const cards = [
-  {
-    title: "Projects",
-    value: String(projects.length),
-    color: [37, 99, 235], // Blue
-  },
-  {
-    title: "Project Value",
-    value: `Rs. ${formatAmount(totalValue)}`,
-    color: [22, 163, 74], // Green
-  },
-  {
-    title: "Received",
-    value: `Rs. ${formatAmount(totalReceived)}`,
-    color: [147, 51, 234], // Purple
-  },
-  {
-    title: "Balance",
-    value: `Rs. ${formatAmount(totalBalance)}`,
-    color: [220, 38, 38], // Red
-  },
-];
-
-cards.forEach((card, index) => {
-
-  const x = startX + index * 68;
-  const y = startY;
-
-  // Card Background
-  doc.setFillColor(...card.color);
-  doc.roundedRect(
-    x,
-    y,
-    62,
-    22,
-    2,
-    2,
-    "F"
-  );
-
-  // Title
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(255,255,255);
-
-  doc.text(
-    card.title,
-    x + 31,
-    y + 7,
-    {
-      align: "center",
-    }
-  );
-
-  // Value
-  doc.setFont("helvetica","bold");
-  doc.setFontSize(13);
-
-  doc.text(
-    card.value,
-    x + 31,
-    y + 16,
-    {
-      align: "center",
-    }
-  );
-
-});
-
-const summaryEndY = startY + 24;
-
-// ===============================
-// Project Table
-// ===============================
-
-const endY = drawTable(
-  doc,
-  columns,
-  rows,
-  summaryEndY + 6
-);
-
-addFooter(doc);
-
-doc.save("Project Report.pdf");
-
+  doc.save("Project Report.pdf");
 }
