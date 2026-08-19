@@ -110,129 +110,238 @@ Number(form.net_metering_charges || 0)
 
 
 /* ======================================
-   DEDUCT INVENTORY
+   FIFO INVENTORY DEDUCTION
 ====================================== */
 
 async function deductInventory(products) {
 
   for (const product of products) {
 
-    let requiredQty = Number(product.quantity || 0);
+    let requiredQty =
+      Number(product.quantity || 0);
 
-    if (requiredQty <= 0) continue;
+    if (requiredQty <= 0)
+      continue;
 
-    // Find the selected inventory item
-   const { data: selectedItems, error: selectedError } =
+
+    // =================================================
+    // FIND ALL MATCHING INVENTORY ENTRIES
+    // =================================================
+
+    const { data: batches, error } =
       await supabase
         .from("inventory")
         .select("*")
-        .eq("category", product.category)
-        .eq("company", product.company)
-        .eq("specification", product.specification);
+        .eq(
+          "product_name",
+          product.product_name
+        )
+        .eq(
+          "category",
+          product.category
+        )
+        .eq(
+          "company",
+          product.company || ""
+        )
+        .eq(
+          "specification",
+          product.specification || ""
+        )
+        .order(
+          "date",
+          {
+            ascending: true
+          }
+        );
 
 
-if (selectedError) {
-  throw selectedError;
-}
+    if (error)
+      throw error;
 
 
-const availableStock = selectedItems.reduce(
-  (sum, item) =>
-    sum + Number(item.quantity || 0),
-  0
-);
+    // =================================================
+    // SECONDARY SORT BY ID
+    // =================================================
+
+    batches.sort((a, b) => {
+
+      const dateA =
+        new Date(a.date || 0).getTime();
+
+      const dateB =
+        new Date(b.date || 0).getTime();
+
+      if (dateA !== dateB)
+        return dateA - dateB;
+
+      return String(a.id)
+        .localeCompare(
+          String(b.id)
+        );
+
+    });
 
 
-console.log(
-  "DEDUCT STOCK CHECK",
-  product.company,
-  product.category,
-  product.specification,
-  availableStock
-);
+    // =================================================
+    // TOTAL AVAILABLE
+    // =================================================
 
-    // Get ALL matching inventory batches
-const { data: batches, error: batchError } =
-  await supabase
-    .from("inventory")
-    .select("*")
-    .eq("category", product.category)
-    .eq("company", product.company)
-    .eq("specification", product.specification)
-    .order("date", { ascending: true });
+    const totalAvailable =
+      batches.reduce(
+        (sum, batch) =>
+          sum +
+          Number(batch.quantity || 0),
+        0
+      );
 
 
-if (batchError) throw batchError;
+    if (
+      totalAvailable <
+      requiredQty
+    ) {
+
+      throw new Error(
+        `${product.product_name} has only ${totalAvailable} ${product.unit || ""} in stock`
+      );
+
+    }
 
 
-// Total available stock
-const totalAvailable = batches.reduce(
-  (sum, b) =>
-    sum + Number(b.quantity || 0),
-  0
-);
+    // =================================================
+    // FIFO ALLOCATIONS
+    // =================================================
+
+    const allocations = [];
 
 
-console.log(
-  "FIFO STOCK AVAILABLE",
-  product.company,
-  product.category,
-  product.specification,
-  totalAvailable
-);
+    for (
+      const batch of batches
+    ) {
+
+      if (requiredQty <= 0)
+        break;
 
 
-if (totalAvailable < requiredQty) {
+      const batchQty =
+        Number(
+          batch.quantity || 0
+        );
 
-  throw new Error(
-    `${product.company} ${product.specification} ${product.product_name} has only ${totalAvailable} in stock`
-  );
 
-}
-      
+      if (batchQty <= 0)
+        continue;
 
-    // FIFO deduction
-    for (const batch of batches) {
 
-      if (requiredQty <= 0) break;
+      const deductQty =
+        Math.min(
+          batchQty,
+          requiredQty
+        );
 
-      const batchQty = Number(batch.quantity || 0);
 
-      if (batchQty <= 0) continue;
+      const unitCost =
+        Number(
+          batch.unit_cost || 0
+        );
 
-      const deductQty = Math.min(batchQty, requiredQty);
 
-      const { error: updateError } =
+      allocations.push({
+
+        inventory_id:
+          batch.id,
+
+        quantity:
+          deductQty,
+
+        unit_cost:
+          unitCost,
+
+        total:
+          deductQty *
+          unitCost,
+
+      });
+
+
+      const newQuantity =
+        batchQty -
+        deductQty;
+
+
+      const newUsedQuantity =
+        Number(
+          batch.used_quantity || 0
+        ) +
+        deductQty;
+
+
+      const newTotalAmount =
+        newQuantity *
+        unitCost;
+
+
+      const {
+        error: updateError
+      } =
         await supabase
           .from("inventory")
           .update({
 
-            quantity: batchQty - deductQty,
+            quantity:
+              newQuantity,
 
             used_quantity:
-              Number(batch.used_quantity || 0) + deductQty,
+              newUsedQuantity,
 
             total_amount:
-              (batchQty - deductQty) *
-              Number(batch.unit_cost || 0)
+              newTotalAmount,
 
           })
-          .eq("id", batch.id);
+          .eq(
+            "id",
+            batch.id
+          );
 
-      if (updateError) throw updateError;
 
-      requiredQty -= deductQty;
+      if (updateError)
+        throw updateError;
+
+
+      requiredQty -=
+        deductQty;
 
     }
+
+
+    // =================================================
+    // SAVE EXACT FIFO ALLOCATION
+    //
+    // This allows EDIT / DELETE to restore the
+    // exact inventory rows later.
+    // =================================================
+
+    product.fifo_allocations =
+      allocations;
+
+
+    // =================================================
+    // TOTAL MATERIAL COST
+    // =================================================
+
+    product.total =
+      allocations.reduce(
+        (sum, allocation) =>
+          sum +
+          Number(
+            allocation.total || 0
+          ),
+        0
+      );
 
   }
 
 }
-
-
-
-
-
 
 
 /* ======================================
@@ -247,7 +356,13 @@ await deductInventory(
 form.products || []
 );
 
-
+const fifoMaterialCost =
+  (form.products || []).reduce(
+    (sum, product) =>
+      sum +
+      Number(product.total || 0),
+    0
+  );
 
 
 const payload = {
@@ -276,7 +391,7 @@ form.products,
 
 
 material_cost:
-Number(form.material_cost || 0),
+fifoMaterialCost,
 
 
 
@@ -321,8 +436,15 @@ Number(form.net_metering_charges || 0),
 
 
 total_plant_cost:
-calculateTotalPlantCost(form),
-
+fifoMaterialCost +
+Number(form.installation_charges || 0) +
+Number(form.civil_material || 0) +
+Number(form.vendor_charges || 0) +
+Number(form.agreement_charges || 0) +
+Number(form.je_charges || 0) +
+Number(form.name_change_charges || 0) +
+Number(form.load_extension_charges || 0) +
+Number(form.net_metering_charges || 0),
 
 
 remarks:
@@ -406,62 +528,248 @@ async function restoreInventory(products) {
 
   for (const product of products) {
 
-    let qtyToRestore = Number(product.quantity || 0);
+    // =================================================
+    // NEW METHOD:
+    // Restore exact inventory rows using
+    // saved FIFO allocations.
+    // =================================================
 
-    if (qtyToRestore <= 0) continue;
+    if (
+      Array.isArray(
+        product.fifo_allocations
+      ) &&
+      product.fifo_allocations.length > 0
+    ) {
 
-    const { data: inventories, error } =
+      for (
+        const allocation
+        of product.fifo_allocations
+      ) {
+
+        const inventoryId =
+          allocation.inventory_id;
+
+        const restoreQty =
+          Number(
+            allocation.quantity || 0
+          );
+
+
+        if (
+          !inventoryId ||
+          restoreQty <= 0
+        )
+          continue;
+
+
+        const {
+          data: inventory,
+          error
+        } =
+          await supabase
+            .from("inventory")
+            .select("*")
+            .eq(
+              "id",
+              inventoryId
+            )
+            .single();
+
+
+        if (error)
+          throw error;
+
+
+        const currentQuantity =
+          Number(
+            inventory.quantity || 0
+          );
+
+
+        const currentUsedQuantity =
+          Number(
+            inventory.used_quantity || 0
+          );
+
+
+        const newQuantity =
+          currentQuantity +
+          restoreQty;
+
+
+        const newUsedQuantity =
+          Math.max(
+            0,
+            currentUsedQuantity -
+              restoreQty
+          );
+
+
+        const unitCost =
+          Number(
+            inventory.unit_cost || 0
+          );
+
+
+        const {
+          error: updateError
+        } =
+          await supabase
+            .from("inventory")
+            .update({
+
+              quantity:
+                newQuantity,
+
+              used_quantity:
+                newUsedQuantity,
+
+              total_amount:
+                newQuantity *
+                unitCost,
+
+            })
+            .eq(
+              "id",
+              inventoryId
+            );
+
+
+        if (updateError)
+          throw updateError;
+
+      }
+
+
+      continue;
+
+    }
+
+
+    // =================================================
+    // OLD RECORD FALLBACK
+    //
+    // Keeps older Material Consumption records
+    // working if they don't have fifo_allocations.
+    // =================================================
+
+    let qtyToRestore =
+      Number(
+        product.quantity || 0
+      );
+
+
+    if (qtyToRestore <= 0)
+      continue;
+
+
+    const {
+      data: inventories,
+      error
+    } =
       await supabase
         .from("inventory")
         .select("*")
-        .eq("product_name", product.product_name)
-        .eq("company", product.company || "")
-        .eq("specification", product.specification || "")
-        .eq("unit_cost", product.unit_price)
-        .order("date", { ascending: false });
+        .eq(
+          "product_name",
+          product.product_name
+        )
+        .eq(
+          "company",
+          product.company || ""
+        )
+        .eq(
+          "specification",
+          product.specification || ""
+        )
+        .order(
+          "date",
+          {
+            ascending: false
+          }
+        );
 
-    if (error) throw error;
 
-    for (const inventory of inventories) {
+    if (error)
+      throw error;
 
-      if (qtyToRestore <= 0) break;
 
-      const usedQty = Number(inventory.used_quantity || 0);
+    for (
+      const inventory
+      of inventories
+    ) {
 
-      if (usedQty <= 0) continue;
+      if (qtyToRestore <= 0)
+        break;
 
-      const restoreQty = Math.min(usedQty, qtyToRestore);
+
+      const usedQty =
+        Number(
+          inventory.used_quantity || 0
+        );
+
+
+      if (usedQty <= 0)
+        continue;
+
+
+      const restoreQty =
+        Math.min(
+          usedQty,
+          qtyToRestore
+        );
+
 
       const newRemaining =
-        Number(inventory.quantity || 0) + restoreQty;
+        Number(
+          inventory.quantity || 0
+        ) +
+        restoreQty;
+
 
       const newUsed =
-        usedQty - restoreQty;
+        usedQty -
+        restoreQty;
 
-      const { error: updateError } =
+
+      const {
+        error: updateError
+      } =
         await supabase
           .from("inventory")
           .update({
-            quantity: newRemaining,
-            used_quantity: newUsed,
+
+            quantity:
+              newRemaining,
+
+            used_quantity:
+              newUsed,
+
             total_amount:
               newRemaining *
-              Number(inventory.unit_cost || 0)
+              Number(
+                inventory.unit_cost || 0
+              )
+
           })
-          .eq("id", inventory.id);
+          .eq(
+            "id",
+            inventory.id
+          );
 
-      if (updateError) throw updateError;
 
-      qtyToRestore -= restoreQty;
+      if (updateError)
+        throw updateError;
+
+
+      qtyToRestore -=
+        restoreQty;
+
     }
 
   }
 
 }
-
-
-
-
 
 
 /* ======================================
@@ -500,7 +808,13 @@ await deductInventory(
 form.products || []
 );
 
-
+const fifoMaterialCost =
+  (form.products || []).reduce(
+    (sum, product) =>
+      sum +
+      Number(product.total || 0),
+    0
+  );
 
 
 const payload = {
@@ -528,7 +842,7 @@ form.products,
 
 
 material_cost:
-Number(form.material_cost || 0),
+fifoMaterialCost,
 
 
 installation_charges:
@@ -565,7 +879,15 @@ Number(form.net_metering_charges || 0),
 
 
 total_plant_cost:
-calculateTotalPlantCost(form),
+fifoMaterialCost +
+Number(form.installation_charges || 0) +
+Number(form.civil_material || 0) +
+Number(form.vendor_charges || 0) +
+Number(form.agreement_charges || 0) +
+Number(form.je_charges || 0) +
+Number(form.name_change_charges || 0) +
+Number(form.load_extension_charges || 0) +
+Number(form.net_metering_charges || 0),
 
 
 

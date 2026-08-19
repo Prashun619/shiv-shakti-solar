@@ -92,32 +92,79 @@ useState([]);
 const [inventoryProducts,setInventoryProducts] =
 useState([]);
 
-const uniqueInventoryProducts = inventoryProducts.filter((product, index, array) => {
+const uniqueInventoryProducts = inventoryProducts.filter(
+  (product, index, array) => {
 
-  const displayName =
-    product.category === "Panel" || product.category === "Inverter"
-      ? `${product.company || ""} ${product.category} ${product.specification || ""}`.trim()
-      : product.product_name;
+    const isPanelOrInverter =
+      product.category === "Panel" ||
+      product.category === "Inverter";
 
-  const unitPrice = Math.round(calculateUnitCost(product));
+    if (isPanelOrInverter) {
 
-  return (
-    index ===
-    array.findIndex((p) => {
-
-      const otherName =
-        p.category === "Panel" || p.category === "Inverter"
-          ? `${p.company || ""} ${p.category} ${p.specification || ""}`.trim()
-          : p.product_name;
+      const key =
+        `${product.category}|` +
+        `${product.company || ""}|` +
+        `${product.specification || ""}`;
 
       return (
-        otherName === displayName &&
-        Math.round(calculateUnitCost(p)) === unitPrice
-      );
-    })
-  );
+        index ===
+        array.findIndex((p) => {
 
-});
+          const otherIsPanelOrInverter =
+            p.category === "Panel" ||
+            p.category === "Inverter";
+
+          if (!otherIsPanelOrInverter)
+            return false;
+
+          const otherKey =
+            `${p.category}|` +
+            `${p.company || ""}|` +
+            `${p.specification || ""}`;
+
+          return otherKey === key;
+
+        })
+      );
+
+    }
+
+    // =================================================
+    // NORMAL PRODUCTS
+    //
+    // Multiple purchase entries must appear as ONE
+    // product in the dropdown.
+    //
+    // Price is NOT part of the key.
+    // FIFO will decide the price later.
+    // =================================================
+
+    return (
+      index ===
+      array.findIndex((p) => {
+
+        const pIsPanelOrInverter =
+          p.category === "Panel" ||
+          p.category === "Inverter";
+
+        if (pIsPanelOrInverter)
+          return false;
+
+        return (
+          p.product_name === product.product_name &&
+          (p.category || "") ===
+            (product.category || "") &&
+          (p.company || "") ===
+            (product.company || "") &&
+          (p.specification || "") ===
+            (product.specification || "")
+        );
+
+      })
+    );
+
+  }
+);
 
 const [form,setForm] =
 useState(initialForm);
@@ -424,253 +471,609 @@ customer?.location || "",
 }
 
 
+/* ============================
+   FIFO PRICE CALCULATION
+============================ */
+
+function calculateFIFOForProduct(
+  selectedProduct,
+  requiredQty,
+  alreadySelectedQty = 0
+) {
+
+  const matchingInventory =
+    inventoryProducts
+      .filter((p) => {
+
+        return (
+          p.product_name ===
+            selectedProduct.product_name &&
+
+          (p.category || "") ===
+            (selectedProduct.category || "") &&
+
+          (p.company || "") ===
+            (selectedProduct.company || "") &&
+
+          (p.specification || "") ===
+            (selectedProduct.specification || "")
+        );
+
+      })
+      .sort((a, b) => {
+
+        const dateA =
+          new Date(a.date || 0).getTime();
+
+        const dateB =
+          new Date(b.date || 0).getTime();
+
+        if (dateA !== dateB) {
+          return dateA - dateB;
+        }
+
+        return String(a.id)
+          .localeCompare(String(b.id));
+
+      });
 
 
+  let remainingQty =
+    Number(requiredQty || 0);
 
+  let skipQty =
+    Number(alreadySelectedQty || 0);
+
+  let total = 0;
+
+  const allocations = [];
+
+
+  // =================================================
+  // SKIP STOCK ALREADY RESERVED BY OTHER FORM ROWS
+  // =================================================
+
+  for (const inventory of matchingInventory) {
+
+    if (skipQty <= 0)
+      break;
+
+    const stock =
+      Number(inventory.quantity || 0);
+
+    if (stock <= 0)
+      continue;
+
+    const skipped =
+      Math.min(
+        stock,
+        skipQty
+      );
+
+    skipQty -= skipped;
+
+  }
+
+
+  // =================================================
+  // FIFO PRICE CALCULATION
+  // =================================================
+
+  let remainingSkip =
+    Number(alreadySelectedQty || 0);
+
+
+  for (const inventory of matchingInventory) {
+
+    if (remainingQty <= 0)
+      break;
+
+
+    let stock =
+      Number(inventory.quantity || 0);
+
+
+    if (stock <= 0)
+      continue;
+
+
+    // Skip stock already used by another
+    // product row in this form.
+
+    if (remainingSkip > 0) {
+
+      const skipped =
+        Math.min(
+          stock,
+          remainingSkip
+        );
+
+      stock -= skipped;
+
+      remainingSkip -= skipped;
+
+    }
+
+
+    if (stock <= 0)
+      continue;
+
+
+    const consumeQty =
+      Math.min(
+        stock,
+        remainingQty
+      );
+
+
+    const unitCost =
+      Number(
+        inventory.unit_cost || 0
+      );
+
+
+    const allocationTotal =
+      consumeQty *
+      unitCost;
+
+
+    allocations.push({
+
+      inventory_id:
+        inventory.id,
+
+      quantity:
+        consumeQty,
+
+      unit_cost:
+        unitCost,
+
+      total:
+        allocationTotal,
+
+    });
+
+
+    total +=
+      allocationTotal;
+
+
+    remainingQty -=
+      consumeQty;
+
+  }
+
+
+  return {
+
+    total,
+
+    allocations,
+
+  };
+
+}
 
 
 /* ============================
    PRODUCT SELECT
 ============================ */
 
+function handleProductSelect(index, productId) {
 
-function handleProductSelect(
-index,
-productId
-){
+  const selectedProduct =
+    uniqueInventoryProducts.find(
+      (p) =>
+        String(p.id) === String(productId)
+    );
 
-
-const selectedProduct =
-uniqueInventoryProducts.find(
-  (p) =>
-    String(p.id) === String(productId)
-);
-
-console.log("Selected Product:", selectedProduct);
-
-console.log(
-  "Matching Products:",
-  inventoryProducts.filter((p) =>
-    p.category === selectedProduct.category &&
-    (p.company || "") === (selectedProduct.company || "") &&
-    (p.specification || "") === (selectedProduct.specification || "") &&
-    Math.round(calculateUnitCost(p)) ===
-      Math.round(calculateUnitCost(selectedProduct))
-  )
-);
-
-const totalStock = inventoryProducts
-.filter((p)=>{
-
-return (
-
-p.category === selectedProduct.category &&
-
-(p.company || "") === (selectedProduct.company || "") &&
-
-(p.specification || "") === (selectedProduct.specification || "")
-
-);
-
-})
-.reduce(
-(sum,p)=>sum + Number(p.quantity || 0),
-0
-);
+  if (!selectedProduct)
+    return;
 
 
-console.log("FINAL TOTAL STOCK =", totalStock);
+  // =================================================
+  // FIND ALL INVENTORY ENTRIES FOR THIS PRODUCT
+  // =================================================
 
-const alreadySelectedQty =
-  form.products.reduce((sum, item, i) => {
+  const matchingInventory =
+    inventoryProducts
+      .filter((p) => {
 
-    if (i !== index) {
+        return (
+          p.product_name ===
+            selectedProduct.product_name &&
 
-      const sameProduct =
-        item.category === selectedProduct.category &&
-        item.company === selectedProduct.company &&
-        item.specification === selectedProduct.specification;
+          (p.category || "") ===
+            (selectedProduct.category || "") &&
 
-      if (sameProduct) {
+          (p.company || "") ===
+            (selectedProduct.company || "") &&
 
-        return sum + Number(item.quantity || 0);
+          (p.specification || "") ===
+            (selectedProduct.specification || "")
+        );
 
-      }
+      })
+      .sort((a, b) => {
 
-    }
+        // Earliest purchase first.
+        const dateA =
+          new Date(a.date || 0).getTime();
 
-    return sum;
+        const dateB =
+          new Date(b.date || 0).getTime();
 
-  }, 0);
+        if (dateA !== dateB) {
+          return dateA - dateB;
+        }
+
+        // Stable fallback when dates are same.
+        return String(a.id)
+          .localeCompare(String(b.id));
+
+      });
 
 
-const updatedProducts =
-[
-...form.products
-];
+  // =================================================
+  // TOTAL AVAILABLE STOCK
+  // =================================================
 
-console.log("Total Stock =", totalStock);
-console.log(
-  "Matching Quantities =",
-  inventoryProducts
-    .filter((p) => {
-      return (
-        p.category === selectedProduct?.category &&
-        (p.company || "") === (selectedProduct?.company || "") &&
-        (p.specification || "") === (selectedProduct?.specification || "") &&
-        Math.round(calculateUnitCost(p)) ===
-          Math.round(calculateUnitCost(selectedProduct))
+  const totalStock =
+  matchingInventory.reduce(
+    (sum, p) => {
+
+      const isKit =
+        p.purchase_type === "Kit" ||
+        p.category === "Kit";
+
+      const stockQuantity =
+        isKit
+          ? Number(p.quantity || 0)
+          : Number(p.quantity || 0);
+
+      return sum + stockQuantity;
+    },
+    0
+  );
+
+
+  // =================================================
+  // QUANTITY ALREADY SELECTED IN OTHER ROWS
+  // =================================================
+
+  const alreadySelectedQty =
+    form.products.reduce(
+      (sum, p, i) => {
+
+        if (i === index)
+          return sum;
+
+        const sameProduct =
+          p.product_name ===
+            selectedProduct.product_name &&
+
+          (p.category || "") ===
+            (selectedProduct.category || "") &&
+
+          (p.company || "") ===
+            (selectedProduct.company || "") &&
+
+          (p.specification || "") ===
+            (selectedProduct.specification || "");
+
+        if (!sameProduct)
+          return sum;
+
+        return (
+          sum +
+          Number(p.quantity || 0)
+        );
+
+      },
+      0
+    );
+
+
+  const availableStock =
+    Math.max(
+      0,
+      totalStock -
+        alreadySelectedQty
+    );
+
+
+  // =================================================
+  // DEFAULT FIFO PRICE PREVIEW
+  //
+  // Quantity will normally be entered after
+  // selecting the product.
+  //
+  // For now calculate using available stock.
+  // =================================================
+
+  const updatedProducts =
+    [...form.products];
+
+
+  updatedProducts[index] = {
+
+    ...updatedProducts[index],
+
+    product_id:
+      selectedProduct.id || "",
+
+    product_name:
+      selectedProduct.product_name || "",
+
+    company:
+      selectedProduct.company || "",
+
+    specification:
+      selectedProduct.specification || "",
+
+    category:
+      selectedProduct.category || "",
+
+    stock:
+      availableStock,
+
+    unit:
+      selectedProduct.unit || "",
+
+    quantity:
+      updatedProducts[index].quantity || 0,
+
+    unit_price:
+      0,
+
+    total:
+      0,
+
+    fifo_allocations:
+      [],
+
+  };
+
+
+  // =================================================
+  // CALCULATE FIFO FOR EXISTING QUANTITY
+  // =================================================
+
+  const quantity =
+    Number(
+      updatedProducts[index].quantity || 0
+    );
+
+
+  if (quantity > 0) {
+
+    const fifo =
+      calculateFIFOForProduct(
+        selectedProduct,
+        quantity,
+        alreadySelectedQty
       );
-    })
-    .map((p) => ({
-      quantity: p.quantity,
-      purchased_quantity: p.purchased_quantity,
-      used_quantity: p.used_quantity,
-    }))
-);
 
-updatedProducts[index]={
+    updatedProducts[index].total =
+      fifo.total;
 
+    updatedProducts[index].fifo_allocations =
+      fifo.allocations;
 
-product_id:
-selectedProduct?.id || "",
-
-product_name: selectedProduct?.product_name || "",
-
-company: selectedProduct?.company || "",
-
-specification: selectedProduct?.specification || "",
+  }
 
 
-category:
-selectedProduct?.category || "",
-
-stock:
-totalStock - alreadySelectedQty,
-
-unit: 
-selectedProduct?.unit || "",
-
-quantity:
-updatedProducts[index].quantity || 0,
-
-
-unit_price:
-selectedProduct
-?
-calculateUnitCost(selectedProduct)
-:
-0,
-
-
-total:
-
-Number(
-updatedProducts[index].quantity || 0
-)
-
-*
-
-(
-selectedProduct
-?
-calculateUnitCost(selectedProduct)
-:
-0
-)
-
-
-};
-
-
-console.log("UPDATED PRODUCT ROW", updatedProducts[index]);
-
-
-updateTotals(updatedProducts);
-
-
+  updateTotals(updatedProducts);
 
 }
+
+
 /* ============================
    QUANTITY CHANGE
 ============================ */
 
+function handleQuantityChange(
+  index,
+  value
+) {
 
-function handleQuantityChange(index, value) {
-
-  const updatedProducts = [
-    ...form.products
-  ];
-
-
-  updatedProducts[index].quantity = value;
+  const updatedProducts =
+    [...form.products];
 
 
-  updatedProducts[index].total =
-    Number(value || 0) *
-    Number(updatedProducts[index].unit_price || 0);
+  const currentProduct =
+    updatedProducts[index];
 
 
-
-  // Update stock for same product (company + specification based)
-  updatedProducts.forEach((item, i) => {
-
-    if (
-      i !== index &&
-      item.category === updatedProducts[index].category &&
-      item.company === updatedProducts[index].company &&
-      item.specification === updatedProducts[index].specification
-    ) {
+  const quantity =
+    Number(value || 0);
 
 
-      const originalStock =
+  // =================================================
+  // QUANTITY CANNOT EXCEED AVAILABLE STOCK
+  // =================================================
+
+  if (
+    quantity >
+    Number(currentProduct.stock || 0)
+  ) {
+
+    alert(
+      `Only ${currentProduct.stock || 0} ${currentProduct.unit || ""} available in stock.`
+    );
+
+    return;
+
+  }
+
+
+  // =================================================
+  // QUANTITY ALREADY USED BY OTHER SAME PRODUCT ROWS
+  // =================================================
+
+  const alreadySelectedQty =
+    updatedProducts.reduce(
+      (sum, product, i) => {
+
+        if (i === index)
+          return sum;
+
+        const sameProduct =
+          product.product_name ===
+            currentProduct.product_name &&
+
+          (product.category || "") ===
+            (currentProduct.category || "") &&
+
+          (product.company || "") ===
+            (currentProduct.company || "") &&
+
+          (product.specification || "") ===
+            (currentProduct.specification || "");
+
+        if (!sameProduct)
+          return sum;
+
+        return (
+          sum +
+          Number(product.quantity || 0)
+        );
+
+      },
+      0
+    );
+
+
+  // =================================================
+  // FIFO CALCULATION
+  // =================================================
+
+  const fifo =
+    calculateFIFOForProduct(
+      currentProduct,
+      quantity,
+      alreadySelectedQty
+    );
+
+
+  updatedProducts[index] = {
+
+    ...currentProduct,
+
+    quantity,
+
+    total:
+      fifo.total,
+
+    fifo_allocations:
+      fifo.allocations,
+
+  };
+
+
+  // =================================================
+  // UPDATE STOCK DISPLAY FOR SAME PRODUCTS
+  // =================================================
+
+  updatedProducts.forEach(
+    (product, i) => {
+
+      if (i === index)
+        return;
+
+
+      const sameProduct =
+        product.product_name ===
+          currentProduct.product_name &&
+
+        (product.category || "") ===
+          (currentProduct.category || "") &&
+
+        (product.company || "") ===
+          (currentProduct.company || "") &&
+
+        (product.specification || "") ===
+          (currentProduct.specification || "");
+
+
+      if (!sameProduct)
+        return;
+
+
+      const totalStock =
         inventoryProducts
-          .filter(
-            p =>
-              p.category === item.category &&
-              p.company === item.company &&
-              p.specification === item.specification
-          )
+          .filter((p) => {
+
+            return (
+              p.product_name ===
+                currentProduct.product_name &&
+
+              (p.category || "") ===
+                (currentProduct.category || "") &&
+
+              (p.company || "") ===
+                (currentProduct.company || "") &&
+
+              (p.specification || "") ===
+                (currentProduct.specification || "")
+            );
+
+          })
           .reduce(
             (sum, p) =>
-              sum + Number(p.quantity || 0),
+              sum +
+              Number(p.quantity || 0),
             0
           );
 
 
-      const otherUsedQty =
+      const usedByOtherRows =
         updatedProducts.reduce(
           (sum, p, j) => {
 
-            if (
-              j !== i &&
-              p.category === item.category &&
-              p.company === item.company &&
-              p.specification === item.specification
-            ) {
+            if (j === i)
+              return sum;
 
-              return sum + Number(p.quantity || 0);
+            const same =
+              p.product_name ===
+                currentProduct.product_name &&
 
-            }
+              (p.category || "") ===
+                (currentProduct.category || "") &&
 
-            return sum;
+              (p.company || "") ===
+                (currentProduct.company || "") &&
+
+              (p.specification || "") ===
+                (currentProduct.specification || "");
+
+            if (!same)
+              return sum;
+
+            return (
+              sum +
+              Number(p.quantity || 0)
+            );
 
           },
           0
         );
 
 
-      item.stock =
-        originalStock - otherUsedQty;
-
+      product.stock =
+        Math.max(
+          0,
+          totalStock -
+            usedByOtherRows
+        );
 
     }
-
-  });
-
+  );
 
 
-  updateTotals(updatedProducts);
+  updateTotals(
+    updatedProducts
+  );
 
 }
 
@@ -1228,9 +1631,7 @@ Quantity
 </th>
 
 
-<th className="text-center p-2">
-Unit Price
-</th>
+
 
 
 <th className="text-center p-2">
@@ -1311,7 +1712,7 @@ Select Product
       key={p.id}
       value={p.id}
     >
-      {`${displayName} | ₹${Math.round(calculateUnitCost(p))}`}
+      {displayName}
     </option>
   );
 
@@ -1385,30 +1786,6 @@ className="border p-2 rounded w-30"
 
 
 </td>
-
-
-
-
-
-
-<td className="p-3">
-
-
-<input
-
-readOnly
-
-  value={`₹ ${Math.round(product.unit_price || 0)}`}
-
-className="border p-1 rounded w-30"
-
-/>
-
-
-</td>
-
-
-
 
 
 

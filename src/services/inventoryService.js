@@ -219,10 +219,10 @@ function preparePurchaseItem(
   existingRow = null
 ) {
   const type =
-    item.type ||
-    item.purchase_type ||
-    "Product";
-
+  item.type ||
+  item.purchase_type ||
+  item.category ||
+  "Product";
   // ===================================================
   // TRANSPORTATION
   // ===================================================
@@ -237,162 +237,170 @@ function preparePurchaseItem(
     );
 
   // ===================================================
-  // KIT
-  // ===================================================
+// KIT
+// ===================================================
 
-  if (type === "Kit") {
-    const kitValue =
-      Number(
-        item.kit_overall_value ||
-          item.price ||
-          0
-      );
+if (type === "Kit") {
 
-    const kitGST =
-      Number(
-        item.kit_gst ??
-          item.gst ??
-          0
-      );
+  const kitValue =
+    Number(
+      item.kit_overall_value ??
+      item.price ??
+      0
+    );
 
-    const kitGSTAmount =
-      (kitValue * kitGST) /
-      100;
+  const kitGST =
+    Number(
+      item.kit_gst ??
+      item.gst ??
+      0
+    );
 
-    const totalAmount =
-      kitValue +
-      kitGSTAmount +
-      rowTransportation;
+  const kitGSTAmount =
+    (kitValue * kitGST) / 100;
 
-    const panelQty =
-      Number(
-        item.kit_panel_qty ??
-          item.quantity ??
-          0
-      );
+  const totalAmount =
+    kitValue +
+    kitGSTAmount +
+    rowTransportation;
 
-    const kitName =
-      item.kit_name ||
-      item.product_name ||
-      "";
+  // IMPORTANT:
+  // quantity = NUMBER OF KITS
+  const kitQty =
+    Number(
+      item.quantity ??
+      item.kit_quantity ??
+      0
+    );
 
-    return {
-      ...(existingRow?.id
-        ? { id: existingRow.id }
-        : {}),
+  const kitName =
+    item.kit_name ||
+    item.product_name ||
+    "";
 
-      date,
-      supplier,
+  return {
+    ...(existingRow?.id
+      ? { id: existingRow.id }
+      : {}),
 
-      product_name:
-        kitName,
+    date,
+    supplier,
 
-      category:
-        "Kit",
+    product_name:
+      kitName,
 
-      company:
-        item.company ||
-        kitName
-          .replace(
-            /\s+Kit$/i,
-            ""
+    category:
+      "Kit",
+
+    company:
+      item.company ||
+      kitName
+        .replace(
+          /\s+Kit$/i,
+          ""
+        )
+        .trim(),
+
+    specification:
+      item.kit_panel_watt ||
+      item.specification ||
+      "",
+
+    // IMPORTANT
+    // Inventory quantity = number of kits
+    quantity:
+      kitQty,
+
+    purchased_quantity:
+      existingRow
+        ? Number(
+            existingRow.purchased_quantity ??
+            existingRow.quantity ??
+            kitQty
           )
-          .trim(),
+        : kitQty,
 
-      specification:
-        item.kit_panel_watt ||
-        item.specification ||
-        "",
+    used_quantity:
+      existingRow
+        ? Number(
+            existingRow.used_quantity || 0
+          )
+        : 0,
 
-      quantity:
-        panelQty,
+    unit:
+      "Kit",
 
-      purchased_quantity:
-        existingRow
-          ? Number(
-              existingRow.purchased_quantity ??
-                existingRow.quantity ??
-                panelQty
-            )
-          : panelQty,
+    price:
+      kitValue,
 
-      used_quantity:
-        existingRow
-          ? Number(
-              existingRow.used_quantity ||
-                0
-            )
-          : 0,
+    total_weight:
+      0,
 
-      unit:
-        "Kit",
+    gst:
+      kitGST,
 
-      price:
-        kitValue,
+    cgst:
+      0,
 
-      total_weight:
-        0,
+    sgst:
+      0,
 
-      gst:
-        kitGST,
+    transportation:
+      rowTransportation,
 
-      cgst:
-        0,
+    total_amount:
+      totalAmount,
 
-      sgst:
-        0,
+    // IMPORTANT:
+    // Cost per KIT
+    unit_cost:
+      kitQty > 0
+        ? totalAmount / kitQty
+        : 0,
 
-      transportation:
-        rowTransportation,
+    remarks:
+      item.remarks ||
+      "Includes Panel, Inverter, ACDB, DCDB and Earthing Kit",
 
-      total_amount:
-        totalAmount,
+    active:
+      existingRow?.active ??
+      true,
 
-      unit_cost:
-        panelQty > 0
-          ? totalAmount /
-            panelQty
-          : 0,
+    is_default:
+      existingRow?.is_default ??
+      false,
 
-      remarks:
-        item.remarks ||
-        "Includes Panel, Inverter, ACDB, DCDB and Earthing Kit",
+    batch_id:
+      batchId,
 
-      active:
-        existingRow?.active ??
-        true,
+    purchase_type:
+      "Kit",
 
-      is_default:
-        existingRow?.is_default ??
-        false,
+    kit_name:
+      kitName,
 
-      batch_id:
-        batchId,
+    kit_panel_watt:
+      item.kit_panel_watt ||
+      null,
 
-      purchase_type:
-        "Kit",
+    // This is only informational:
+    // number of panels inside one kit
+    kit_panel_qty:
+      Number(
+        item.kit_panel_qty || 0
+      ),
 
-      kit_name:
-        kitName,
+    kit_inverter_brand:
+      item.kit_inverter_brand ||
+      null,
 
-      kit_panel_watt:
-        item.kit_panel_watt ||
-        null,
+    kit_overall_value:
+      kitValue,
 
-      kit_panel_qty:
-        panelQty,
-
-      kit_inverter_brand:
-        item.kit_inverter_brand ||
-        null,
-
-      kit_overall_value:
-        kitValue,
-
-      kit_gst:
-        kitGST,
-    };
-  }
+    kit_gst:
+      kitGST,
+  };
+}
 
   // ===================================================
   // NORMAL PRODUCT
@@ -574,6 +582,41 @@ function preparePurchaseItem(
   };
 }
 
+
+// =====================================================
+// GET PURCHASE QUANTITY
+//
+// IMPORTANT
+// -----------------------------------------------------
+// Normal Product:
+//   quantity = product quantity
+//
+// Kit:
+//   quantity = NUMBER OF KITS
+//
+// kit_panel_qty is ONLY informational.
+// It must NEVER be used as stock quantity.
+// =====================================================
+
+function getPurchaseQuantity(item) {
+  const type =
+    item.type ||
+    item.purchase_type ||
+    item.category;
+
+  if (type === "Kit") {
+    return Number(
+      item.quantity ??
+      item.kit_quantity ??
+      0
+    );
+  }
+
+  return Number(
+    item.quantity ?? 0
+  );
+}
+
 // =====================================================
 // ADD INVENTORY
 //
@@ -614,11 +657,7 @@ const totalQuantity =
   products.reduce(
     (sum, item) =>
       sum +
-      Number(
-        item.quantity ||
-          item.kit_panel_qty ||
-          0
-      ),
+      getPurchaseQuantity(item),
     0
   );
 
@@ -639,11 +678,7 @@ const rows =
         products.length - 1;
 
       const itemQuantity =
-  Number(
-    item.quantity ??
-      item.kit_panel_qty ??
-      0
-  );
+  getPurchaseQuantity(item);
 
 const row =
   preparePurchaseItem(
@@ -754,11 +789,7 @@ const totalQuantity =
   products.reduce(
     (sum, item) =>
       sum +
-      Number(
-        item.quantity ||
-          item.kit_panel_qty ||
-          0
-      ),
+      getPurchaseQuantity(item),
     0
   );
 
@@ -793,12 +824,8 @@ const preparedRows =
         index ===
         products.length - 1;
 
-      const itemQuantity =
-  Number(
-    item.quantity ??
-      item.kit_panel_qty ??
-      0
-  );
+     const itemQuantity =
+  getPurchaseQuantity(item);
 
 const row =
   preparePurchaseItem(
@@ -945,11 +972,7 @@ export async function updateInventory(
     createBatchId();
 
   const itemQuantity =
-  Number(
-    item.quantity ||
-      item.kit_panel_qty ||
-      0
-  );
+  getPurchaseQuantity(item);
 
 const row =
   preparePurchaseItem(
@@ -1016,45 +1039,78 @@ export async function deleteInventory(
 // CALCULATE UNIT COST
 // =====================================================
 
-export function calculateUnitCost(
-  product
-) {
-  if (
+// =====================================================
+// CALCULATE UNIT COST
+//
+// IMPORTANT
+// -----------------------------------------------------
+// Normal Product:
+//   Unit Cost = Total Amount / Quantity
+//
+// KG Product:
+//   Unit Cost = Total Amount / Total Weight
+//
+// Kit:
+//   Unit Cost = Total Kit Amount / KIT QUANTITY
+//
+// IMPORTANT:
+// Kit quantity MUST use inventory.quantity.
+// Do NOT use kit_panel_qty here.
+// =====================================================
+
+export function calculateUnitCost(product) {
+
+  const isKit =
     product.type === "Kit" ||
-    product.purchase_type === "Kit"
-  ) {
-    const value =
-      calculateKitBase(
-        product
-      );
+    product.purchase_type === "Kit" ||
+    product.category === "Kit";
 
-    const gst =
-      calculateKitGST(
-        product
-      );
+  // ===================================================
+  // KIT
+  // ===================================================
 
-    const transport =
+  if (isKit) {
+
+    const kitValue =
       Number(
-        product.transportation ||
-          0
+        product.kit_overall_value ??
+        product.price ??
+        0
       );
 
-    const total =
-      value +
-      gst +
-      transport;
-
-    const quantity =
+    const kitGST =
       Number(
-        product.kit_panel_qty ??
-          product.quantity ??
-          0
+        product.kit_gst ??
+        product.gst ??
+        0
       );
 
-    return quantity > 0
-      ? total / quantity
+    const gstAmount =
+      (kitValue * kitGST) / 100;
+
+    const transportation =
+      Number(
+        product.transportation || 0
+      );
+
+    const totalAmount =
+      kitValue +
+      gstAmount +
+      transportation;
+
+    // IMPORTANT:
+    // Kit quantity comes from inventory.quantity.
+    // NOT kit_panel_qty.
+    product.kit_panel_qty
+
+    return kitQuantity > 0
+      ? totalAmount / kitQuantity
       : 0;
   }
+
+  // ===================================================
+  // NORMAL PRODUCT
+  // ===================================================
 
   const quantity =
     Number(
@@ -1063,24 +1119,18 @@ export function calculateUnitCost(
 
   const totalWeight =
     Number(
-      product.total_weight ||
-        0
+      product.total_weight || 0
     );
 
   const baseAmount =
-    calculateProductBase(
-      product
-    );
+    calculateProductBase(product);
 
   const gstAmount =
-    calculateProductGST(
-      product
-    );
+    calculateProductGST(product);
 
   const transportation =
     Number(
-      product.transportation ||
-        0
+      product.transportation || 0
     );
 
   const totalAmount =
@@ -1094,8 +1144,7 @@ export function calculateUnitCost(
       : quantity;
 
   return totalUnits > 0
-    ? totalAmount /
-        totalUnits
+    ? totalAmount / totalUnits
     : 0;
 }
 
@@ -1104,6 +1153,7 @@ export function calculateUnitCost(
 // =====================================================
 
 export async function getInventoryProducts() {
+
   const {
     data,
     error,
@@ -1134,14 +1184,12 @@ export async function getInventoryProducts() {
       kit_panel_qty,
       kit_inverter_brand,
       kit_overall_value,
-      kit_gst
+      kit_gst,
+      date
     `)
-    .order(
-      "product_name",
-      {
-        ascending: true,
-      }
-    );
+    .order("date", {
+      ascending: true,
+    });
 
   if (error) {
     throw error;
