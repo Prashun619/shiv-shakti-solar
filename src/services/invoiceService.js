@@ -37,9 +37,9 @@ export async function getLastInvoiceNumber() {
 
 export async function getInvoiceCustomers() {
   const { data, error } = await supabase
-    .from("customers")
-    .select("id, customer_name, address")
-    .order("customer_name");
+  .from("customers")
+  .select("*")
+  .order("created_at", { ascending: true });
 
   if (error) throw error;
 

@@ -22,6 +22,7 @@ export default function CustomerModal({
   const initialForm = {
     customer_name: "",
     mobile: "",
+    vendor_name: "",
     email: "",
     address: "",
     location: "",
@@ -63,6 +64,9 @@ export default function CustomerModal({
 
       mobile:
         customer.mobile || "",
+
+      vendor_name:
+  customer.vendor_name || "",  
 
       email:
         customer.email || "",
@@ -364,6 +368,14 @@ value={form.mobile}
 onChange={handleChange}
 className="border rounded-lg px-3 py-2"
 />
+
+<input
+  name="vendor_name"
+  placeholder="Vendor Name"
+  value={form.vendor_name}
+  onChange={handleChange}
+  className="border rounded-lg px-3 py-2"
+/>  
 
 <input
 name="email"

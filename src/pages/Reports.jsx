@@ -11,7 +11,6 @@ import { exportProfitPDF } from "../services/reports/profitPDF";
 import { exportProfitCSV } from "../services/reports/profitCSV";
 import {
   getCustomerReport,
-  getProjectReport,
   exportCustomerCSV,
 } from "../services/reportService";
 
@@ -161,23 +160,7 @@ async function loadCustomers() {
 }
 
 
-/* ===========================
-   LOAD PROJECTS
-=========================== */
 
-async function loadProjects() {
-  try {
-    setLoading(true);
-
-    const data = await getProjectReport();
-
-    setProjects(data);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-}
 
 
 /* ===========================
@@ -272,64 +255,12 @@ async function loadProfit() {
   try {
     setLoading(true);
 
-    const projects = await getProjectReport();
-    const usedInventory = await getUsedInventory();
+    const data = await getProfitReport();
 
-    const result = projects.map((project) => {
-
-      const used = usedInventory.find(
-        (item) => item.project_no === project.project_no
-      );
-
-      const sellingAmount = Number(project.total_amount || 0);
-
-      const materialCost = Number(
-        used?.material_cost || 0
-      );
-
-      const otherCost =
-        Number(used?.installation_charges || 0) +
-        Number(used?.civil_material || 0) +
-        Number(used?.vendor_charges || 0) +
-        Number(used?.agreement_charges || 0) +
-        Number(used?.je_charges || 0) +
-        Number(used?.name_change_charges || 0) +
-        Number(used?.load_extension_charges || 0) +
-        Number(used?.net_metering_charges || 0);
-
-      const totalCost =
-        materialCost + otherCost;
-
-      const profitAmount =
-        sellingAmount - totalCost;
-
-      const profitPercent =
-        sellingAmount > 0
-          ? (
-              (profitAmount / sellingAmount) *
-              100
-            ).toFixed(2)
-          : "0.00";
-
-      return {
-        id: project.id,
-        project_no: project.project_no,
-        customer_name:
-          project.customers?.customer_name || "",
-        project_size:
-          project.project_size || "",
-        selling_amount: sellingAmount,
-        material_cost: materialCost,
-        other_cost: otherCost,
-        total_cost: totalCost,
-        profit_amount: profitAmount,
-        profit_percent: profitPercent,
-      };
-    });
-
-    setProfitData(result);
+    setProfitData(data || []);
   } catch (err) {
-    console.error(err);
+    console.error("Profit Report Error:", err);
+    setProfitData([]);
   } finally {
     setLoading(false);
   }
@@ -2408,12 +2339,7 @@ const reports = [
     icon: Users,
     color: "blue",
   },
-  {
-    id: "projects",
-    title: "Projects",
-    icon: FolderKanban,
-    color: "emerald",
-  },
+  
   {
     id: "inventory",
     title: "Inventory",
@@ -2498,7 +2424,6 @@ return (
               setSelectedReport(report.id);
 
               if (report.id === "customers") loadCustomers();
-              if (report.id === "projects") loadProjects();
               if (report.id === "inventory") loadInventory();
               if (report.id === "payments") loadPayments();
               if (report.id === "profit") loadProfit();
@@ -2586,9 +2511,7 @@ return (
     }
 
 
-    if (selectedReport === "projects") {
-      await exportProjectExcel(filteredProjects);
-    }
+    
 
 
     if (selectedReport === "inventory") {
@@ -3015,8 +2938,8 @@ if (selectedReport === "investment") {
             </th>
 
             <th className="border border-black p-3 text-center">
-              Mobile
-            </th>
+  Vendor Name
+</th>
 
             <th className="border border-black p-3 text-center">
               Payment Type
@@ -3119,11 +3042,11 @@ if (selectedReport === "investment") {
                       {customer.customer_name || "-"}
                     </td>
 
-                    {/* MOBILE */}
+                    {/* Vendor */}
 
                     <td className="border border-black p-3 text-center">
-                      {customer.mobile || "-"}
-                    </td>
+  {customer.vendor_name || "-"}
+</td>
 
                     {/* PAYMENT TYPE */}
 
@@ -3934,95 +3857,74 @@ if (selectedReport === "investment") {
     <table className="min-w-full border-collapse text-sm">
 
       <thead className="bg-gradient-to-r from-green-700 to-emerald-600 text-white">
-
-        <tr>
-
-          <th className="border border-black p-3 text-center">S.No</th>
-          <th className="border border-black p-3 text-center">Project No</th>
-          <th className="border border-black p-3 text-center">Customer</th>
-          <th className="border border-black p-3 text-center">Plant Size</th>
-          <th className="border border-black p-3 text-center">Selling Amount</th>
-          <th className="border border-black p-3 text-center">Material Cost</th>
-          <th className="border border-black p-3 text-center">Other Cost</th>
-          <th className="border border-black p-3 text-center">Total Cost</th>
-          <th className="border border-black p-3 text-center">Profit</th>
-          <th className="border border-black p-3 text-center">Profit %</th>
-
-        </tr>
-
-      </thead>
+  <tr>
+    <th className="border border-black p-3 text-center">S.No</th>
+    <th className="border border-black p-3 text-center">Project No</th>
+    <th className="border border-black p-3 text-center">Customer</th>
+    <th className="border border-black p-3 text-center">Plant Size</th>
+    <th className="border border-black p-3 text-center">
+      Plant Total Value
+    </th>
+    <th className="border border-black p-3 text-center">
+      Plant Cost
+    </th>
+    <th className="border border-black p-3 text-center">
+      Profit
+    </th>
+    <th className="border border-black p-3 text-center">
+      Profit %
+    </th>
+  </tr>
+</thead>
 
       <tbody>
+  {filteredProfit.length === 0 ? (
+    <tr>
+      <td
+        colSpan="8"
+        className="border border-black text-center py-6"
+      >
+        No Profit Data Found
+      </td>
+    </tr>
+  ) : (
+    filteredProfit.map((item, index) => (
+      <tr key={item.id} className="hover:bg-green-50">
+        <td className="p-3 border border-black text-center">
+          {index + 1}
+        </td>
 
-        {filteredProfit.length === 0 ? (
+        <td className="p-3 border border-black text-center">
+          {item.project_no}
+        </td>
 
-          <tr>
+        <td className="p-3 border border-black text-center">
+          {item.customer_name}
+        </td>
 
-            <td
-  colSpan="10"
-  className="border border-black text-center py-6"
->
-  No Profit Data Found
-</td>
+        <td className="p-3 border border-black text-center">
+          {item.project_size}
+        </td>
 
-          </tr>
+        <td className="p-3 border border-black text-center">
+          ₹ {Number(item.selling_amount || 0).toLocaleString()}
+        </td>
 
-        ) : (
+        <td className="p-3 border border-black text-center">
+          ₹ {Number(item.total_cost || 0).toLocaleString()}
+        </td>
 
-          filteredProfit.map((item, index) => (
+        <td className="p-3 border border-black text-center font-bold text-green-700">
+          ₹ {Number(item.profit_amount || 0).toLocaleString()}
+        </td>
 
-            <tr
-              key={item.id}
-              className="hover:bg-green-50"
-            >
-
-              <td className="p-3 border border-black text-center">
-                {index + 1}
-              </td>
-
-              <td className="p-3 border border-black text-center">
-                {item.project_no}
-              </td>
-
-              <td className="p-3 border border-black text-center">
-                {item.customer_name}
-              </td>
-
-              <td className="p-3 border border-black text-center">
-                {item.project_size}
-              </td>
-
-              <td className="p-3 border border-black text-center">
-                ₹ {Number(item.selling_amount || 0).toLocaleString()}
-              </td>
-
-              <td className="p-3 border border-black text-center">
-                ₹ {Number(item.material_cost || 0).toLocaleString()}
-              </td>
-
-              <td className="p-3 border border-black text-center">
-                ₹ {Number(item.other_cost || 0).toLocaleString()}
-              </td>
-
-              <td className="p-3 border border-black text-center">
-                ₹ {Number(item.total_cost || 0).toLocaleString()}
-              </td>
-
-              <td className="p-3 border border-black text-center font-bold text-green-700">
-                ₹ {Number(item.profit_amount || 0).toLocaleString()}
-              </td>
-
-              <td className="p-3 border border-black text-center">
-                {item.profit_percent}%
-              </td>
-
-            </tr>
-
-          ))
-
-        )}
-
-      </tbody>
+        <td className="p-3 border border-black text-center">
+          {Number(item.profit_percent || 0).toFixed(2)}%
+        </td>
+      </tr>
+    ))
+  )}
+</tbody>
 
     </table>
 

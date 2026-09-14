@@ -59,7 +59,7 @@ export const plantTemplates = {
     { item: "Inverter", qty: 1 },
 
     { item: "Rafter", qty: 6 },
-    { item: "Perlin", qty: 6 },
+    { item: "Purlin 13 ft", qty: 6 },
 
     { item: "Leg 6ft", qty: 6 },
     { item: "Leg 8ft", qty: 0 },
@@ -80,8 +80,8 @@ export const plantTemplates = {
     { item: "LA Wire", qty: 10 },
     { item: "Armoured Wire", qty: 20 },
 
-    { item: "L Clamp", qty: 10 },
-    { item: "U Clamp", qty: 10 },
+    { item: "End Clamp", qty: 10 },
+{ item: "Mid Clamp", qty: 10 },
 
     { item: "MC4 Connector", qty: 4 },
 
@@ -123,8 +123,8 @@ export const plantTemplates = {
     { item: "LA Wire", qty: 10 },
     { item: "Armoured Wire", qty: 20 },
 
-    { item: "L Clamp", qty: 10 },
-    { item: "U Clamp", qty: 10 },
+    { item: "End Clamp", qty: 10 },
+{ item: "Mid Clamp", qty: 10 },
 
     { item: "MC4 Connector", qty: 4 },
 
@@ -145,7 +145,7 @@ export const plantTemplates = {
     { item: "Inverter", qty: 1 },
 
     { item: "Rafter", qty: 10 },
-    { item: "Perlin", qty: 10 },
+    { item: "Purlin 21 ft", qty: 10 },
 
     { item: "Leg 6ft", qty: 10 },
     { item: "Leg 8ft", qty: 0 },
@@ -166,8 +166,8 @@ export const plantTemplates = {
     { item: "LA Wire", qty: 15 },
     { item: "Armoured Wire", qty: 30 },
 
-    { item: "L Clamp", qty: 15 },
-    { item: "U Clamp", qty: 15 },
+    { item: "End Clamp", qty: 15 },
+{ item: "Mid Clamp", qty: 15 },
 
     { item: "MC4 Connector", qty: 6 },
 

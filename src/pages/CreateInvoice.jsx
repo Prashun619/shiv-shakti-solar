@@ -195,90 +195,95 @@ loadPage();
 
 
 
-async function loadPage(){
+async function loadPage() {
+  const customerList = await getInvoiceCustomers();
 
+  const invoices = await getInvoices();
 
-const customerList =
-await getInvoiceCustomers();
+  setInvoiceList(invoices);
 
-setCustomers(customerList);
+  if (invoiceId) {
+    const invoice = await getInvoiceById(invoiceId);
 
+    setEditMode(true);
 
+    setInvoiceNumber(
+      invoice.invoice_number
+    );
 
-const invoices =
-await getInvoices();
+    setInvoiceDate(
+      invoice.invoice_date
+    );
 
-setInvoiceList(invoices);
+    setCustomerId(
+      invoice.customer_id
+    );
 
+    setCustomerName(
+      invoice.customer_name
+    );
 
+    setCustomerAddress(
+      invoice.customer_address
+    );
 
+    setItems(
+      invoice.items || []
+    );
 
+    setTotal(
+      invoice.total
+    );
 
-if(invoiceId){
+    /*
+     * EDIT MODE
+     *
+     * Keep the customer of the current invoice
+     * visible in the dropdown.
+     *
+     * Hide all other customers who already have
+     * an invoice.
+     */
+    const invoicedCustomerIds = new Set(
+      invoices
+        .map((invoice) => invoice.customer_id)
+        .filter(Boolean)
+    );
 
+    const availableCustomers =
+      customerList.filter(
+        (customer) =>
+          !invoicedCustomerIds.has(customer.id) ||
+          customer.id === invoice.customer_id
+      );
 
-const invoice =
-await getInvoiceById(invoiceId);
+    setCustomers(availableCustomers);
+  } else {
+    /*
+     * CREATE MODE
+     *
+     * Only show customers who do NOT already
+     * have an invoice.
+     */
+    const invoicedCustomerIds = new Set(
+      invoices
+        .map((invoice) => invoice.customer_id)
+        .filter(Boolean)
+    );
 
+    const availableCustomers =
+      customerList.filter(
+        (customer) =>
+          !invoicedCustomerIds.has(customer.id)
+      );
 
+    setCustomers(availableCustomers);
 
-setEditMode(true);
+    const nextInvoice =
+      await getLastInvoiceNumber();
 
-
-
-setInvoiceNumber(
-invoice.invoice_number
-);
-
-
-setInvoiceDate(
-invoice.invoice_date
-);
-
-
-setCustomerId(
-invoice.customer_id
-);
-
-
-setCustomerName(
-invoice.customer_name
-);
-
-
-setCustomerAddress(
-invoice.customer_address
-);
-
-
-
-setItems(
-invoice.items || []
-);
-
-
-
-setTotal(
-invoice.total
-);
-
-
-
-}
-else{
-
-
-const nextInvoice =
-await getLastInvoiceNumber();
-
-
-setInvoiceNumber(nextInvoice);
-
-
-}
-
-
-
+    setInvoiceNumber(nextInvoice);
+  }
 }
 
 async function handleSave(){

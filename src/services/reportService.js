@@ -41,7 +41,6 @@ export async function getProjectReport() {
 // =====================================================
 
 export async function getCustomerReport() {
-
   // ===================================================
   // GET CUSTOMERS
   // ===================================================
@@ -53,6 +52,7 @@ export async function getCustomerReport() {
         id,
         customer_name,
         mobile,
+        vendor_name,
         payment_type,
         plant_size
       `)
@@ -103,12 +103,10 @@ export async function getCustomerReport() {
   const projectMap = new Map();
 
   (projects || []).forEach((project) => {
-
     projectMap.set(
       project.customer_id,
       project
     );
-
   });
 
   // ===================================================
@@ -116,7 +114,6 @@ export async function getCustomerReport() {
   // ===================================================
 
   return customers.map((customer) => {
-
     const project =
       projectMap.get(customer.id);
 
@@ -150,7 +147,6 @@ export async function getCustomerReport() {
     // -----------------------------------------------
 
     return {
-
       // Customer information
       id: customer.id,
 
@@ -159,6 +155,9 @@ export async function getCustomerReport() {
 
       mobile:
         customer.mobile || "",
+
+      vendor_name:
+        customer.vendor_name || "",
 
       payment_type:
         customer.payment_type || "",
@@ -471,13 +470,16 @@ function formatProjectNumber(value) {
     return text;
   }
 
-  const lastNumber = Number(numbers[numbers.length - 1]);
+  const lastNumber =
+    Number(numbers[numbers.length - 1]);
 
   const year =
     numbers.find((n) => n.length === 4) ||
     new Date().getFullYear();
 
-  return `PRJ-${year}-${String(lastNumber).padStart(4, "0")}`;
+  return `PRJ-${year}-${String(
+    lastNumber
+  ).padStart(4, "0")}`;
 }
 
 // =====================================================
@@ -597,7 +599,7 @@ export async function exportCustomerCSV(
   // COMPANY HEADER
   // ===================================================
 
-  sheet.mergeCells("A1:J1");
+  sheet.mergeCells("A1:K1");
 
   const company =
     sheet.getCell("A1");
@@ -629,7 +631,7 @@ export async function exportCustomerCSV(
   // REPORT TITLE
   // ===================================================
 
-  sheet.mergeCells("A2:J2");
+  sheet.mergeCells("A2:K2");
 
   const title =
     sheet.getCell("A2");
@@ -727,7 +729,6 @@ export async function exportCustomerCSV(
   // SUMMARY
   // ===================================================
 
-  // Empty row below title
   sheet.addRow([]);
 
   // ---------------------------------------------------
@@ -811,6 +812,7 @@ export async function exportCustomerCSV(
       "Project No",
       "Customer Name",
       "Mobile",
+      "Vendor Name",
       "Payment Type",
       "Plant Size",
       "Total Cost",
@@ -869,6 +871,9 @@ export async function exportCustomerCSV(
           customer.mobile ||
             "",
 
+          customer.vendor_name ||
+            "",
+
           customer.payment_type ||
             "",
 
@@ -897,14 +902,20 @@ export async function exportCustomerCSV(
       row.getCell(1)
         .numFmt = "0";
 
-      // Money
-      row.getCell(7)
-        .numFmt = "#,##0.00";
+      // =================================================
+      // MONEY
+      // =================================================
 
+      // Total Cost
       row.getCell(8)
         .numFmt = "#,##0.00";
 
+      // Received
       row.getCell(9)
+        .numFmt = "#,##0.00";
+
+      // Remaining
+      row.getCell(10)
         .numFmt = "#,##0.00";
 
       // =================================================
@@ -919,7 +930,7 @@ export async function exportCustomerCSV(
       if (
         status === "completed"
       ) {
-        row.getCell(10).font = {
+        row.getCell(11).font = {
           bold: true,
           color: {
             argb: "16A34A",
@@ -930,7 +941,7 @@ export async function exportCustomerCSV(
       if (
         status === "pending"
       ) {
-        row.getCell(10).font = {
+        row.getCell(11).font = {
           bold: true,
           color: {
             argb: "DC2626",
@@ -949,6 +960,7 @@ export async function exportCustomerCSV(
     20,  // Project No
     28,  // Customer Name
     16,  // Mobile
+    20,  // Vendor Name
     18,  // Payment Type
     15,  // Plant Size
     18,  // Total Cost

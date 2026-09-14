@@ -35,7 +35,10 @@ const [paymentAmount, setPaymentAmount] = useState("");
 const [paymentMode, setPaymentMode] = useState("");
 const [paymentReference, setPaymentReference] = useState("");
 const today = new Date().toISOString().split("T")[0];
-
+const formatAmount = (value) =>
+  `₹ ${Number(value || 0).toLocaleString("en-IN", {
+    maximumFractionDigits: 0,
+  })}`;
 const totalCustomers = customers.length;
 
 const cashCustomers = customers.filter(
@@ -474,7 +477,7 @@ loadCustomers();
 
             <tr>
 
-<th className="px-3 py-3 text-left whitespace-nowrap border border-black">
+<th className="px-3 py-3 text-center whitespace-nowrap border border-black">
   Project No
 </th>
 
@@ -483,7 +486,7 @@ loadCustomers();
 </th>
 
 <th className="px-3 py-3 text-center whitespace-nowrap border border-black">
-  Mobile
+  Vendor Name
 </th>
 
 <th className="px-3 py-3 text-center whitespace-nowrap border border-black">
@@ -571,7 +574,7 @@ Payment Type
 
                   
 
-  <td className="px-3 py-3 border border-black">
+  <td className="px-3 py-2 border border-black text-center">
 
   <button
     type="button"
@@ -583,17 +586,15 @@ Payment Type
 
 </td>
 
-<td className="px-3 py-3 border border-black">
-
+<td className="px-3 py-2 border border-black text-center">
   <p className="font-semibold text-slate-800">
     {customer.customer_name}
   </p>
-
 </td>
 
 
-<td className="px-3 py-3 border border-black text-sm text-slate-700 whitespace-nowrap">
-  {customer.mobile || "-"}
+<td className="px-3 py-2 border border-black text-center">
+  {customer.vendor_name || "-"}
 </td>
 
 
@@ -613,22 +614,22 @@ customer.payment_type === "Finance"
 
 
 <td className="px-3 py-3 border border-black text-center text-sm text-slate-700">
-  {customer.project?.project_size || customer.plant_size || "-"} kW
+  {customer.project?.project_size || customer.plant_size || "-"} KW
 </td>
 
 
 <td className="px-3 py-3 border border-black text-center font-semibold">
-  ₹ {Number(customer.project?.total_amount || 0).toLocaleString()}
+  {formatAmount(customer.project?.total_amount)}
 </td>
 
 
-<td className="px-3 py-3 border border-black text-center text-green-600 font-semibold">
-  ₹ {Number(customer.project?.received || 0).toLocaleString()}
+<td className="px-3 py-2 border border-black text-center text-green-600 font-semibold">
+  {formatAmount(customer.project?.received)}
 </td>
 
 
-<td className="px-3 py-3 border border-black text-center text-red-600 font-semibold">
-  ₹ {Number(customer.project?.remaining || 0).toLocaleString()}
+<td className="px-3 py-2 border border-black text-center text-red-600 font-semibold">
+  {formatAmount(customer.project?.remaining)}
 </td>
 
 
@@ -647,29 +648,26 @@ customer.payment_type === "Finance"
 </td>
 
 
-<td className="px-3 py-3 border border-black whitespace-nowrap">
-
-  <div className="flex justify-center gap-3">
+<td className="px-3 py-2 border border-black whitespace-nowrap text-center">
+  <div className="flex justify-center gap-2">
 
     <button
       onClick={() => handleEditCustomer(customer)}
       title="Edit Customer"
-      className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 hover:bg-sky-600 hover:text-white transition-all duration-200 flex items-center justify-center shadow"
+      className="w-8 h-8 rounded-full bg-sky-100 text-sky-700 hover:bg-sky-600 hover:text-white transition-all duration-200 flex items-center justify-center shadow"
     >
       ✏️
     </button>
 
-
     <button
       onClick={() => handleDelete(customer)}
       title="Delete Customer"
-      className="w-10 h-10 rounded-full bg-red-100 text-red-700 hover:bg-red-600 hover:text-white transition-all duration-200 flex items-center justify-center shadow"
+      className="w-8 h-8 rounded-full bg-red-100 text-red-700 hover:bg-red-600 hover:text-white transition-all duration-200 flex items-center justify-center shadow"
     >
       🗑️
     </button>
 
   </div>
-
 </td>
                   
 
@@ -968,7 +966,7 @@ customer.payment_type === "Finance"
           </p>
 
           <p className="text-sm font-bold mt-1">
-            {viewCustomer.project?.project_size || viewCustomer.plant_size || "-"} kW
+            {viewCustomer.project?.project_size || viewCustomer.plant_size || "-"} KW
           </p>
 
         </div>
@@ -1057,38 +1055,36 @@ Payment History
 </h3>
 
 
-<div className="overflow-x-auto border rounded-xl">
+<div className="overflow-x-auto border border-black rounded-lg">
 
 
-<table className="w-full">
+<table className="w-full text-xs border-collapse border border-black">
 
 
 <thead className="bg-slate-100">
+  <tr>
 
-<tr>
+    <th className="px-3 py-2 text-center text-xs border border-black">
+      Date
+    </th>
 
-<th className="px-4 py-3 text-left text-sm">
-Date
-</th>
+    <th className="px-3 py-2 text-center text-xs border border-black">
+      Amount
+    </th>
 
-<th className="px-4 py-3 text-left text-sm">
-Amount
-</th>
+    <th className="px-3 py-2 text-center text-xs border border-black">
+      Mode
+    </th>
 
-<th className="px-4 py-3 text-left text-sm">
-Mode
-</th>
+    <th className="px-3 py-2 text-center text-xs border border-black">
+      Reference
+    </th>
 
-<th className="px-4 py-3 text-left text-sm">
-Reference
-</th>
+    <th className="px-3 py-2 text-center text-xs border border-black">
+      Action
+    </th>
 
-<th className="px-4 py-3 text-center text-sm">
-Action
-</th>
-
-</tr>
-
+  </tr>
 </thead>
 
 
@@ -1100,63 +1096,43 @@ Action
 viewCustomer.payments.map((payment)=>(
 
 
-<tr key={payment.id} className="border-t">
+<tr key={payment.id}>
 
+  <td className="px-3 py-2 text-center border border-black">
+    {payment.payment_date}
+  </td>
 
-<td className="px-4 py-3 text-sm">
-{payment.payment_date}
-</td>
+  <td className="px-3 py-2 text-center font-semibold text-green-700 border border-black">
+    {formatAmount(payment.amount)}
+  </td>
 
+  <td className="px-3 py-2 text-center border border-black">
+    {payment.payment_mode || "-"}
+  </td>
 
-<td className="px-4 py-3 text-sm font-semibold text-green-700">
+  <td className="px-3 py-2 text-center border border-black">
+    {payment.reference_no || "-"}
+  </td>
 
-₹ {Number(payment.amount).toLocaleString()}
+  <td className="px-3 py-2 border border-black">
+    <div className="flex justify-center gap-2">
 
-</td>
+      <button
+        onClick={() => openEditPayment(payment)}
+        className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white flex items-center justify-center"
+      >
+        ✏️
+      </button>
 
+      <button
+        onClick={() => removePayment(payment)}
+        className="w-8 h-8 rounded-full bg-red-100 text-red-700 hover:bg-red-600 hover:text-white flex items-center justify-center"
+      >
+        🗑️
+      </button>
 
-<td className="px-4 py-3 text-sm">
-{payment.payment_mode || "-"}
-</td>
-
-
-<td className="px-4 py-3 text-sm">
-{payment.reference_no || "-"}
-</td>
-
-
-<td className="px-4 py-3">
-
-<div className="flex justify-center gap-2">
-
-
-<button
-
-onClick={()=>openEditPayment(payment)}
-
-className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white"
-
->
-✏️
-</button>
-
-
-
-<button
-
-onClick={()=>removePayment(payment)}
-
-className="w-9 h-9 rounded-full bg-red-100 text-red-700 hover:bg-red-600 hover:text-white"
-
->
-🗑️
-</button>
-
-
-</div>
-
-</td>
-
+    </div>
+  </td>
 
 </tr>
 

@@ -61,30 +61,37 @@ export async function addBilling(entry){
    DELETE BILLING
 ============================== */
 
-export async function deleteBilling(id){
+export async function deleteBilling(id) {
+  if (!id) return;
 
-
-  const {error}=await supabase
-
-    .from("billing")
-
+  // First delete any Expense Investment linked to this billing row
+  const { error: investmentError } = await supabase
+    .from("investments")
     .delete()
+    .eq("billing_id", id);
 
-    .eq("id",id);
+  if (investmentError) {
+    console.error(
+      "LINKED INVESTMENT DELETE ERROR:",
+      investmentError
+    );
+    throw investmentError;
+  }
 
+  // Then delete the billing transaction
+  const { error: billingError } = await supabase
+    .from("billing")
+    .delete()
+    .eq("id", id);
 
-
-  if(error)
-    throw error;
-
-
+  if (billingError) {
+    console.error(
+      "BILLING DELETE ERROR:",
+      billingError
+    );
+    throw billingError;
+  }
 }
-
-
-
-
-
-
 
 /* ==============================
    UPDATE BILLING

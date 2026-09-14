@@ -1,5 +1,6 @@
 import { generateProjectNumber } from "./projectsService";
 import { supabase } from "./supabase";
+import { updateProjectPayment } from "./paymentsService";
 
 
 
@@ -107,6 +108,7 @@ export async function addCustomer(customer) {
 
     customer_name: customer.customer_name,
     mobile: customer.mobile,
+    vendor_name: customer.vendor_name || "",
     email: customer.email,
     address: customer.address,
     location: customer.location,
@@ -195,6 +197,8 @@ export async function updateCustomer(
 
     mobile: customer.mobile,
 
+    vendor_name: customer.vendor_name || "",
+
     email: customer.email,
 
     address: customer.address,
@@ -246,7 +250,7 @@ export async function updateCustomer(
 
 };
 
-  const {
+    const {
     error: updateProjectError
   } = await supabase
     .from("projects")
@@ -255,6 +259,10 @@ export async function updateCustomer(
 
   if(updateProjectError)
     throw updateProjectError;
+
+  // Recalculate received, remaining and status
+  // from the actual payment records
+  await updateProjectPayment(project.id);
 
   return data;
 

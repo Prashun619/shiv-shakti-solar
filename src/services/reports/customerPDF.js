@@ -257,7 +257,6 @@ export function exportCustomerPDF(
 
   // ===================================================
   // SUMMARY TABLE
-  // LABELS BELOW HEADER
   // ===================================================
 
   doc.autoTable({
@@ -357,43 +356,61 @@ export function exportCustomerPDF(
           : totalCost - received;
 
       return [
+        // 1. S.No
         index + 1,
 
+        // 2. Project No
         formatProjectNumber(
           customer.project_no
         ),
 
+        // 3. Customer Name
         customer.customer_name ||
           "",
 
+        // 4. Mobile
         customer.mobile ||
           "",
 
+        // 5. Vendor Name
+        customer.vendor_name ||
+          "",
+
+        // 6. Payment Type
         customer.payment_type ||
           "",
 
+        // 7. Plant Size
         formatPlantSize(
           customer.project_size ??
             customer.plant_size
         ),
 
+        // 8. Total Cost
         formatAmount(
           totalCost
         ),
 
+        // 9. Received
         formatAmount(
           received
         ),
 
+        // 10. Remaining
         formatAmount(
           remaining
         ),
 
+        // 11. Status
         customer.status ||
           "",
       ];
     }
   );
+
+  // ===================================================
+  // MAIN TABLE
+  // ===================================================
 
   doc.autoTable({
     startY:
@@ -405,6 +422,7 @@ export function exportCustomerPDF(
         "Project No",
         "Customer Name",
         "Mobile",
+        "Vendor Name",
         "Payment Type",
         "Plant Size",
         "Total Cost",
@@ -420,7 +438,7 @@ export function exportCustomerPDF(
 
     styles: {
       font: "helvetica",
-      fontSize: 8.5,
+      fontSize: 8,
       textColor: 0,
       lineColor: [
         180,
@@ -428,7 +446,7 @@ export function exportCustomerPDF(
         180,
       ],
       lineWidth: 0.2,
-      cellPadding: 2.5,
+      cellPadding: 2.2,
       halign: "center",
       valign: "middle",
     },
@@ -443,56 +461,81 @@ export function exportCustomerPDF(
       fontStyle: "bold",
       halign: "center",
       valign: "middle",
-      fontSize: 8.5,
+      fontSize: 8,
     },
+
+    // =================================================
+    // COLUMN WIDTHS
+    // =================================================
 
     columnStyles: {
+      // S.No
       0: {
-        cellWidth: 12,
+        cellWidth: 10,
       },
 
+      // Project No
       1: {
-        cellWidth: 27,
+        cellWidth: 24,
       },
 
+      // Customer Name
       2: {
-        cellWidth: 42,
+        cellWidth: 35,
       },
 
+      // Mobile
       3: {
-        cellWidth: 25,
-      },
-
-      4: {
-        cellWidth: 25,
-      },
-
-      5: {
-        cellWidth: 20,
-      },
-
-      6: {
-        cellWidth: 28,
-      },
-
-      7: {
-        cellWidth: 28,
-      },
-
-      8: {
-        cellWidth: 28,
-      },
-
-      9: {
         cellWidth: 22,
+      },
+
+      // Vendor Name
+      4: {
+        cellWidth: 28,
+      },
+
+      // Payment Type
+      5: {
+        cellWidth: 24,
+      },
+
+      // Plant Size
+      6: {
+        cellWidth: 18,
+      },
+
+      // Total Cost
+      7: {
+        cellWidth: 25,
+      },
+
+      // Received
+      8: {
+        cellWidth: 25,
+      },
+
+      // Remaining
+      9: {
+        cellWidth: 25,
+      },
+
+      // Status
+      10: {
+        cellWidth: 20,
       },
     },
 
+    // =================================================
+    // STATUS COLOR
+    // =================================================
+
     didParseCell: function (data) {
-      // Status column
+      // Status is now column 10
+      // because PDF columns are zero-indexed.
+
       if (
         data.section === "body" &&
-        data.column.index === 9
+        data.column.index === 10
       ) {
         const status =
           String(
@@ -527,11 +570,11 @@ export function exportCustomerPDF(
       bottom: 15,
     },
 
-    didDrawPage: function () {
-      // ------------------------------------------------
-      // FOOTER
-      // ------------------------------------------------
+    // =================================================
+    // FOOTER
+    // =================================================
 
+    didDrawPage: function () {
       const pageHeight =
         doc.internal.pageSize.getHeight();
 

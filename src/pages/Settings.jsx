@@ -647,7 +647,7 @@ currentUser?.role === "Admin" && (
 
 <div className="bg-slate-50 border border-slate-300 rounded-xl p-6 space-y-2">
 
-<p><strong>Application:</strong> Shiv Shakti Solar ERP</p>
+<p><strong>Application:</strong> Shiv Shakti Solar</p>
 
 <p><strong>Version:</strong> 1.0.0</p>
 

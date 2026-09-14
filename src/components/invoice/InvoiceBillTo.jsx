@@ -77,7 +77,13 @@ export default function InvoiceBillTo({
 
 
 
-
+console.table(
+  customers.map((c) => ({
+    id: c.id,
+    customer_name: c.customer_name,
+    created_at: c.created_at,
+  }))
+);
 
 
 return (
@@ -143,23 +149,18 @@ Select Customer
 
 
 {
-customers.map(customer=>(
-
-<option
-
-key={customer.id}
-
-value={customer.id}
-
->
-
-{customer.customer_name}
-
-</option>
-
-
-))
-
+  [...customers]
+    .sort((a, b) => {
+      return Number(a.id) - Number(b.id);
+    })
+    .map(customer => (
+      <option
+        key={customer.id}
+        value={customer.id}
+      >
+        {customer.customer_name}
+      </option>
+    ))
 }
 
 

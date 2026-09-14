@@ -181,4 +181,177 @@
     right: 0;
     border-right-color: var(--border);
   }
+
+  @keyframes neonPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 15px rgba(34, 211, 238, 0.25),
+      0 0 30px rgba(139, 92, 246, 0.20),
+      0 0 60px rgba(217, 70, 239, 0.10);
+  }
+
+  50% {
+    box-shadow:
+      0 0 25px rgba(34, 211, 238, 0.45),
+      0 0 55px rgba(139, 92, 246, 0.35),
+      0 0 90px rgba(217, 70, 239, 0.20);
+  }
+}
+
+.neon-login-card {
+  animation: neonPulse 4s ease-in-out infinite;
+}
+
+/* =========================================
+   ANIMATED NEON LOGIN BORDER
+========================================= */
+
+@keyframes neonBorderMove {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.neon-login-card {
+  position: relative;
+  isolation: isolate;
+}
+
+.neon-login-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 1.6rem;
+
+  background: linear-gradient(
+    90deg,
+    #22d3ee,
+    #6366f1,
+    #a855f7,
+    #d946ef,
+    #22d3ee
+  );
+
+  background-size: 300% 300%;
+
+  animation: neonBorderMove 5s linear infinite;
+
+  filter: blur(1px);
+
+  z-index: -2;
+}
+
+.neon-login-card::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 1.8rem;
+
+  background: linear-gradient(
+    90deg,
+    #22d3ee,
+    #6366f1,
+    #a855f7,
+    #d946ef,
+    #22d3ee
+  );
+
+  background-size: 300% 300%;
+
+  animation: neonBorderMove 5s linear infinite;
+
+  filter: blur(18px);
+  opacity: 0.45;
+
+  z-index: -3;
+}
+
+/* =========================================
+   NEON SIDEBAR
+========================================= */
+
+@keyframes sidebarNeonMove {
+  0% {
+    background-position: 0% 0%;
+  }
+
+  50% {
+    background-position: 0% 100%;
+  }
+
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+.neon-sidebar {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Traveling neon line */
+.neon-sidebar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+
+  width: 3px;
+
+  background: linear-gradient(
+    180deg,
+    #22d3ee,
+    #3b82f6,
+    #8b5cf6,
+    #ec4899,
+    #22d3ee
+  );
+
+  background-size: 100% 300%;
+
+  animation: sidebarNeonMove 5s linear infinite;
+
+  z-index: 50;
+}
+
+/* Neon glow around the line */
+.neon-sidebar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -7px;
+  bottom: 0;
+
+  width: 14px;
+
+  background: linear-gradient(
+    180deg,
+    #22d3ee,
+    #3b82f6,
+    #8b5cf6,
+    #ec4899,
+    #22d3ee
+  );
+
+  background-size: 100% 300%;
+
+  animation: sidebarNeonMove 5s linear infinite;
+
+  filter: blur(10px);
+  opacity: 0.45;
+
+  z-index: 49;
+  pointer-events: none;
+}
+
 }

@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
 import InventoryModal from "../components/InventoryModal";
 
@@ -7,473 +16,698 @@ import {
   deleteInventory,
 } from "../services/inventoryService";
 
+// =====================================================
+// NUMBER TO WORDS - INDIAN FORMAT
+// =====================================================
 
-export default function Inventory() {
+function numberToWordsIndian(num) {
+  num = Number(num || 0);
 
+  const ones = [
+    "",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+    "Ten",
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen",
+  ];
 
-  const [items, setItems] = useState([]);
+  const tens = [
+    "",
+    "",
+    "Twenty",
+    "Thirty",
+    "Forty",
+    "Fifty",
+    "Sixty",
+    "Seventy",
+    "Eighty",
+    "Ninety",
+  ];
 
-  const [search, setSearch] = useState("");
-
-  const [showModal, setShowModal] = useState(false);
-
-  const [editingProduct, setEditingProduct] = useState(null);
-
-  const [loading, setLoading] = useState(true);
-
-
-
-  useEffect(() => {
-
-    loadInventory();
-
-  }, []);
-
-
-
-  useEffect(() => {
-
-    loadInventory();
-
-  }, [search]);
-
-
-
-  async function loadInventory() {
-
-    try {
-
-      setLoading(true);
-
-      const data = await getInventory();
-
-      setItems(data || []);
-
+  function twoDigits(n) {
+    if (n < 20) {
+      return ones[n];
     }
 
-    catch(error) {
-
-      console.log(error);
-
-    }
-
-    finally {
-
-      setLoading(false);
-
-    }
-
+    return (
+      tens[Math.floor(n / 10)] +
+      (n % 10
+        ? " " + ones[n % 10]
+        : "")
+    );
   }
 
+  function convert(n) {
+    if (n === 0) {
+      return "";
+    }
 
+    let result = "";
 
+    if (n >= 10000000) {
+      result +=
+        convert(
+          Math.floor(
+            n / 10000000
+          )
+        ) +
+        " Crore ";
+
+      n %= 10000000;
+    }
+
+    if (n >= 100000) {
+      result +=
+        convert(
+          Math.floor(
+            n / 100000
+          )
+        ) +
+        " Lakh ";
+
+      n %= 100000;
+    }
+
+    if (n >= 1000) {
+      result +=
+        convert(
+          Math.floor(
+            n / 1000
+          )
+        ) +
+        " Thousand ";
+
+      n %= 1000;
+    }
+
+    if (n >= 100) {
+      result +=
+        ones[
+          Math.floor(
+            n / 100
+          )
+        ] +
+        " Hundred ";
+
+      n %= 100;
+    }
+
+    if (n > 0) {
+      result += twoDigits(n);
+    }
+
+    return result.trim();
+  }
+
+  const rupees = Math.floor(num);
+
+  const paise = Math.round(
+    (num - rupees) * 100
+  );
+
+  let words = "Rupees ";
+
+  if (rupees === 0) {
+    words += "Zero";
+  } else {
+    words += convert(rupees);
+  }
+
+  if (paise > 0) {
+    words +=
+      " and " +
+      convert(paise) +
+      " Paise";
+  }
+
+  return words
+    .replace(
+      /^Rupees\s+/i,
+      ""
+    )
+    .replace(
+      /\s+Only$/i,
+      ""
+    );
+}
+
+// =====================================================
+// COMPONENT
+// =====================================================
+
+export default function Inventory() {
+  const [items, setItems] =
+    useState([]);
+
+  const [search, setSearch] =
+    useState("");
+
+  const [showModal, setShowModal] =
+    useState(false);
+
+  const [editingProduct, setEditingProduct] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  // =====================================================
+  // LOAD INVENTORY
+  // =====================================================
+
+  useEffect(() => {
+    loadInventory();
+  }, []);
+
+  // =====================================================
+  // LOAD INVENTORY WHEN SEARCH CHANGES
+  // =====================================================
+
+  useEffect(() => {
+    loadInventory();
+  }, [search]);
+
+  // =====================================================
+  // LOAD INVENTORY
+  // =====================================================
+
+  async function loadInventory() {
+    try {
+      setLoading(true);
+
+      const data =
+        await getInventory();
+
+      setItems(data || []);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // =====================================================
+  // DELETE
+  // =====================================================
 
   async function handleDelete(id) {
-
-
-    if(!window.confirm("Delete this purchase?"))
+    if (
+      !window.confirm(
+        "Delete this purchase?"
+      )
+    ) {
       return;
-
+    }
 
     try {
-
-
       await deleteInventory(id);
 
       loadInventory();
-
-
-    }
-    catch(error) {
-
+    } catch (error) {
       console.log(error);
 
-      alert(error.message);
-
+      alert(
+        error.message
+      );
     }
-
   }
 
+  // =====================================================
+  // OPEN PURCHASE
+  // DATE NOW WORKS AS VIEW BUTTON
+  // =====================================================
 
+  function handleView(item) {
+    setEditingProduct(item);
+    setShowModal(true);
+  }
 
+  // =====================================================
+  // OPEN EDIT
+  // =====================================================
 
-  const totalPurchaseValue = useMemo(()=>{
+  function handleEdit(item) {
+    setEditingProduct(item);
+    setShowModal(true);
+  }
 
+  // =====================================================
+  // TOTAL PURCHASE VALUE
+  // =====================================================
 
-    return items.reduce(
+  const totalPurchaseValue =
+    useMemo(() => {
+      return items.reduce(
+        (
+          sum,
+          item
+        ) =>
+          sum +
+          Number(
+            item.total_amount ||
+              0
+          ),
+        0
+      );
+    }, [items]);
 
-      (sum,item)=>
+  // =====================================================
+  // FILTER
+  // =====================================================
 
-        sum + Number(item.total_amount || 0),
+  const filteredItems =
+    items.filter(
+      (item) => {
+        const key =
+          search.toLowerCase();
 
-      0
+        return (
+          item.product_name
+            ?.toLowerCase()
+            .includes(key) ||
 
+          item.category
+            ?.toLowerCase()
+            .includes(key) ||
+
+          item.company
+            ?.toLowerCase()
+            .includes(key) ||
+
+          item.specification
+            ?.toLowerCase()
+            .includes(key) ||
+
+          item.supplier
+            ?.toLowerCase()
+            .includes(key)
+        );
+      }
     );
 
-
-  },[items]);
-
-
-
-
-
- const filteredItems = items.filter((item) => {
-
-  const key = search.toLowerCase();
+  // =====================================================
+  // RENDER
+  // =====================================================
 
   return (
+    <div className="w-full overflow-hidden p-3">
 
-    item.product_name?.toLowerCase().includes(key) ||
-
-    item.category?.toLowerCase().includes(key) ||
-
-    item.company?.toLowerCase().includes(key) ||
-
-    item.specification?.toLowerCase().includes(key) ||
-
-    item.supplier?.toLowerCase().includes(key)
-
-  );
-
-});
-
-
-
-
-  return (
-
-   <div className="w-full overflow-hidden p-3">
-
-
-      {/* HEADER */}
+      {/* =================================================
+          HEADER
+      ================================================= */}
 
       <div className="mb-2 rounded-xl bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500 p-6 shadow-2xl">
 
-  <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center">
 
-    <div>
+          <div>
 
-      <h1 className="text-2xl font-extrabold text-white tracking-wide">
-        Inventory
-      </h1>
+            <h1 className="text-2xl font-extrabold text-white tracking-wide">
+              Inventory
+            </h1>
 
-      <p className="text-blue-100 mt text-sm">
-        Purchase & Stock Management
-      </p>
+            <p className="text-blue-100 mt text-sm">
+              Purchase & Stock Management
+            </p>
 
-    </div>
+          </div>
 
-    <div className="text-right">
+          <div className="text-right">
 
-      <p className="text-blue-100">
-        Total Purchase Value
-      </p>
+            <p className="text-black font-bold text-sm mt-1 max-w-xl">
+              Total Purchase Value
+            </p>
 
-      <h2 className="text-3xl font-bold text-white">
-        ₹ {Number(totalPurchaseValue).toLocaleString()}
-      </h2>
+            <h2 className="text-3xl font-bold text-red-700">
+              ₹{" "}
+              {Number(
+                totalPurchaseValue
+              ).toLocaleString(
+                "en-IN",
+                {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }
+              )}
+            </h2>
 
-    </div>
+            <p className="text-black font-bold text-sm mt-1 max-w-xl">
+              {numberToWordsIndian(
+                totalPurchaseValue
+              )}
+            </p>
 
-  </div>
+          </div>
 
-</div>
+        </div>
 
+      </div>
 
-
-
-      {/* SEARCH + ADD */}
-
+      {/* =================================================
+          SEARCH + ADD
+      ================================================= */}
 
       <div className="sm-cyan rounded-xl shadow-xl border border-slate-200 p-4 mb-5">
 
-  <div className="flex justify-between items-center gap-3">
+        <div className="flex justify-between items-center gap-3">
 
-    <input
-      type="text"
-      placeholder="Search Product, Category or Supplier..."
-      value={search}
-      onChange={(e)=>setSearch(e.target.value)}
-      className="flex-1 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-2 outline-none focus:border-indigo-500"
-    />
+          <input
+            type="text"
+            placeholder="Search Product, Category or Supplier..."
+            value={search}
+            onChange={(e) =>
+              setSearch(
+                e.target.value
+              )
+            }
+            className="flex-1 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-2 outline-none focus:border-indigo-500"
+          />
 
-    <button
-      onClick={() => {
-  setEditingProduct(null);
-  setShowModal(true);
-}}
-      className="bg-gradient-to-r from-green-600 to-emerald-600 hover:scale-105 transition-all text-white px-6 py-3 rounded-xl shadow-lg"
-    >
-      + Add Purchase
-    </button>
+          <button
+            onClick={() => {
+              setEditingProduct(
+                null
+              );
 
-  </div>
+              setShowModal(
+                true
+              );
+            }}
+            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:scale-105 transition-all text-white px-6 py-3 rounded-xl shadow-lg"
+          >
+            + Add Purchase
+          </button>
 
-</div>
-     
+        </div>
 
-     <div className="w-full overflow-x-auto rounded-lg bg-white shadow-md border border-slate-200">
+      </div>
 
+      {/* =================================================
+          INVENTORY TABLE
+      ================================================= */}
+
+      <div className="w-full overflow-x-auto rounded-lg bg-white shadow-md border border-slate-200">
 
         {loading ? (
 
-
-          <div className="p-10 text-center">
-
+          <div className="p-10 text-center text-base">
             Loading Inventory...
-
           </div>
-
 
         ) : (
 
+          <table className="w-full overflow-hidden rounded-2xl text-sm">
 
-           <table className="w-full overflow-hidden rounded-2xl text-xs">
-
+            {/* =================================================
+                TABLE HEADER
+            ================================================= */}
 
             <thead className="bg-gradient-to-r from-indigo-900 via-slate-800 to-slate-900 text-white shadow-md">
 
-
               <tr>
 
+                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+                  Date
+                </th>
 
-              <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-  Date
-</th>
+                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+                  Supplier
+                </th>
 
+                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+                  Product
+                </th>
 
-   <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-  Supplier
-</th>
+                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+                  Company
+                </th>
 
+                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+                  Specification
+                </th>
 
-   <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-  Product
-</th>
+                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+                  Quantity
+                </th>
 
-<th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-  Company
-</th>
+                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+                  Unit Cost
+                </th>
 
-<th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-  Specification
-</th>
+                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+                  Total Amount
+                </th>
 
-<th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-  Quantity
-</th>
-
-<th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-  Unit Cost
-</th>
-
-<th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-  Total Amount
-</th>
-
-
-  <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-  Actions
-</th>
-
+                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
+                  Actions
+                </th>
 
               </tr>
 
-
             </thead>
 
-
+            {/* =================================================
+                TABLE BODY
+            ================================================= */}
 
             <tbody>
 
+              {filteredItems.length === 0 ? (
 
-              {
-                filteredItems.length === 0 ? (
+                <tr>
 
+                  <td
+                    colSpan="9"
+                    className="text-center py-10 text-gray-500 text-sm"
+                  >
+                    No purchases found.
+                  </td>
 
-                  <tr>
+                </tr>
 
+              ) : (
 
-                    <td
-
-                      colSpan="8"
-
-                      className="text-center py-10 text-gray-500"
-
-                    >
-
-                      No purchases found.
-
-
-                    </td>
-
-
-                  </tr>
-
-
-                ) : (
-
-
-                  filteredItems.map((item)=>(
-
+                filteredItems.map(
+                  (item) => (
 
                     <tr
-
                       key={item.id}
+                      className="border-b border-gray-200 even:bg-slate-50 hover:bg-green-50 transition-all duration-200 hover:shadow-sm"
+                    >
 
-                      className="border-b border-gray-200 even:bg-slate-50 hover:bg-green-50 transition-all duration-200 hover:shadow-sm" >
-
+                      {/* =================================================
+                          DATE - NOW WORKS AS VIEW BUTTON
+                      ================================================= */}
 
                       <td className="border border-black w-24 h-1 px-3 py-2 text-center align-middle whitespace-nowrap">
 
-                        {item.date
-  ? new Date(item.date)
-      .toLocaleDateString("en-GB")
-      .replace(/\//g, "-")
-  : "-"}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleView(
+                              item
+                            )
+                          }
+                          title="View purchase"
+                          className="font-semibold text-indigo-700 hover:text-indigo-900 hover:underline cursor-pointer transition-all"
+                        >
+                          {item.date
+                            ? new Date(
+                                item.date
+                              )
+                                .toLocaleDateString(
+                                  "en-GB"
+                                )
+                                .replace(
+                                  /\//g,
+                                  "-"
+                                )
+                            : "-"}
+                        </button>
 
                       </td>
 
+                      {/* =================================================
+                          SUPPLIER
+                      ================================================= */}
 
-
-                      <td className="border border-black w-24 h-1 px-3 py-2 text-center  whitespace-nowrap">
-
-                        {item.supplier || "-"}
-
+                      <td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
+                        {item.supplier ||
+                          "-"}
                       </td>
 
+                      {/* =================================================
+                          PRODUCT - BOLD
+                      ================================================= */}
 
-
-                      <td className="border border-black w-24 h-1 px-3 py-2 text-center font-semibold text-slate-800 whitespace-nowrap">
-
-                        {item.product_name}
-
+                      <td className="border border-black w-24 h-1 px-3 py-2 text-center font-bold text-slate-900 whitespace-nowrap">
+                        {item.product_name ||
+                          "-"}
                       </td>
 
+                      {/* =================================================
+                          COMPANY
+                      ================================================= */}
 
+                      <td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
+                        {item.company ||
+                          "-"}
+                      </td>
 
-                      
-<td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
-  {item.company || "-"}
-</td>
+                      {/* =================================================
+                          SPECIFICATION
+                      ================================================= */}
 
-<td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
-  {item.specification || "-"}
-</td>
+                      <td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
+                        {item.specification ||
+                          "-"}
+                      </td>
 
-<td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
-  {item.quantity ?? "-"}
-</td>
+                      {/* =================================================
+                          QUANTITY
+                      ================================================= */}
 
-<td className="border border-black w-24 h-1 px-3 py-2 text-center font-semibold whitespace-nowrap">
-  ₹ {Number(item.unit_cost || 0).toFixed(2)}
-</td>
+                      <td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
+                        {item.purchased_quantity ??
+                          item.quantity ??
+                          "-"}
+                      </td>
 
-<td className="border border-black w-24 h-1 px-3 py-2 text-center font-bold text-green-700 whitespace-nowrap">
-  ₹ {Number(item.total_amount || 0).toLocaleString()}
-</td>
+                      {/* =================================================
+                          UNIT COST
+                      ================================================= */}
 
+                      <td className="border border-black w-24 h-1 px-3 py-2 text-center font-semibold whitespace-nowrap">
+                        ₹{" "}
+                        {Number(
+                          item.unit_cost ||
+                            0
+                        ).toFixed(2)}
+                      </td>
 
-                      <td className="border border-black w-20 h-1 px-1 py-1 text-center whitespace-nowrap">
+                      {/* =================================================
+                          TOTAL AMOUNT
+                      ================================================= */}
 
+                      <td className="border border-black w-24 h-1 px-3 py-2 text-center font-bold text-green-700 whitespace-nowrap">
+                        ₹{" "}
+                        {Number(
+                          item.total_amount ||
+                            0
+                        ).toFixed(2)}
+                      </td>
 
-                        <div className="flex justify-center gap-2">
+                      {/* =================================================
+                          ACTIONS - SYMBOLS ONLY
+                      ================================================= */}
 
+                      <td className="border border-black w-20 h-1 px-2 py-1 text-center whitespace-nowrap">
+
+                        <div className="flex justify-center items-center gap-3">
+
+                          {/* EDIT */}
 
                           <button
-
-                            onClick={()=>{
-
-                              setEditingProduct(item);
-
-console.log("EDIT ITEM:", item);
-
-                              setShowModal(true);
-
-                            }}
-
-                            className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg shadow-md transition-all duration-300 hover:scale-105"
-
+                            type="button"
+                            onClick={() =>
+                              handleEdit(
+                                item
+                              )
+                            }
+                            title="Edit purchase"
+                            aria-label="Edit purchase"
+                            className="text-sky-600 hover:text-sky-800 transition-all duration-200 hover:scale-110"
                           >
-
-                            Edit
-
+                            <Pencil
+                              size={20}
+                              strokeWidth={2.5}
+                            />
                           </button>
 
-
+                          {/* DELETE */}
 
                           <button
-
-                            onClick={()=>handleDelete(item.id)}
-
-                            className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg shadow-md transition-all duration-300 hover:scale-105"
-
+                            type="button"
+                            onClick={() =>
+                              handleDelete(
+                                item.id
+                              )
+                            }
+                            title="Delete purchase"
+                            aria-label="Delete purchase"
+                            className="text-rose-600 hover:text-rose-800 transition-all duration-200 hover:scale-110"
                           >
-
-                            Delete
-
+                            <Trash2
+                              size={20}
+                              strokeWidth={2.5}
+                            />
                           </button>
-
 
                         </div>
 
-
                       </td>
-
-
 
                     </tr>
 
-
-                  ))
-
-
+                  )
                 )
 
-              }
-
+              )}
 
             </tbody>
 
-
           </table>
-
 
         )}
 
-
       </div>
-   
+
+      {/* =================================================
+          MODAL
+      ================================================= */}
 
       <InventoryModal
-
         open={showModal}
+        product={
+          editingProduct
+        }
+        onClose={() => {
+          setShowModal(
+            false
+          );
 
-        product={editingProduct}
-
-
-        onClose={()=>{
-
-          setShowModal(false);
-
-          setEditingProduct(null);
-
+          setEditingProduct(
+            null
+          );
         }}
-
-
-        onSaved={()=>{
-
+        onSaved={() => {
           loadInventory();
 
-          setShowModal(false);
+          setShowModal(
+            false
+          );
 
-          setEditingProduct(null);
-
+          setEditingProduct(
+            null
+          );
         }}
-
       />
-          </div>
 
+    </div>
   );
-
 }
