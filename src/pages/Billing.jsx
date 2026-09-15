@@ -9,7 +9,6 @@ import {
 } from "../services/billingService";
 
 
-x
 
 
 export default function Billing(){
