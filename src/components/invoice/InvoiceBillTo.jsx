@@ -19,43 +19,63 @@ export default function InvoiceBillTo({
 }) {  
 
 
-  function handleCustomer(e) {
+ function handleCustomer(e) {
 
+  const id = e.target.value;
 
-    const id = e.target.value;
+  setCustomerId(id);
 
-
-    setCustomerId(id);
-
-
-
-    const customer =
-      customers.find(
-        c => String(c.id) === String(id)
-      );
-
-
-
-    if (!customer) return;
-
-
-
-    setCustomerName(
-      customer.customer_name || ""
+  const customer =
+    customers.find(
+      c => String(c.id) === String(id)
     );
 
+  if (!customer) return;
 
+  setCustomerName(
+    customer.customer_name || ""
+  );
 
-    setCustomerAddress(
-      customer.address || ""
-    );
+  const address =
+    customer.address || "";
 
+  const city =
+    customer.city || "";
 
-  }
+  const district =
+    customer.district || "";
 
+  const state =
+    customer.state || "";
 
+  const pincode =
+    customer.pincode || "";
 
+  const formattedAddress = [
+    address,
+    [
+      city,
+      district
+        ? `District : ${district}`
+        : ""
+    ]
+      .filter(Boolean)
+      .join(", "),
+    [
+      state,
+      pincode
+    ]
+      .filter(Boolean)
+      .join(", ")
+  ]
+    .filter(Boolean)
+    .join("\n");
 
+  setCustomerAddress(
+    formattedAddress
+  );
+
+}
 
   function formatDate(date){
 
@@ -88,10 +108,9 @@ console.table(
 
 return (
 
-<div className="border-2 border-green-700">
+<div className="border-2 border-green-700 h-auto">
 
-
-<div className="grid grid-cols-2">
+  <div className="grid grid-cols-2 items-stretch">
 
 
 
@@ -235,33 +254,27 @@ Address
 
 
 <div
-
-className="
-border
-mt-2
-p-2
-min-h-[80px]
-whitespace-pre-line
-"
-
-contentEditable
-
-suppressContentEditableWarning
-
-
-onBlur={(e)=>
-
-setCustomerAddress(
-e.currentTarget.innerText
-)
-
-}
-
+  className="
+    border
+    mt-2
+    p-2
+    min-h-[120px]
+    h-auto
+    whitespace-pre-line
+    break-words
+    leading-6
+    overflow-visible
+    box-border
+  "
+  contentEditable
+  suppressContentEditableWarning
+  onBlur={(e) =>
+    setCustomerAddress(
+      e.currentTarget.innerText
+    )
+  }
 >
-
-{customerAddress}
-
-
+  {customerAddress}
 </div>
 
 

@@ -1,16 +1,14 @@
 import { supabase } from "./supabase";
 
 /* ============================
-   GET NEXT/LAST INVOICE NUMBER
+   GET NEXT INVOICE NUMBER
 ============================ */
 
 export async function getLastInvoiceNumber() {
 
   const { data, error } = await supabase
     .from("invoices")
-    .select("invoice_number")
-    .order("created_at", { ascending: false })
-    .limit(1);
+    .select("invoice_number");
 
   if (error) throw error;
 
@@ -18,18 +16,38 @@ export async function getLastInvoiceNumber() {
     return "INV-001";
   }
 
-  const lastNumber = data[0].invoice_number || "";
+  let highestNumber = 0;
 
-  const match = lastNumber.match(/^INV-(\d+)$/);
+  data.forEach((invoice) => {
 
-  if (!match) {
-    return "INV-001";
-  }
+    const invoiceNumber =
+      String(invoice.invoice_number || "")
+        .trim();
 
-  const next = Number(match[1]) + 1;
+    const match =
+      invoiceNumber.match(/^INV-(\d+)$/i);
 
-  return `INV-${String(next).padStart(3, "0")}`;
+    if (!match) return;
+
+    const number =
+      Number(match[1]);
+
+    if (
+      Number.isFinite(number) &&
+      number > highestNumber
+    ) {
+      highestNumber = number;
+    }
+
+  });
+
+  const nextNumber =
+    highestNumber + 1;
+
+  return `INV-${String(nextNumber).padStart(3, "0")}`;
 }
+
+
 
 /* ============================
    GET CUSTOMERS

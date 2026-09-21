@@ -85,13 +85,13 @@ async function loadCustomers(){
 
     // Get customers
     const { data: customersData, error: customerError } =
-      await supabase
-        .from("customers")
-        .select(`
-          id,
-          customer_name
-        `)
-        .order("customer_name");
+  await supabase
+    .from("customers")
+    .select(`
+      id,
+      customer_name
+    `)
+    .order("customer_name");
 
 
     if(customerError)
@@ -101,13 +101,14 @@ async function loadCustomers(){
 
     // Get projects
     const { data: projectsData, error: projectError } =
-      await supabase
-        .from("projects")
-        .select(`
-          id,
-          project_no,
-          customer_id
-        `);
+  await supabase
+    .from("projects")
+    .select(`
+      id,
+      project_no,
+      customer_id,
+      status
+    `);
 
 
     if(projectError)
@@ -117,20 +118,34 @@ async function loadCustomers(){
 
     // Attach projects manually
     const finalCustomers =
-      customersData.map((customer)=>({
+  customersData
+    .map((customer) => {
 
+      const customerProjects =
+        projectsData.filter(
+          (project) =>
+            project.customer_id === customer.id
+        );
+
+      return {
         ...customer,
+        projects: customerProjects,
+      };
 
-        projects:
-          projectsData.filter(
-            (project)=>
-              project.customer_id === customer.id
-          )
+    })
+    .filter((customer) => {
 
-      }));
+      // Hide customer if their project is Completed
+      return !customer.projects.some(
+        (project) =>
+          String(project.status || "").toLowerCase() ===
+          "completed"
+      );
+
+    });
 
 
-    setCustomers(finalCustomers);
+setCustomers(finalCustomers);
 
 
   }

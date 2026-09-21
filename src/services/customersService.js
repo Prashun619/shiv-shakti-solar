@@ -2,100 +2,144 @@ import { generateProjectNumber } from "./projectsService";
 import { supabase } from "./supabase";
 import { updateProjectPayment } from "./paymentsService";
 
+// =====================================================
+// ADDRESS HELPERS
+// Supports both:
+// 1. Separate address fields
+// 2. Old combined format:
+//    Address, City, District, State, Pincode
+// =====================================================
 
+function normalizeCustomerAddress(customer) {
+  let address = customer?.address || "";
+  let city = customer?.city || "";
+  let district = customer?.district || "";
+  let state = customer?.state || "";
+  let pincode = customer?.pincode || "";
+
+  // Existing records may have all address information
+  // stored inside the address column.
+  if (
+    address &&
+    (!city || !district || !state || !pincode)
+  ) {
+    const parts = address
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (parts.length >= 5) {
+      const parsedPincode = parts[parts.length - 1];
+      const parsedState = parts[parts.length - 2];
+      const parsedDistrict = parts[parts.length - 3];
+      const parsedCity = parts[parts.length - 4];
+
+      if (!pincode) pincode = parsedPincode;
+      if (!state) state = parsedState;
+      if (!district) district = parsedDistrict;
+      if (!city) city = parsedCity;
+
+      // Keep the actual address portion separately.
+      address = parts.slice(0, -4).join(", ");
+    }
+  }
+
+  return {
+    address,
+    city,
+    district,
+    state,
+    pincode,
+  };
+}
 
 /* ===========================
    GET CUSTOMERS
 =========================== */
 
 export async function getCustomers(search = "") {
-
-
   let query =
     supabase
       .from("customers")
       .select("*")
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      );
+      .order("created_at", {
+        ascending: false,
+      });
 
-
-
-  if(search){
-
-
-    query =
-      query.ilike(
-        "customer_name",
-        `%${search}%`
-      );
-
-
+  if (search) {
+    query = query.ilike(
+      "customer_name",
+      `%${search}%`
+    );
   }
-
-
 
   const {
     data,
-    error
+    error,
   } = await query;
 
-
-
-
-  if(error)
+  if (error)
     throw error;
 
-
-
-  return data || [];
-
-
+  return (data || []).map((customer) => ({
+    ...customer,
+    ...normalizeCustomerAddress(customer),
+  }));
 }
 
-export async function getCustomerWithProject(id){
+export async function getCustomerWithProject(id) {
+  const {
+    data: customer,
+    error,
+  } = await supabase
+    .from("customers")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-  const { data: customer, error } =
-  await supabase
-  .from("customers")
-  .select("*")
-  .eq("id", id)
-  .single();
-
-  if(error) throw error;
+  if (error)
+    throw error;
 
   const { data: project } =
-  await supabase
-  .from("projects")
-  .select("*")
-  .eq("customer_id", id)
-  .single();
+    await supabase
+      .from("projects")
+      .select("*")
+      .eq("customer_id", id)
+      .maybeSingle();
 
- return {
-  ...customer,
+  const normalizedAddress =
+    normalizeCustomerAddress(customer);
 
-  project_id: project?.id || null,
-  project_no: project?.project_no || "",
+  return {
+    ...customer,
 
-  project_size: project?.project_size || "",
-  total_amount: project?.total_amount || 0,
+    ...normalizedAddress,
 
-  received: project?.received || 0,
-  remaining: project?.remaining || 0,
+    project_id:
+      project?.id || null,
 
-  status: project?.status || "Pending",
+    project_no:
+      project?.project_no || "",
 
-  remarks: project?.remarks || "",
-};
+    project_size:
+      project?.project_size || "",
 
+    total_amount:
+      project?.total_amount || 0,
+
+    received:
+      project?.received || 0,
+
+    remaining:
+      project?.remaining || 0,
+
+    status:
+      project?.status || "Pending",
+
+    remarks:
+      project?.remarks || "",
+  };
 }
-
-
-
-
 
 /* ===========================
    ADD CUSTOMER
@@ -106,16 +150,43 @@ export async function addCustomer(customer) {
   // Save customer
   const customerPayload = {
 
-    customer_name: customer.customer_name,
-    mobile: customer.mobile,
-    vendor_name: customer.vendor_name || "",
-    email: customer.email,
-    address: customer.address,
-    location: customer.location,
-    plant_size: customer.plant_size,
-    payment_type: customer.payment_type,
+  customer_name:
+    customer.customer_name,
 
-  };
+  mobile:
+    customer.mobile,
+
+  vendor_name:
+    customer.vendor_name || "",
+
+  email:
+    customer.email,
+
+  address:
+    customer.address || "",
+
+  city:
+    customer.city || "",
+
+  district:
+    customer.district || "",
+
+  state:
+    customer.state || "",
+
+  pincode:
+    customer.pincode || "",
+
+  location:
+    customer.location,
+
+  plant_size:
+    customer.plant_size,
+
+  payment_type:
+    customer.payment_type,
+
+};
 
   const {
     data: newCustomer,
@@ -191,25 +262,45 @@ export async function updateCustomer(
 ){
 
   // Update customer
-  const customerPayload = {
+ const customerPayload = {
 
-    customer_name: customer.customer_name,
+  customer_name:
+    customer.customer_name,
 
-    mobile: customer.mobile,
+  mobile:
+    customer.mobile,
 
-    vendor_name: customer.vendor_name || "",
+  vendor_name:
+    customer.vendor_name || "",
 
-    email: customer.email,
+  email:
+    customer.email,
 
-    address: customer.address,
+  address:
+    customer.address || "",
 
-    location: customer.location,
+  city:
+    customer.city || "",
 
-    plant_size: customer.plant_size,
+  district:
+    customer.district || "",
 
-    payment_type: customer.payment_type,
+  state:
+    customer.state || "",
 
-  };
+  pincode:
+    customer.pincode || "",
+
+  location:
+    customer.location,
+
+  plant_size:
+    customer.plant_size,
+
+  payment_type:
+    customer.payment_type,
+
+};
 
   const {
     data,

@@ -60,139 +60,149 @@ const newCustomers = customers.filter((customer) => {
   }, []);
 
   async function loadCustomers() {
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const data = await getCustomers(search);
+  try {
+    const data = await getCustomers(search);
 
-
-const customersWithProjects = await Promise.all(
-  data.map(async (customer)=>{
-
-    const {
-  data: projects,
-  error: projectError,
-} = await supabase
-  .from("projects")
-  .select("*")
-  .eq("customer_id", customer.id);
-
-console.log(
-  "Customer:",
-  customer.customer_name,
-  customer.id,
-  projects,
-  projectError
-);
-
-if (projectError) {
-  console.error("Project Error:", projectError);
-}
-
-const project = projects?.[0] || null;
-
-console.log(
-  customer.customer_name,
-  customer.id,
-  project
-);
-    return {
-  ...customer,
-
-  project,
-
-  project_id: project?.id || null,
-  project_no: project?.project_no || "",
-
-  total_amount: project?.total_amount || 0,
-  received: project?.received || 0,
-  remaining: project?.remaining || 0,
-
-  status: project?.status || "Pending",
-};
-
-
-  })
-);
-
-
-customersWithProjects.sort((a, b) => {
-
-  if (!a.project) return 1;
-  if (!b.project) return -1;
-
-  return a.project.project_no.localeCompare(
-  b.project.project_no
-);
-
-});
-
-
-setCustomers(customersWithProjects);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to load customers.");
+    if (!data || data.length === 0) {
+      setCustomers([]);
+      return;
     }
 
+    // Get all customer IDs
+    const customerIds = data.map((customer) => customer.id);
+
+    // Fetch all projects in ONE query
+    const { data: projects, error: projectError } = await supabase
+      .from("projects")
+      .select("*")
+      .in("customer_id", customerIds);
+
+    if (projectError) {
+      console.error("Project Error:", projectError);
+    }
+
+    const projectList = projects || [];
+
+    // Create customer -> project lookup
+    const projectMap = new Map();
+
+    projectList.forEach((project) => {
+      if (!projectMap.has(project.customer_id)) {
+        projectMap.set(project.customer_id, project);
+      }
+    });
+
+    // Attach project to each customer
+    const customersWithProjects = data.map((customer) => {
+      const project = projectMap.get(customer.id) || null;
+
+      return {
+        ...customer,
+
+        project,
+
+        project_id: project?.id || null,
+        project_no: project?.project_no || "",
+
+        total_amount: project?.total_amount || 0,
+        received: project?.received || 0,
+        remaining: project?.remaining || 0,
+
+        status: project?.status || "Pending",
+      };
+    });
+
+    // Keep existing project-number sorting
+    customersWithProjects.sort((a, b) => {
+      if (!a.project) return 1;
+      if (!b.project) return -1;
+
+      return a.project.project_no.localeCompare(
+        b.project.project_no
+      );
+    });
+
+    setCustomers(customersWithProjects);
+
+  } catch (err) {
+    console.error(err);
+    alert("Failed to load customers.");
+  } finally {
     setLoading(false);
   }
+}
 
  async function handleSearch(value) {
   setSearch(value);
 
   try {
-
     const data = await getCustomers(value);
 
+    if (!data || data.length === 0) {
+      setCustomers([]);
+      return;
+    }
 
-    const customersWithProjects = await Promise.all(
-      data.map(async (customer)=>{
+    // Get all customer IDs
+    const customerIds = data.map((customer) => customer.id);
 
-        const { data: project } = await supabase
-          .from("projects")
-          .select("*")
-          .eq("customer_id", customer.id)
-          .single();
+    // Fetch all projects in ONE query
+    const { data: projects, error: projectError } = await supabase
+      .from("projects")
+      .select("*")
+      .in("customer_id", customerIds);
 
+    if (projectError) {
+      console.error("Project Error:", projectError);
+    }
 
-        return {
-  ...customer,
+    const projectList = projects || [];
 
-  project,
+    // Create customer -> project lookup
+    const projectMap = new Map();
 
-  project_id: project?.id || null,
-  project_no: project?.project_no || "",
+    projectList.forEach((project) => {
+      if (!projectMap.has(project.customer_id)) {
+        projectMap.set(project.customer_id, project);
+      }
+    });
 
-  total_amount: project?.total_amount || 0,
-  received: project?.received || 0,
-  remaining: project?.remaining || 0,
+    // Attach project to each customer
+    const customersWithProjects = data.map((customer) => {
+      const project = projectMap.get(customer.id) || null;
 
-  status: project?.status || "Pending",
-};  
+      return {
+        ...customer,
 
-      })
-    );
+        project,
 
+        project_id: project?.id || null,
+        project_no: project?.project_no || "",
 
+        total_amount: project?.total_amount || 0,
+        received: project?.received || 0,
+        remaining: project?.remaining || 0,
+
+        status: project?.status || "Pending",
+      };
+    });
+
+    // Keep existing project-number sorting
     customersWithProjects.sort((a, b) => {
+      if (!a.project) return 1;
+      if (!b.project) return -1;
 
-  if (!a.project) return 1;
-  if (!b.project) return -1;
+      return a.project.project_no.localeCompare(
+        b.project.project_no
+      );
+    });
 
-  return a.project.project_no.localeCompare(
-  b.project.project_no
-);
-
-});
-
-
-setCustomers(customersWithProjects);
-
+    setCustomers(customersWithProjects);
 
   } catch (err) {
-
     console.error(err);
-
   }
 }
 
@@ -903,21 +913,35 @@ customer.payment_type === "Finance"
 
       {/* ADDRESS */}
 
-      <div className="mt-4">
+<div className="mt-4">
 
-        <p className="text-xs uppercase text-slate-500 mb-2">
-          Address
-        </p>
+  <p className="text-xs uppercase text-slate-500 mb-2">
+    Address
+  </p>
 
+  <div className="bg-slate-50 rounded-xl border p-4 text-sm min-h-[90px] whitespace-pre-wrap">
 
-        <div className="bg-slate-50 rounded-xl border p-4 text-sm min-h-[90px] whitespace-pre-wrap">
+    <div>
+      {viewCustomer.address || "-"}
+    </div>
 
-          {viewCustomer.address || "-"}
+    <div className="mt-1">
+      {viewCustomer.city || "-"}
+      {viewCustomer.district
+        ? `, District : ${viewCustomer.district}`
+        : ""}
+    </div>
 
-        </div>
+    <div className="mt-1">
+      {viewCustomer.state || "-"}
+      {viewCustomer.pincode
+        ? `, ${viewCustomer.pincode}`
+        : ""}
+    </div>
 
+  </div>
 
-      </div>
+</div>
 
 
     </div>

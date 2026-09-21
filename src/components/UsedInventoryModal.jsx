@@ -3429,32 +3429,47 @@ const unitPrice =
 
                             <td className="p-3 text-right">
 
-                              <input
-                                type="number"
-                                min="0"
-                                max={
-                                  material.stock
-                                }
-                                step="1"
-                                disabled={
-                                  material.is_variant &&
-                                  !material.selected_variant
-                                }
-                                value={
-                                  material.qty ||
-                                  ""
-                                }
-                                onChange={(
-                                  e
-                                ) =>
-                                  handleMaterialQtyChange(
-                                    material.id,
-                                    e.target
-                                      .value
-                                  )
-                                }
-                                className="border border-gray-300 rounded-lg p-2 w-24 text-right focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                              />
+                             <input
+  type="number"
+  min="0"
+  max={material.stock}
+  step="1"
+  disabled={
+    material.is_variant &&
+    !material.selected_variant
+  }
+  value={material.qty || ""}
+  onChange={(e) =>
+    handleMaterialQtyChange(
+      material.id,
+      e.target.value
+    )
+  }
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      const qtyInputs = Array.from(
+        document.querySelectorAll(
+          'input[data-material-qty="true"]'
+        )
+      );
+
+      const currentIndex =
+        qtyInputs.indexOf(e.currentTarget);
+
+      const nextInput =
+        qtyInputs[currentIndex + 1];
+
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    }
+  }}
+  data-material-qty="true"
+  className="border border-gray-300 rounded-lg p-2 w-24 text-right focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
+/>
 
                             </td>
 

@@ -16,6 +16,12 @@ import {
 
 import { getAllPayments } from "../services/paymentsService.js";
 
+import {
+  syncFinanceExpenseInventory,
+  deleteFinanceExpenseInventory,
+  getFinanceInventoryProducts,
+} from "../services/inventoryService";
+
 // ============================================================
 // INVESTOR NAMES
 // Dealer payments made by these people belong under Investment
@@ -126,15 +132,25 @@ const [viewTransaction, setViewTransaction] = useState(null);
 
 const [viewPlantExpense, setViewPlantExpense] = useState(null);
 
+const [selectedTransactionIds, setSelectedTransactionIds] = useState([]);
+
+const FINANCE_INVENTORY_PRODUCTS =
+  getFinanceInventoryProducts();
+
   const [form, setForm] = useState({
-    date: "",
-    type: "Expense",
-    company: "",
-    paid_by: "Shiv Shakti Solar",
-    payment_mode: "Cash",
-    amount: "",
-    remarks: "",
-  });
+  date: "",
+  type: "Expense",
+  company: "",
+  paid_by: "Shiv Shakti Solar",
+  payment_mode: "Cash",
+  amount: "",
+  remarks: "",
+
+  product_name: "",
+  quantity: "",
+  inventory_company: "",
+  inventory_specification: "",
+});
 
   // ==========================================================
   // LOAD PLANT EXPENSES
@@ -1009,58 +1025,75 @@ const [viewPlantExpense, setViewPlantExpense] = useState(null);
   // ==========================================================
 
   function resetForm() {
-    setForm({
-      date: "",
-      type: "Expense",
-      company: "",
-      paid_by: "Shiv Shakti Solar",
-      payment_mode: "Cash",
-      amount: "",
-      remarks: "",
-    });
+  setForm({
+    date: "",
+    type: "Expense",
+    company: "",
+    paid_by: "Shiv Shakti Solar",
+    payment_mode: "Cash",
+    amount: "",
+    remarks: "",
+    product_name: "",
+    quantity: "",
+    inventory_company: "",
+    inventory_specification: "",
+  });
 
-    setEditId(null);
-  }
+  setEditId(null);
+}
+    
 
   // ==========================================================
   // EDIT TRANSACTION
   // ==========================================================
 
   function startEdit(item) {
-    setForm({
-      date: item.date
-        ? String(item.date).substring(
-            0,
-            10
-          )
-        : "",
+  setForm({
+    date: item.date
+      ? String(item.date).substring(
+          0,
+          10
+        )
+      : "",
 
-      type:
-        item.type ||
-        "Expense",
+    type:
+      item.type ||
+      "Expense",
 
-      company:
-        item.company || "",
+    company:
+      item.company || "",
 
-      paid_by:
-        item.paid_by ||
-        "Shiv Shakti Solar",
+    paid_by:
+      item.paid_by ||
+      "Shiv Shakti Solar",
 
-      payment_mode:
-        item.payment_mode ||
-        "Cash",
+    payment_mode:
+      item.payment_mode ||
+      "Cash",
 
-      amount:
-        item.amount || "",
+    amount:
+      item.amount || "",
 
-      remarks:
-        item.remarks || "",
-    });
+    remarks:
+      item.remarks || "",
 
-    setEditId(item.id);
+    product_name:
+      item.product_name || "",
 
-    setShowForm(true);
-  }
+    quantity:
+      item.quantity || "",
+
+    inventory_company:
+      item.inventory_company || "",
+
+    inventory_specification:
+      item.inventory_specification || "",
+  });
+
+  setEditId(item.id);
+
+  setShowForm(true);
+}
 
   // ==========================================================
 // VIEW TRANSACTION
@@ -1075,127 +1108,315 @@ function openTransactionView(item) {
   // ==========================================================
 
   async function saveTransaction() {
-    if (!form.date) {
-      alert(
-        "Please select a transaction date."
-      );
-      return;
+  if (!form.date) {
+    alert(
+      "Please select a transaction date."
+    );
+    return;
+  }
+
+  if (!form.amount) {
+    alert(
+      "Please enter amount."
+    );
+    return;
+  }
+
+ const normalizedType =
+  String(form.type || "")
+    .trim()
+    .toLowerCase();
+
+const isExpense =
+  normalizedType === "expense";
+
+const isInventoryTransaction =
+  normalizedType ===
+  "inventory transaction";
+
+const hasInventoryProduct =
+  isInventoryTransaction &&
+  String(form.product_name || "").trim();
+
+  if (
+    hasInventoryProduct &&
+    Number(form.quantity || 0) <= 0
+  ) {
+    alert(
+      "Please enter inventory quantity."
+    );
+    return;
+  }
+
+  try {
+    const billingData = {
+      date: form.date,
+
+      type: form.type,
+
+      company:
+        form.company,
+
+      paid_by:
+        form.paid_by,
+
+      payment_mode:
+        form.payment_mode,
+
+      amount:
+        Number(form.amount),
+
+      remarks:
+        form.remarks,
+
+     product_name:
+  isInventoryTransaction
+    ? form.product_name || null
+    : null,
+
+quantity:
+  isInventoryTransaction &&
+  form.quantity !== ""
+    ? Number(form.quantity)
+    : null,
+
+inventory_company:
+  isInventoryTransaction
+    ? form.inventory_company || null
+    : null,
+
+inventory_specification:
+  isInventoryTransaction
+    ? form.inventory_specification || null
+    : null,
+    };
+
+    let savedBilling;
+
+    if (editId) {
+      savedBilling =
+        await updateBilling(
+          editId,
+          billingData
+        );
+    } else {
+      savedBilling =
+        await addBilling(
+          billingData
+        );
     }
 
-    if (!form.amount) {
-      alert(
-        "Please enter amount."
-      );
-      return;
+    // ======================================================
+    // EXPENSE → INVESTMENT SYNC
+    // ======================================================
+
+    if (isExpense) {
+      await syncExpenseInvestment({
+        ...billingData,
+        id: savedBilling.id,
+      });
     }
 
-    try {
-      const billingData = {
-        date: form.date,
+    // ======================================================
+    // EXPENSE → INVENTORY SYNC
+    // ======================================================
 
-        type: form.type,
+    if (
+  isInventoryTransaction &&
+  isFinanceInventoryProduct(
+    form.product_name
+  )
+) {
+      await syncFinanceExpenseInventory({
+        billingId:
+          savedBilling.id,
 
-        company:
-          form.company,
+        date:
+          form.date,
 
-        paid_by:
-          form.paid_by,
+        productName:
+          form.product_name,
 
-        payment_mode:
-          form.payment_mode,
+        quantity:
+          Number(form.quantity),
 
         amount:
           Number(form.amount),
 
+        company:
+          form.inventory_company,
+
+        specification:
+          form.inventory_specification,
+
         remarks:
           form.remarks,
-      };
-
-      let savedBilling;
-
-      if (editId) {
-        savedBilling =
-          await updateBilling(
-            editId,
-            billingData
-          );
-      } else {
-        savedBilling =
-          await addBilling(
-            billingData
-          );
-      }
-
-      // ======================================================
-      // EXPENSE → INVESTMENT SYNC
-      //
-      // Only Expense transactions are handled here.
-      // All other transaction types remain unchanged.
-      // ======================================================
-
-      if (
-        String(
-          billingData.type || ""
-        )
-          .trim()
-          .toLowerCase() ===
-        "expense"
-      ) {
-        await syncExpenseInvestment({
-          ...billingData,
-          id: savedBilling.id,
-        });
-      }
-
-      setShowForm(false);
-
-      resetForm();
-
-      await loadBilling();
-    } catch (error) {
-      console.error(
-        "SAVE TRANSACTION ERROR:",
-        error
-      );
-
-      alert(
-        "Unable to save transaction."
+      });
+    } else if (
+  editId &&
+  !isInventoryTransaction
+) {
+      // If an existing Expense is changed
+      // to another transaction type, remove
+      // its previously-created inventory row.
+      await deleteFinanceExpenseInventory(
+        savedBilling.id
       );
     }
+
+    setShowForm(false);
+
+    resetForm();
+
+    await loadBilling();
+  } catch (error) {
+    console.error(
+      "SAVE TRANSACTION ERROR:",
+      error
+    );
+
+    alert(
+      error?.message ||
+      "Unable to save transaction."
+    );
   }
+}
 
   // ==========================================================
   // DELETE
   // ==========================================================
 
   async function handleDelete(item) {
+  if (
+    !window.confirm(
+      "Are you sure you want to delete this expense?"
+    )
+  ) {
+    return;
+  }
+
+  try {
+    // ======================================================
+    // REMOVE FINANCE-LINKED INVENTORY
+    // ======================================================
+
+    await deleteFinanceExpenseInventory(
+      item.id
+    );
+
+    // ======================================================
+    // REMOVE LINKED INVESTMENT
+    //
+    // Important for expenses paid by:
+    // Prashun Dixit
+    // Shaubhendu Dixit
+    // Vipin Saxena
+    // ======================================================
+
     if (
-      !window.confirm(
-        "Are you sure you want to delete this transaction?"
+      normalizeName(item.type) ===
+        "expense" &&
+      EXPENSE_INVESTOR_NAMES.includes(
+        normalizeName(item.paid_by)
       )
     ) {
-      return;
-    }
-
-    try {
-      // ======================================================
-      // REMOVE LINKED EXPENSE INVESTMENT FIRST
-      // ======================================================
-
-     await deleteBilling(item.id);
-
-      await loadBilling();
-    } catch (error) {
-      console.error(
-        "DELETE TRANSACTION ERROR:",
-        error
-      );
-
-      alert(
-        "Unable to delete this transaction."
+      await deleteExpenseInvestment(
+        item.id
       );
     }
+
+    // ======================================================
+    // DELETE BILLING ENTRY
+    // ======================================================
+
+    await deleteBilling(
+      item.id
+    );
+
+    // ======================================================
+    // RELOAD LEDGER
+    // ======================================================
+
+    await loadBilling();
+
+  } catch (error) {
+    console.error(
+      "DELETE EXPENSE ERROR:",
+      error
+    );
+
+    alert(
+      error?.message ||
+      "Unable to delete expense."
+    );
   }
+}
+
+function toggleTransactionSelection(id) {
+  setSelectedTransactionIds((current) => {
+    if (current.includes(id)) {
+      return current.filter((itemId) => itemId !== id);
+    }
+
+    return [...current, id];
+  });
+}
+
+function toggleSelectAllTransactions() {
+  const selectableIds = selectedTransactions.map((item) => item.id);
+
+  if (selectableIds.length === 0) return;
+
+  const allSelected = selectableIds.every((id) =>
+    selectedTransactionIds.includes(id)
+  );
+
+  if (allSelected) {
+    setSelectedTransactionIds([]);
+  } else {
+    setSelectedTransactionIds(selectableIds);
+  }
+}
+
+async function handleBulkDelete() {
+  if (selectedTransactionIds.length === 0) return;
+
+  const confirmed = window.confirm(
+    `Are you sure you want to delete ${selectedTransactionIds.length} selected transaction(s)?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    for (const id of selectedTransactionIds) {
+      const item = selectedTransactions.find(
+        (transaction) => transaction.id === id
+      );
+
+      if (!item) continue;
+
+      await deleteFinanceExpenseInventory(item.id);
+
+      if (
+        normalizeName(item.type) === "expense" &&
+        EXPENSE_INVESTOR_NAMES.includes(
+          normalizeName(item.paid_by)
+        )
+      ) {
+        await deleteExpenseInvestment(item.id);
+      }
+
+      await deleteBilling(item.id);
+    }
+
+    setSelectedTransactionIds([]);
+
+    await loadBilling();
+  } catch (error) {
+    console.error("BULK DELETE ERROR:", error);
+    alert(error?.message || "Unable to delete selected transactions.");
+  }
+}
 
   // ==========================================================
   // TRANSACTION TABLE
@@ -1261,9 +1482,10 @@ function openTransactionView(item) {
 
           <button
             onClick={() => {
-              setSelectedBlock(null);
-              setSearch("");
-            }}
+  setSelectedBlock(null);
+  setSelectedTransactionIds([]);
+  setSearch("");
+}}
             className="
               bg-white
               text-slate-800
@@ -1350,6 +1572,12 @@ function openTransactionView(item) {
   Description
 </th>
 
+{(selectedBlock === "expense" || selectedBlock === "dealer") && (
+  <th className="px-3 py-2 text-center text-sm border border-black">
+    Action
+  </th>
+)}
+
                   
                 </tr>
               </thead>
@@ -1358,15 +1586,15 @@ function openTransactionView(item) {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={7}
-                      className="
-                        text-center
-                        py-6
-                        font-semibold
-                        border
-                        border-black
-                      "
-                    >
+  colSpan={selectedBlock === "expense" || selectedBlock === "dealer" ? 8 : 7 }
+  className="
+    text-center
+    py-6
+    font-semibold
+    border
+    border-black
+  "
+>
                       Loading transactions...
                     </td>
                   </tr>
@@ -1374,11 +1602,7 @@ function openTransactionView(item) {
                   0 ? (
                   <tr>
                     <td
-                      colSpan={
-                        showActionColumn
-                          ? 8
-                          : 7
-                      }
+                      colSpan={selectedBlock === "expense" ? 8 : 7}
                       className="
                         text-center
                         py-6
@@ -1568,6 +1792,30 @@ function openTransactionView(item) {
   {item.remarks || "-"}
 </td>
 
+{/* ACTION */}
+
+{(selectedBlock === "expense" || selectedBlock === "dealer") && (
+  <td className="px-3 py-2 text-center border border-black whitespace-nowrap">
+    <div className="flex items-center justify-center gap-2">
+      <button
+        type="button"
+        onClick={() => startEdit(item)}
+        className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition"
+      >
+        Edit
+      </button>
+
+      <button
+        type="button"
+        onClick={() => handleDelete(item)}
+        className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 transition"
+      >
+        Delete
+      </button>
+    </div>
+  </td>
+)}
+
  
                       </tr>
                     )
@@ -1639,9 +1887,10 @@ function openTransactionView(item) {
         <div className="p-3 border-b-2 border-black">
           <button
             onClick={() => {
-              setSelectedBlock(null);
-              setSearch("");
-            }}
+  setSelectedBlock(null);
+  setSelectedTransactionIds([]);
+  setSearch("");
+}}
             className="
               bg-gray-800
               text-white
@@ -1658,8 +1907,29 @@ function openTransactionView(item) {
 
         {/* TABLE */}
 
-        <div className="overflow-x-auto">
-          <table
+{(selectedBlock === "expense" || selectedBlock === "dealer") &&
+  selectedTransactions.length > 0 && (
+    <div className="flex items-center justify-between mb-3">
+      <div className="text-sm font-bold text-gray-700">
+        {selectedTransactionIds.length > 0
+          ? `${selectedTransactionIds.length} transaction(s) selected`
+          : "Select transactions to delete"}
+      </div>
+
+      {selectedTransactionIds.length > 0 && (
+        <button
+          type="button"
+          onClick={handleBulkDelete}
+          className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-700 transition"
+        >
+          Delete Selected ({selectedTransactionIds.length})
+        </button>
+      )}
+    </div>
+  )}
+
+<div className="overflow-x-auto">
+  <table
             className="
               min-w-full
               border-collapse
@@ -2268,18 +2538,36 @@ function openTransactionView(item) {
       </div>
 
       {/* ======================================================
-          KPI CARDS
-      ====================================================== */}
+    KPI CARDS
+====================================================== */}
 
-      <div className="flex justify-right mb-5">
-        <div className="w-full max-w-xs">
-          <KpiCard
-            title="Net Balance"
-            value={money(netBalance)}
-            color="purple"
-          />
-        </div>
-      </div>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+
+  {/* TOTAL INCOME */}
+
+  <KpiCard
+    title="Total Income"
+    value={money(totalIncome)}
+    color="green"
+  />
+
+  {/* TOTAL EXPENSE */}
+
+  <KpiCard
+    title="Total Expense"
+    value={money(totalExpense)}
+    color="red"
+  />
+
+  {/* NET BALANCE */}
+
+  <KpiCard
+    title="Net Balance"
+    value={money(netBalance)}
+    color="purple"
+  />
+
+</div>
 
 {/* ======================================================
     VIEW TRANSACTION MODAL
@@ -2740,8 +3028,12 @@ function openTransactionView(item) {
                 }}
               >
                 <option value="Expense">
-                  Expense
-                </option>
+  Expense
+</option>
+
+<option value="Inventory Transaction">
+  Inventory Transaction
+</option>
 
                 <option value="Dealer Payment">
                   Dealer Payment
@@ -2807,9 +3099,109 @@ function openTransactionView(item) {
                 }
               />
 
+              {/* INVENTORY PRODUCT */}
+
+{form.type === "Inventory Transaction" && (
+  <>
+    <select
+      className="
+        border-2
+        border-black
+        p-3
+        rounded
+      "
+      value={form.product_name}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          product_name:
+            e.target.value,
+        })
+      }
+    >
+      <option value="">
+        Select Product
+      </option>
+
+      {FINANCE_INVENTORY_PRODUCTS.map(
+        (product) => (
+          <option
+            key={product}
+            value={product}
+          >
+            {product}
+          </option>
+        )
+      )}
+    </select>
+
+    <input
+      type="number"
+      min="0"
+      step="any"
+      className="
+        border-2
+        border-black
+        p-3
+        rounded
+      "
+      placeholder="Quantity"
+      value={form.quantity}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          quantity:
+            e.target.value,
+        })
+      }
+    />
+
+    <input
+      type="text"
+      className="
+        border-2
+        border-black
+        p-3
+        rounded
+      "
+      placeholder="Inventory Company"
+      value={form.inventory_company}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          inventory_company:
+            e.target.value,
+        })
+      }
+    />
+
+    <input
+      type="text"
+      className="
+        border-2
+        border-black
+        p-3
+        rounded
+      "
+      placeholder="Specification"
+      value={
+        form.inventory_specification
+      }
+      onChange={(e) =>
+        setForm({
+          ...form,
+          inventory_specification:
+            e.target.value,
+        })
+      }
+    />
+  </>
+)}
+
               {/* PAID BY */}
 
-              {form.type === "Expense" ? (
+              {(form.type === "Expense" ||
+  form.type === "Inventory Transaction") ? (
                 <select
                   className="
                     border-2
@@ -3017,11 +3409,10 @@ function openTransactionView(item) {
               dealerPaymentTransactions.length
             }
             color="red"
-            onClick={() =>
-              setSelectedBlock(
-                "dealer"
-              )
-            }
+            onClick={() => {
+  setSelectedBlock("dealer");
+  setSelectedTransactionIds([]);
+}}
           />
 
           {/* EXPENSE */}
@@ -3036,11 +3427,10 @@ function openTransactionView(item) {
               expenseTransactions.length
             }
             color="red"
-            onClick={() =>
-              setSelectedBlock(
-                "expense"
-              )
-            }
+            onClick={() => {
+  setSelectedBlock("expense");
+  setSelectedTransactionIds([]);
+}}
           />
 
           {/* INVESTMENT */}

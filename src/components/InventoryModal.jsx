@@ -48,6 +48,7 @@
 
   "Tie",
   "Chemical",
+  "Lugs",
   "LA Copper Wire 2.5mm",
 ];
 
@@ -98,7 +99,8 @@
     "End Clamp": "Hardware",
 "Mid Clamp": "Hardware",
 "Universal Clamp": "Hardware",
-
+ "Lugs": "Hardware",
+ 
     "MC4 Connector": "Electrical",
 
     "PVC Pipe": "Accessories",

@@ -2705,3 +2705,409 @@ export async function getInventoryProducts() {
 
   return data || [];
 }
+// =====================================================
+// FINANCE EXPENSE → INVENTORY
+// =====================================================
+
+const FINANCE_INVENTORY_PRODUCTS = [
+  "Panel",
+  "Inverter",
+  "Rafter",
+  "Purlin 13 ft",
+  "Purlin 21 ft",
+  "Leg 6ft",
+  "Leg 8ft",
+  "Leg 10ft",
+  "Base Plate",
+  "Fastener",
+  "Nut Bolts",
+  "Spring Bolt",
+  "Spring",
+  "ACDB",
+  "DCDB",
+  "DC Wire",
+  "AC Wire",
+  "LA Wire",
+  "Armoured Wire",
+  "End Clamp",
+  "Mid Clamp",
+  "Universal Clamp",
+  "MC4 Connector",
+  "PVC Pipe",
+  "L Bend",
+  "U Bend",
+  "T Bend",
+  "Catchup 25mm",
+  "Catchup 12mm",
+  "Earthing Kit",
+  "Tie",
+  "Chemical",
+  "LA Copper Wire 2.5mm",
+];
+
+export function isFinanceInventoryProduct(productName) {
+  const normalized = normalize(productName);
+
+  return FINANCE_INVENTORY_PRODUCTS.some(
+    (product) => normalize(product) === normalized
+  );
+}
+
+export function getFinanceInventoryProducts() {
+  return [...FINANCE_INVENTORY_PRODUCTS];
+}
+
+// =====================================================
+// CREATE / UPDATE INVENTORY FROM FINANCE EXPENSE
+// =====================================================
+
+export async function syncFinanceExpenseInventory({
+  billingId,
+  date,
+  productName,
+  quantity,
+  amount,
+  company = "",
+  specification = "",
+  remarks = "",
+}) {
+  if (!billingId) {
+    throw new Error(
+      "Finance inventory sync failed: billing ID is missing."
+    );
+  }
+
+  const normalizedProduct = String(
+    productName || ""
+  ).trim();
+
+  const qty = num(quantity);
+  const totalAmount = num(amount);
+
+  // ---------------------------------------------------
+  // No inventory product selected
+  // ---------------------------------------------------
+
+  if (!isFinanceInventoryProduct(normalizedProduct)) {
+    return null;
+  }
+
+  if (qty <= 0) {
+    throw new Error(
+      "Inventory quantity must be greater than zero."
+    );
+  }
+
+  if (totalAmount < 0) {
+    throw new Error(
+      "Inventory amount cannot be negative."
+    );
+  }
+
+  const normalizedCompany = String(
+    company || ""
+  ).trim();
+
+  const normalizedSpecification = String(
+    specification || ""
+  ).trim();
+
+  // ---------------------------------------------------
+  // Find existing inventory row linked to this billing
+  // ---------------------------------------------------
+
+  const {
+    data: existingRows,
+    error: existingError,
+  } = await supabase
+    .from("inventory")
+    .select("*")
+    .eq("billing_id", String(billingId))
+    .limit(1);
+
+  if (existingError) {
+    throw existingError;
+  }
+
+  const existingRow =
+    existingRows?.[0] || null;
+
+  // ---------------------------------------------------
+  // Determine unit
+  //
+  // Prefer the unit from an existing linked row.
+  // Otherwise use the latest matching inventory row.
+  // Otherwise default to Nos.
+  // ---------------------------------------------------
+
+  let unit =
+    existingRow?.unit || "";
+
+  if (!unit) {
+    const {
+      data: latestRows,
+      error: latestError,
+    } = await supabase
+      .from("inventory")
+      .select("unit")
+      .eq(
+        "product_name",
+        normalizedProduct
+      )
+      .eq(
+        "company",
+        normalizedCompany
+      )
+      .eq(
+        "specification",
+        normalizedSpecification
+      )
+      .eq("active", true)
+      .order("date", {
+        ascending: false,
+      })
+      .order("id", {
+        ascending: false,
+      })
+      .limit(1);
+
+    if (latestError) {
+      throw latestError;
+    }
+
+    unit =
+      latestRows?.[0]?.unit ||
+      "Nos";
+  }
+
+  // ---------------------------------------------------
+  // Finance expense amount becomes landed inventory cost
+  //
+  // We deliberately use GST = 0 and transportation = 0
+  // because Finance Expense already stores the final
+  // expense amount.
+  // ---------------------------------------------------
+
+  const unitCost =
+    qty > 0
+      ? totalAmount / qty
+      : 0;
+
+  // ---------------------------------------------------
+  // UPDATE EXISTING LINKED INVENTORY
+  // ---------------------------------------------------
+
+  if (existingRow) {
+    const usedQuantity = num(
+      existingRow.used_quantity
+    );
+
+    const productChanged =
+      normalize(existingRow.product_name) !==
+      normalize(normalizedProduct);
+
+    const companyChanged =
+      normalize(existingRow.company) !==
+      normalize(normalizedCompany);
+
+    const specificationChanged =
+      normalize(existingRow.specification) !==
+      normalize(normalizedSpecification);
+
+    // Never allow an already-consumed inventory row
+    // to be moved to another product/variant.
+    if (
+      usedQuantity > 0 &&
+      (
+        productChanged ||
+        companyChanged ||
+        specificationChanged
+      )
+    ) {
+      throw new Error(
+        "This expense's inventory stock has already been consumed. Product, company or specification cannot be changed."
+      );
+    }
+
+    if (qty < usedQuantity) {
+      throw new Error(
+        `Quantity cannot be less than already consumed quantity (${usedQuantity}).`
+      );
+    }
+
+    const { data, error } =
+      await supabase
+        .from("inventory")
+        .update({
+          date,
+          supplier:
+            normalizedCompany ||
+            "Finance Expense",
+          product_name:
+            normalizedProduct,
+          company:
+            normalizedCompany,
+          specification:
+            normalizedSpecification,
+          quantity: qty,
+          purchased_quantity: qty,
+          used_quantity: usedQuantity,
+          unit,
+          price: unitCost,
+          total_weight: 0,
+          gst: 0,
+          transportation: 0,
+          total_amount: totalAmount,
+          unit_cost: unitCost,
+          remarks:
+            remarks ||
+            `Finance Expense ${billingId}`,
+          active: true,
+          billing_id:
+            String(billingId),
+          purchase_type: "Product",
+        })
+        .eq("id", existingRow.id)
+        .select()
+        .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  // ---------------------------------------------------
+  // CREATE NEW INVENTORY ROW
+  // ---------------------------------------------------
+
+  const batchId =
+    `FIN-${String(billingId)}-${Date.now()}`;
+
+  const inventoryRow = {
+    date,
+
+    supplier:
+      normalizedCompany ||
+      "Finance Expense",
+
+    product_name:
+      normalizedProduct,
+
+    category: "",
+
+    company:
+      normalizedCompany,
+
+    specification:
+      normalizedSpecification,
+
+    quantity: qty,
+
+    purchased_quantity: qty,
+
+    used_quantity: 0,
+
+    unit,
+
+    price: unitCost,
+
+    total_weight: 0,
+
+    gst: 0,
+
+    transportation: 0,
+
+    total_amount: totalAmount,
+
+    unit_cost: unitCost,
+
+    remarks:
+      remarks ||
+      `Finance Expense ${billingId}`,
+
+    active: true,
+
+    is_default: false,
+
+    batch_id: batchId,
+
+    purchase_type: "Product",
+
+    billing_id:
+      String(billingId),
+  };
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("inventory")
+    .insert([inventoryRow])
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+// =====================================================
+// DELETE INVENTORY CREATED FROM FINANCE EXPENSE
+// =====================================================
+
+export async function deleteFinanceExpenseInventory(
+  billingId
+) {
+  if (!billingId) {
+    return;
+  }
+
+  const {
+    data: rows,
+    error: findError,
+  } = await supabase
+    .from("inventory")
+    .select("id, used_quantity")
+    .eq(
+      "billing_id",
+      String(billingId)
+    );
+
+  if (findError) {
+    throw findError;
+  }
+
+  if (!rows || rows.length === 0) {
+    return;
+  }
+
+  const consumedRow =
+    rows.find(
+      (row) =>
+        num(row.used_quantity) > 0
+    );
+
+  if (consumedRow) {
+    throw new Error(
+      "This Finance Expense cannot be deleted because its inventory stock has already been consumed."
+    );
+  }
+
+  const {
+    error: deleteError,
+  } = await supabase
+    .from("inventory")
+    .delete()
+    .eq(
+      "billing_id",
+      String(billingId)
+    );
+
+  if (deleteError) {
+    throw deleteError;
+  }
+}

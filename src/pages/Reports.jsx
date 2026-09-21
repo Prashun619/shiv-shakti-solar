@@ -274,25 +274,35 @@ async function loadProfit() {
 const filteredCustomers = useMemo(() => {
   const text = search.toLowerCase();
 
-  return customers.filter((customer) => {
-    return (
-      (customer.customer_name || "")
-        .toLowerCase()
-        .includes(text) ||
+  return customers
+    .filter((customer) => {
+      return (
+        (customer.customer_name || "")
+          .toLowerCase()
+          .includes(text) ||
 
-      (customer.mobile || "")
-        .toLowerCase()
-        .includes(text) ||
+        (customer.mobile || "")
+          .toLowerCase()
+          .includes(text) ||
 
-      (customer.email || "")
-        .toLowerCase()
-        .includes(text) ||
+        (customer.email || "")
+          .toLowerCase()
+          .includes(text) ||
 
-      (customer.location || "")
-        .toLowerCase()
-        .includes(text)
-    );
-  });
+        (customer.location || "")
+          .toLowerCase()
+          .includes(text)
+      );
+    })
+    .sort((a, b) => {
+      const projectA = String(a.project_no || "").trim();
+      const projectB = String(b.project_no || "").trim();
+
+      return projectA.localeCompare(projectB, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+    });
 }, [customers, search]);
 
 

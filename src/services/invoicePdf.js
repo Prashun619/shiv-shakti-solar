@@ -117,9 +117,15 @@ export async function generateInvoicePDF(invoice, download = true) {
   );
 
   // Set consistent heights
-  const headerHeight = 25;
-  const infoHeight = 30;
-  const billToHeight = 25;
+const headerHeight = 25;
+const infoHeight = 30;
+
+// Bill To section must accommodate:
+// Customer name
+// Address line 1
+// Address line 2
+// Address line 3
+const billToHeight = 38;
 
   // Calculated vertical positions
   const infoY = 10 + headerHeight;
@@ -267,15 +273,18 @@ export async function generateInvoicePDF(invoice, download = true) {
   );
 
   const addr = doc.splitTextToSize(
-    invoice.customer_address || "",
-    80
-  );
+  invoice.customer_address || "",
+  82
+);
 
   doc.text(
     addr,
     margin + 2,
-    billToY + 16
-  );
+    billToY + 16,
+   {
+    lineHeightFactor: 1.35
+  }
+);
 
   // Right: Invoice Details (Aligned to Far Right)
   const rightColX =
