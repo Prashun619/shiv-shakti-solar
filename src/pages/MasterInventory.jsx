@@ -205,7 +205,17 @@ export default function MasterInventory() {
 
   return (
 
-    <div className="p-6 bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 min-h-screen">
+    <div className="
+      min-h-screen
+      bg-gradient-to-br
+      from-slate-100
+      via-blue-50
+      to-indigo-100
+      p-3
+      sm:p-4
+      lg:p-6
+      overflow-x-hidden
+    ">
 
 
       {/* ======================================
@@ -214,46 +224,68 @@ export default function MasterInventory() {
 
       <div
         className="
-          mb-6
+          mb-4
+          sm:mb-6
           rounded-3xl
           bg-gradient-to-r
           from-indigo-700
           via-blue-600
           to-cyan-500
-          p-6
+          p-4
+          sm:p-6
           shadow-2xl
           border
           border-white/20
         "
       >
 
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+        <div className="
+          flex
+          flex-col
+          lg:flex-row
+          lg:items-center
+          lg:justify-between
+          gap-4
+          sm:gap-5
+        ">
 
 
-          <div className="flex items-center gap-5">
+          <div className="
+            flex
+            items-center
+            gap-3
+            sm:gap-5
+            min-w-0
+          ">
 
             <div className="
-              h-16
-              w-16
+              h-12
+              w-12
+              sm:h-16
+              sm:w-16
+              shrink-0
               rounded-2xl
               bg-white/15
               backdrop-blur-md
               flex
               items-center
               justify-center
-              text-3xl
+              text-2xl
+              sm:text-3xl
               shadow-lg
             ">
               📦
             </div>
 
 
-            <div>
+            <div className="min-w-0">
 
               <h1 className="
-                text-3xl
+                text-xl
+                sm:text-3xl
                 font-bold
                 text-white
+                truncate
               ">
                 Master Inventory
               </h1>
@@ -261,6 +293,8 @@ export default function MasterInventory() {
 
               <p className="
                 mt-1
+                text-xs
+                sm:text-sm
                 text-blue-100
               ">
                 Overall Product Stock Summary
@@ -271,20 +305,33 @@ export default function MasterInventory() {
           </div>
 
 
-          <div className="flex gap-4">
+          <div className="
+            flex
+            flex-col
+            sm:flex-row
+            gap-3
+            sm:gap-4
+            w-full
+            lg:w-auto
+          ">
 
 
             {/* LOW STOCK */}
 
-            <div className="
-              bg-white/15
-              backdrop-blur-md
-              rounded-2xl
-              px-6
-              py-4
-              shadow-lg
-              cursor-pointer
-            "
+            <div
+              className="
+                bg-white/15
+                backdrop-blur-md
+                rounded-2xl
+                px-4
+                sm:px-6
+                py-3
+                sm:py-4
+                shadow-lg
+                cursor-pointer
+                flex-1
+                lg:flex-none
+              "
               onClick={() =>
                 setStockFilter(
                   stockFilter === "Low Stock"
@@ -295,7 +342,8 @@ export default function MasterInventory() {
             >
 
               <p className="
-                text-sm
+                text-xs
+                sm:text-sm
                 text-orange-100
               ">
                 Low Stock
@@ -303,7 +351,8 @@ export default function MasterInventory() {
 
               <h2 className="
                 mt-1
-                text-3xl
+                text-2xl
+                sm:text-3xl
                 font-bold
                 text-white
               ">
@@ -319,13 +368,19 @@ export default function MasterInventory() {
               bg-white/15
               backdrop-blur-md
               rounded-2xl
-              px-6
-              py-4
+              px-4
+              sm:px-6
+              py-3
+              sm:py-4
               shadow-lg
+              flex-1
+              lg:flex-none
+              min-w-0
             ">
 
               <p className="
-                text-sm
+                text-xs
+                sm:text-sm
                 text-blue-100
               ">
                 Total Stock Value
@@ -334,9 +389,11 @@ export default function MasterInventory() {
 
               <h2 className="
                 mt-1
-                text-3xl
+                text-xl
+                sm:text-3xl
                 font-bold
                 text-white
+                whitespace-nowrap
               ">
 
                 ₹{" "}
@@ -371,15 +428,18 @@ export default function MasterInventory() {
         shadow-xl
         border
         border-slate-200
-        p-5
-        mb-6
+        p-4
+        sm:p-5
+        mb-4
+        sm:mb-6
       ">
 
         <div className="
           flex
           flex-col
           lg:flex-row
-          gap-4
+          gap-3
+          sm:gap-4
         ">
 
 
@@ -392,11 +452,13 @@ export default function MasterInventory() {
             }
             className="
               flex-1
+              min-w-0
               rounded-xl
               border-2
               border-slate-200
               bg-slate-50
-              px-5
+              px-4
+              sm:px-5
               py-3
               text-sm
               outline-none
@@ -414,11 +476,14 @@ export default function MasterInventory() {
               setStockFilter(e.target.value)
             }
             className="
+              w-full
+              lg:w-auto
               rounded-xl
               border-2
               border-slate-200
               bg-slate-50
-              px-5
+              px-4
+              sm:px-5
               py-3
               text-sm
               font-medium
@@ -452,12 +517,12 @@ export default function MasterInventory() {
       ====================================== */}
 
       <div className="
-        overflow-hidden
         rounded-3xl
         bg-white
         shadow-2xl
         border
         border-slate-200
+        overflow-hidden
       ">
 
 
@@ -496,295 +561,310 @@ export default function MasterInventory() {
 
         ) : (
 
-          <table className="
+          /*
+           * Mobile:
+           * The table keeps its natural readable width and
+           * scrolls horizontally inside this container.
+           */
+          <div className="
             w-full
-            border-collapse
-            border-2
-            border-black
-            text-xs
+            overflow-x-auto
+            overflow-y-hidden
+            overscroll-x-contain
           ">
 
-
-            <thead className="
-              bg-teal-700
-              text-white
+            <table className="
+              w-full
+              min-w-[760px]
+              border-collapse
+              border-2
+              border-black
+              text-xs
             ">
 
-              <tr>
 
-                <th className="
-                  border-2
-                  border-black
-                  px-2
-                  py-2
-                  text-center
-                  text-sm
-                  font-semibold
-                ">
-                  Product
-                </th>
-
-
-                <th className="
-                  border-2
-                  border-black
-                  px-2
-                  py-2
-                  text-center
-                  text-sm
-                  font-semibold
-                ">
-                  Category
-                </th>
-
-
-                <th className="
-                  border-2
-                  border-black
-                  px-2
-                  py-2
-                  text-center
-                  text-sm
-                  font-semibold
-                ">
-                  Total Quantity
-                </th>
-
-
-                <th className="
-                  border-2
-                  border-black
-                  px-2
-                  py-2
-                  text-center
-                  text-sm
-                  font-semibold
-                ">
-                  Used Quantity
-                </th>
-
-
-                <th className="
-                  border-2
-                  border-black
-                  px-2
-                  py-2
-                  text-center
-                  text-sm
-                  font-semibold
-                ">
-                  Remaining
-                </th>
-
-                <th className="
-                  border-2
-                  border-black
-                  px-2
-                  py-2
-                  text-center
-                  text-sm
-                  font-semibold
-                ">
-                  Status
-                </th>
-
-              </tr>
-
-            </thead>
-
-
-            <tbody>
-
-
-              {filteredItems.length === 0 ? (
+              <thead className="
+                bg-teal-700
+                text-white
+              ">
 
                 <tr>
 
-                  <td
-                    colSpan="6"
-                    className="
-                      border
-                      border-black
-                      py-4
-                      text-center
-                      text-gray-500
-                    "
-                  >
-                    No stock found.
-                  </td>
+                  <th className="
+                    border-2
+                    border-black
+                    px-2
+                    py-2
+                    text-center
+                    text-sm
+                    font-semibold
+                  ">
+                    Product
+                  </th>
+
+
+                  <th className="
+                    border-2
+                    border-black
+                    px-2
+                    py-2
+                    text-center
+                    text-sm
+                    font-semibold
+                  ">
+                    Category
+                  </th>
+
+
+                  <th className="
+                    border-2
+                    border-black
+                    px-2
+                    py-2
+                    text-center
+                    text-sm
+                    font-semibold
+                  ">
+                    Total Quantity
+                  </th>
+
+
+                  <th className="
+                    border-2
+                    border-black
+                    px-2
+                    py-2
+                    text-center
+                    text-sm
+                    font-semibold
+                  ">
+                    Used Quantity
+                  </th>
+
+
+                  <th className="
+                    border-2
+                    border-black
+                    px-2
+                    py-2
+                    text-center
+                    text-sm
+                    font-semibold
+                  ">
+                    Remaining
+                  </th>
+
+
+                  <th className="
+                    border-2
+                    border-black
+                    px-2
+                    py-2
+                    text-center
+                    text-sm
+                    font-semibold
+                  ">
+                    Status
+                  </th>
 
                 </tr>
 
-              ) : (
-
-                filteredItems.map((item) => {
-
-                  const statusStyle =
-                    getStatusStyle(
-                      item.stock_status
-                    );
+              </thead>
 
 
-                  return (
+              <tbody>
 
-                    <tr
-                      key={
-                        item.product_name +
-                        item.category +
-                        item.company +
-                        item.specification
-                      }
+
+                {filteredItems.length === 0 ? (
+
+                  <tr>
+
+                    <td
+                      colSpan="6"
                       className="
                         border
-                        border-slate-300
-                        hover:bg-indigo-50
-                        transition-all
-                        duration-300
+                        border-black
+                        py-4
+                        text-center
+                        text-gray-500
                       "
                     >
+                      No stock found.
+                    </td>
+
+                  </tr>
+
+                ) : (
+
+                  filteredItems.map((item) => {
+
+                    const statusStyle =
+                      getStatusStyle(
+                        item.stock_status
+                      );
 
 
-                      {/* PRODUCT */}
+                    return (
 
-                      <td className="
-                        border-2
-                        border-black
-                        px-2
-                        py-2
-                        text-center
-                        font-medium
-                      ">
-                        {item.display_name}
-                      </td>
-
-
-                      {/* CATEGORY */}
-
-                      <td className="
-                        border-2
-                        border-black
-                        px-2
-                        py-2
-                        text-center
-                      ">
-                        {item.category}
-                      </td>
+                      <tr
+                        key={
+                          item.product_name +
+                          item.category +
+                          item.company +
+                          item.specification
+                        }
+                        className="
+                          border
+                          border-slate-300
+                          hover:bg-indigo-50
+                          transition-all
+                          duration-300
+                        "
+                      >
 
 
-                      {/* TOTAL */}
+                        {/* PRODUCT */}
 
-                      <td className="
-                        border-2
-                        border-black
-                        px-2
-                        py-2
-                        text-center
-                      ">
-
-                        {item.total_quantity}
-
-                        {" "}
-
-                        {item.unit}
-
-                      </td>
+                        <td className="
+                          border-2
+                          border-black
+                          px-2
+                          py-2
+                          text-center
+                          font-medium
+                        ">
+                          {item.display_name}
+                        </td>
 
 
-                      {/* USED */}
+                        {/* CATEGORY */}
 
-                      <td className="
-                        border-2
-                        border-black
-                        px-2
-                        py-2
-                        text-center
-                      ">
-
-                        {item.used_quantity}
-
-                        {" "}
-
-                        {item.unit}
-
-                      </td>
+                        <td className="
+                          border-2
+                          border-black
+                          px-2
+                          py-2
+                          text-center
+                        ">
+                          {item.category}
+                        </td>
 
 
-                      {/* REMAINING */}
+                        {/* TOTAL */}
 
-                      <td className="
-                        border-2
-                        border-black
-                        px-2
-                        py-2
-                        text-center
-                      ">
-
-                        <span className="
-                          font-bold
-                          text-green-700
+                        <td className="
+                          border-2
+                          border-black
+                          px-2
+                          py-2
+                          text-center
                         ">
 
-                          {item.remaining}
+                          {item.total_quantity}
 
                           {" "}
 
                           {item.unit}
 
-                        </span>
-
-                      </td>
+                        </td>
 
 
-                     
+                        {/* USED */}
+
+                        <td className="
+                          border-2
+                          border-black
+                          px-2
+                          py-2
+                          text-center
+                        ">
+
+                          {item.used_quantity}
+
+                          {" "}
+
+                          {item.unit}
+
+                        </td>
 
 
-                      {/* STATUS */}
+                        {/* REMAINING */}
 
-                      <td className="
-                        border-2
-                        border-black
-                        px-2
-                        py-2
-                        text-center
-                      ">
+                        <td className="
+                          border-2
+                          border-black
+                          px-2
+                          py-2
+                          text-center
+                        ">
 
-                        <span className={`
-                          inline-flex
-                          items-center
-                          gap-2
-                          rounded-full
-                          border
-                          px-3
-                          py-1
-                          font-bold
-                          ${statusStyle.wrapper}
-                        `}>
+                          <span className="
+                            font-bold
+                            text-green-700
+                          ">
+
+                            {item.remaining}
+
+                            {" "}
+
+                            {item.unit}
+
+                          </span>
+
+                        </td>
+
+
+                        {/* STATUS */}
+
+                        <td className="
+                          border-2
+                          border-black
+                          px-2
+                          py-2
+                          text-center
+                        ">
 
                           <span className={`
-                            h-2
-                            w-2
+                            inline-flex
+                            items-center
+                            gap-2
                             rounded-full
-                            ${statusStyle.dot}
-                          `} />
+                            border
+                            px-3
+                            py-1
+                            font-bold
+                            whitespace-nowrap
+                            ${statusStyle.wrapper}
+                          `}>
 
-                          {item.stock_status}
+                            <span className={`
+                              h-2
+                              w-2
+                              rounded-full
+                              shrink-0
+                              ${statusStyle.dot}
+                            `} />
 
-                        </span>
+                            {item.stock_status}
 
-                      </td>
+                          </span>
+
+                        </td>
 
 
-                    </tr>
+                      </tr>
 
-                  );
+                    );
 
-                })
+                  })
 
-              )}
+                )}
 
-            </tbody>
+              </tbody>
 
-          </table>
+            </table>
+
+          </div>
 
         )}
 

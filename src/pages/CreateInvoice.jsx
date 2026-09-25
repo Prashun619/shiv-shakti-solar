@@ -11,15 +11,13 @@ import {
   getLastInvoiceNumber,
   saveInvoice,
   getInvoiceById,
-  updateInvoice,    
+  updateInvoice,
   getInvoices,
   deleteInvoice,
 } from "../services/invoiceService";
 
 
-
 function amountToWords(num) {
-
 
   const ones = [
     "",
@@ -59,43 +57,37 @@ function amountToWords(num) {
   ];
 
 
+  function convert(n) {
 
-  function convert(n){
-
-
-    if(n < 20)
+    if (n < 20)
       return ones[n];
 
 
-    if(n < 100)
-      return tens[Math.floor(n/10)] + " " + ones[n%10];
+    if (n < 100)
+      return tens[Math.floor(n / 10)] + " " + ones[n % 10];
 
 
-    if(n < 1000)
-      return ones[Math.floor(n/100)] + " Hundred " + convert(n%100);
+    if (n < 1000)
+      return ones[Math.floor(n / 100)] + " Hundred " + convert(n % 100);
 
 
-    if(n < 100000)
-      return convert(Math.floor(n/1000)) 
-      + " Thousand " 
-      + convert(n%1000);
+    if (n < 100000)
+      return convert(Math.floor(n / 1000))
+        + " Thousand "
+        + convert(n % 1000);
 
 
-
-    if(n < 10000000)
-      return convert(Math.floor(n/100000)) 
-      + " Lakh " 
-      + convert(n%100000);
-
+    if (n < 10000000)
+      return convert(Math.floor(n / 100000))
+        + " Lakh "
+        + convert(n % 100000);
 
 
-    return convert(Math.floor(n/10000000)) 
-    + " Crore " 
-    + convert(n%10000000);
-
+    return convert(Math.floor(n / 10000000))
+      + " Crore "
+      + convert(n % 10000000);
 
   }
-
 
 
   return num
@@ -105,720 +97,657 @@ function amountToWords(num) {
 }
 
 
+export default function CreateInvoice() {
 
+  const navigate = useNavigate();
 
+  const [searchParams] = useSearchParams();
 
-export default function CreateInvoice(){
-    const navigate = useNavigate();
-const [searchParams] = useSearchParams();
+  const invoiceId =
+    searchParams.get("id");
 
-const invoiceId =
-searchParams.get("id");
 
+  const [editMode, setEditMode] =
+    useState(false);
 
-const [editMode,setEditMode] =
-useState(false);
 
+  const [invoiceNumber, setInvoiceNumber] =
+    useState("");
 
-const [invoiceNumber,setInvoiceNumber] = useState("");
 
-
-
-const [invoiceDate,setInvoiceDate] = useState(
-  new Date().toISOString().split("T")[0]
-);
-
-
-
-const [customers,setCustomers] = useState([]);
-
-
-
-const [customerId,setCustomerId] = useState("");
-
-
-
-const [customerName,setCustomerName] = useState("");
-
-
-
-const [customerAddress,setCustomerAddress] = useState("");
-
-
-
-const [items,setItems] = useState([]);
-
-
-
-const [total,setTotal] = useState("");
-
-
-
-const [invoiceList,setInvoiceList] = useState([]);
-
-
-
-
-
-const subtotal = total;
-
-
-const finalTotal = total;
-
-
-
-
-
-const amountInWords =
-total
-?
-amountToWords(total)
-:
-"";
-
-
-
-
-
-
-
-useEffect(()=>{
-
-loadPage();
-
-},[]);
-
-
-
-
-
-
-
-
-async function loadPage() {
-  const customerList = await getInvoiceCustomers();
-
-  const invoices = await getInvoices();
-
-  setInvoiceList(invoices);
-
-  if (invoiceId) {
-    const invoice = await getInvoiceById(invoiceId);
-
-    setEditMode(true);
-
-    setInvoiceNumber(
-      invoice.invoice_number
+  const [invoiceDate, setInvoiceDate] =
+    useState(
+      new Date().toISOString().split("T")[0]
     );
 
-    setInvoiceDate(
-      invoice.invoice_date
-    );
 
-    setCustomerId(
-      invoice.customer_id
-    );
+  const [customers, setCustomers] =
+    useState([]);
 
-    setCustomerName(
-      invoice.customer_name
-    );
 
-    setCustomerAddress(
-      invoice.customer_address
-    );
+  const [customerId, setCustomerId] =
+    useState("");
 
-    setItems(
-      invoice.items || []
-    );
 
-    setTotal(
-      invoice.total
-    );
+  const [customerName, setCustomerName] =
+    useState("");
 
-    /*
-     * EDIT MODE
-     *
-     * Keep the customer of the current invoice
-     * visible in the dropdown.
-     *
-     * Hide all other customers who already have
-     * an invoice.
-     */
-    const invoicedCustomerIds = new Set(
-      invoices
-        .map((invoice) => invoice.customer_id)
-        .filter(Boolean)
-    );
 
-    const availableCustomers =
-      customerList.filter(
-        (customer) =>
-          !invoicedCustomerIds.has(customer.id) ||
-          customer.id === invoice.customer_id
+  const [customerAddress, setCustomerAddress] =
+    useState("");
+
+
+  const [items, setItems] =
+    useState([]);
+
+
+  const [total, setTotal] =
+    useState("");
+
+
+  const [invoiceList, setInvoiceList] =
+    useState([]);
+
+
+  const subtotal = total;
+
+  const finalTotal = total;
+
+
+  const amountInWords =
+    total
+      ? amountToWords(total)
+      : "";
+
+
+  useEffect(() => {
+
+    loadPage();
+
+  }, []);
+
+
+  async function loadPage() {
+
+    const customerList =
+      await getInvoiceCustomers();
+
+    const invoices =
+      await getInvoices();
+
+    setInvoiceList(invoices);
+
+    if (invoiceId) {
+
+      const invoice =
+        await getInvoiceById(invoiceId);
+
+      setEditMode(true);
+
+      setInvoiceNumber(
+        invoice.invoice_number
       );
 
-    setCustomers(availableCustomers);
-  } else {
-    /*
-     * CREATE MODE
-     *
-     * Only show customers who do NOT already
-     * have an invoice.
-     */
-    const invoicedCustomerIds = new Set(
-      invoices
-        .map((invoice) => invoice.customer_id)
-        .filter(Boolean)
-    );
-
-    const availableCustomers =
-      customerList.filter(
-        (customer) =>
-          !invoicedCustomerIds.has(customer.id)
+      setInvoiceDate(
+        invoice.invoice_date
       );
 
-    setCustomers(availableCustomers);
+      setCustomerId(
+        invoice.customer_id
+      );
 
-    const nextInvoice =
-      await getLastInvoiceNumber();
+      setCustomerName(
+        invoice.customer_name
+      );
 
-    setInvoiceNumber(nextInvoice);
+      setCustomerAddress(
+        invoice.customer_address
+      );
+
+      setItems(
+        invoice.items || []
+      );
+
+      setTotal(
+        invoice.total
+      );
+
+
+      /*
+       * EDIT MODE
+       *
+       * Keep the customer of the current invoice
+       * visible in the dropdown.
+       *
+       * Hide all other customers who already have
+       * an invoice.
+       */
+
+      const invoicedCustomerIds =
+        new Set(
+          invoices
+            .map(
+              (invoice) =>
+                invoice.customer_id
+            )
+            .filter(Boolean)
+        );
+
+
+      const availableCustomers =
+        customerList.filter(
+          (customer) =>
+            !invoicedCustomerIds.has(
+              customer.id
+            ) ||
+            customer.id === invoice.customer_id
+        );
+
+
+      setCustomers(
+        availableCustomers
+      );
+
+    } else {
+
+      /*
+       * CREATE MODE
+       *
+       * Only show customers who do NOT already
+       * have an invoice.
+       */
+
+      const invoicedCustomerIds =
+        new Set(
+          invoices
+            .map(
+              (invoice) =>
+                invoice.customer_id
+            )
+            .filter(Boolean)
+        );
+
+
+      const availableCustomers =
+        customerList.filter(
+          (customer) =>
+            !invoicedCustomerIds.has(
+              customer.id
+            )
+        );
+
+
+      setCustomers(
+        availableCustomers
+      );
+
+
+      const nextInvoice =
+        await getLastInvoiceNumber();
+
+
+      setInvoiceNumber(
+        nextInvoice
+      );
+
+    }
+
   }
-}
 
-async function handleSave(){
 
-try{
+  async function handleSave() {
 
+    try {
 
-const invoiceData = {
+      const invoiceData = {
 
+        invoice_number: invoiceNumber,
 
-invoice_number:invoiceNumber,
+        invoice_date: invoiceDate,
 
-invoice_date:invoiceDate,
+        customer_id: customerId,
 
-customer_id:customerId,
+        customer_name: customerName,
 
-customer_name:customerName,
+        customer_address: customerAddress,
 
-customer_address:customerAddress,
+        items,
 
-items,
+        subtotal: total,
 
-subtotal:total,
+        total,
 
-total,
+        amount_in_words: amountInWords,
 
-amount_in_words:amountInWords,
+      };
 
 
-};
+      if (editMode) {
 
+        await updateInvoice(
+          invoiceId,
+          invoiceData
+        );
 
 
-if(editMode){
+        alert(
+          "Invoice updated successfully."
+        );
 
 
-await updateInvoice(
-invoiceId,
-invoiceData
-);
+        navigate("/invoice");
 
+      } else {
 
-alert(
-"Invoice updated successfully."
-);
+        await saveInvoice(
+          invoiceData
+        );
 
 
-navigate("/invoice");
+        alert(
+          "Invoice saved successfully."
+        );
 
 
-}
-else{
+        navigate("/invoice");
 
+      }
 
-await saveInvoice(
-invoiceData
-);
+    }
+    catch (err) {
 
+      console.error(err);
 
-alert(
-"Invoice saved successfully."
-);
 
+      alert(
+        "Unable to save invoice."
+      );
 
-navigate("/invoice");
+    }
 
+  }
 
-}
 
+  async function handleDelete(id) {
 
-}
+    const confirmDelete =
+      window.confirm(
+        "Delete this invoice?"
+      );
 
-catch(err){
 
+    if (!confirmDelete)
+      return;
 
-console.error(err);
 
+    try {
 
-alert(
-"Unable to save invoice."
-);
+      await deleteInvoice(id);
 
 
-}
+      loadPage();
 
+    }
+    catch (err) {
 
-}
+      console.error(err);
 
+      alert(
+        "Unable to delete invoice."
+      );
 
-async function handleDelete(id){
+    }
 
+  }
 
 
-const confirmDelete =
-window.confirm(
-"Delete this invoice?"
-);
+  return (
 
+    <div className="
+      min-h-screen
+      p-3
+      sm:p-4
+      lg:p-6
+      overflow-x-hidden
+    ">
 
 
-if(!confirmDelete)
-return;
+      {/* PAGE HEADER */}
 
+      <div className="
+        flex
+        flex-col
+        sm:flex-row
+        sm:justify-between
+        sm:items-center
+        gap-4
+        mb-6
+        sm:mb-8
+      ">
 
 
-try{
+        <h1 className="
+          text-2xl
+          sm:text-3xl
+          font-bold
+        ">
 
+          Create Invoice
 
-await deleteInvoice(id);
+        </h1>
 
 
+        <button
+          type="button"
+          onClick={() =>
+            navigate("/invoice")
+          }
+          className="
+            bg-gray-600
+            text-white
+            px-5
+            py-2
+            rounded-lg
+            w-full
+            sm:w-auto
+          "
+        >
 
-loadPage();
+          ← Back
 
+        </button>
 
 
-}
+      </div>
 
-catch(err){
 
-console.error(err);
+      <div className="
+        bg-white
+        rounded-2xl
+        shadow
+        p-3
+        sm:p-5
+        lg:p-6
+        min-w-0
+      ">
 
-alert(
-"Unable to delete invoice."
-);
 
-}
+        {/* HEADER */}
 
+        <InvoiceHeader />
 
 
-}
-return(
+        {/* BILL TO + INVOICE DETAILS */}
 
+        <InvoiceBillTo
 
-<div className="p-6">
+          customers={customers}
 
+          customerId={customerId}
+          setCustomerId={setCustomerId}
 
-<div className="flex justify-between items-center mb-8">
+          customerName={customerName}
+          setCustomerName={setCustomerName}
 
+          customerAddress={customerAddress}
+          setCustomerAddress={setCustomerAddress}
 
-<h1 className="text-3xl font-bold">
+          invoiceNumber={invoiceNumber}
+          setInvoiceNumber={setInvoiceNumber}
 
-Create Invoice
+          invoiceDate={invoiceDate}
+          setInvoiceDate={setInvoiceDate}
 
-</h1>
+        />
 
 
+        {/* PRODUCT TABLE */}
 
-<button
+        <InvoiceItems
 
-type="button"
+          items={items}
 
-onClick={()=>navigate("/invoice")}
+          setItems={setItems}
 
-className="
-bg-gray-600
-text-white
-px-5
-py-2
-rounded-lg
-"
+        />
 
->
 
-← Back
+        {/* SUMMARY SECTION */}
 
-</button>
+        <div className="
+          mt-6
+          border
+          border-green-600
+          overflow-hidden
+        ">
 
 
+          <div className="
+            flex
+            justify-end
+          ">
 
-</div>
 
+            <div className="
+              w-full
+              sm:w-80
+            ">
 
 
+              {/* TOTAL */}
 
+              <div className="
+                flex
+                justify-between
+                gap-4
+                border-b
+                border-green-600
+                p-3
+              ">
 
-<div className="bg-white rounded-2xl shadow p-6">
 
+                <span className="
+                  font-semibold
+                  shrink-0
+                ">
 
+                  Total
 
+                </span>
 
 
+                <input
 
-{/* HEADER */}
+                  type="number"
 
-<InvoiceHeader />
+                  value={total}
 
+                  onChange={(e) =>
+                    setTotal(
+                      e.target.value
+                    )
+                  }
 
+                  className="
+                    w-36
+                    max-w-full
+                    text-right
+                    outline-none
+                    bg-transparent
+                  "
 
+                />
 
+              </div>
 
 
+              {/* SUBTOTAL */}
 
-{/* BILL TO + INVOICE DETAILS */}
+              <div className="
+                flex
+                justify-between
+                gap-4
+                border-b
+                border-green-600
+                p-3
+              ">
 
 
-<InvoiceBillTo
+                <span className="
+                  font-semibold
+                  shrink-0
+                ">
 
-  customers={customers}
+                  Subtotal
 
-  customerId={customerId}
-  setCustomerId={setCustomerId}
+                </span>
 
-  customerName={customerName}
-  setCustomerName={setCustomerName}
 
-  customerAddress={customerAddress}
-  setCustomerAddress={setCustomerAddress}
+                <span className="
+                  font-bold
+                  text-right
+                ">
 
-  invoiceNumber={invoiceNumber}
-  setInvoiceNumber={setInvoiceNumber}
+                  ₹ {Number(
+                    subtotal || 0
+                  ).toFixed(2)}
 
-  invoiceDate={invoiceDate}
-  setInvoiceDate={setInvoiceDate}
+                </span>
 
-/>
 
+              </div>
 
 
+              {/* FINAL TOTAL */}
 
+              <div className="
+                flex
+                justify-between
+                gap-4
+                p-3
+              ">
 
 
+                <span className="
+                  font-bold
+                  shrink-0
+                ">
 
+                  TOTAL
 
+                </span>
 
-{/* PRODUCT TABLE */}
 
+                <span className="
+                  font-bold
+                  text-right
+                ">
 
+                  ₹ {Number(
+                    finalTotal || 0
+                  ).toFixed(2)}
 
-<InvoiceItems
+                </span>
 
 
-items={items}
+              </div>
 
 
-setItems={setItems}
+            </div>
 
 
-/>
+          </div>
 
 
+        </div>
 
 
+        {/* AMOUNT IN WORDS */}
 
+        <div className="
+          border
+          border-green-600
+          border-t-0
+          p-3
+          sm:p-4
+        ">
 
 
+          <label className="
+            font-semibold
+          ">
 
+            Amount In Words
 
-{/* SUMMARY SECTION */}
+          </label>
 
 
+          <textarea
 
-<div className="mt-6 border border-green-600">
+            rows="2"
 
+            readOnly
 
+            value={amountInWords}
 
-<div className="flex justify-end">
+            className="
+              w-full
+              mt-2
+              outline-none
+              bg-transparent
+              resize-none
+              break-words
+            "
 
+          />
 
 
-<div className="w-80">
+        </div>
 
 
+        {/* FOOTER */}
 
+        <InvoiceFooter />
 
 
+        {/* SAVE BUTTON */}
 
-{/* TOTAL */}
+        <div className="
+          mt-6
+          sm:mt-8
+        ">
 
 
-<div className="flex justify-between border-b border-green-600 p-3">
+          <button
 
+            type="button"
 
-<span className="font-semibold">
+            onClick={handleSave}
 
-Total
+            className="
+              w-full
+              bg-green-600
+              hover:bg-green-700
+              text-white
+              py-3
+              rounded-xl
+              font-semibold
+            "
 
-</span>
+          >
 
+            Save Invoice
 
+          </button>
 
 
-<input
+        </div>
 
 
-type="number"
+      </div>
 
+    </div>
 
-value={total}
-
-
-onChange={(e)=>
-setTotal(e.target.value)
-}
-
-
-
-className="
-w-36
-text-right
-outline-none
-bg-transparent
-"
-
-
-
-/>
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-{/* SUBTOTAL */}
-
-
-
-<div className="flex justify-between border-b border-green-600 p-3">
-
-
-<span className="font-semibold">
-
-Subtotal
-
-</span>
-
-
-
-
-<span className="font-bold">
-
-
-₹ {Number(subtotal || 0).toFixed(2)}
-
-
-</span>
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-{/* FINAL TOTAL */}
-
-
-
-<div className="flex justify-between p-3">
-
-
-<span className="font-bold">
-
-TOTAL
-
-</span>
-
-
-
-<span className="font-bold">
-
-
-₹ {Number(finalTotal || 0).toFixed(2)}
-
-
-</span>
-
-
-
-</div>
-
-
-
-
-
-
-
-
-</div>
-
-
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-{/* AMOUNT IN WORDS */}
-
-
-
-<div
-
-className="
-border
-border-green-600
-border-t-0
-p-4
-"
-
->
-
-
-
-<label className="font-semibold">
-
-
-Amount In Words
-
-
-</label>
-
-
-
-
-<textarea
-
-
-
-rows="2"
-
-
-
-readOnly
-
-
-
-value={amountInWords}
-
-
-
-className="
-w-full
-mt-2
-outline-none
-bg-transparent
-"
-
-
-
-/>
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-{/* FOOTER */}
-
-
-
-<InvoiceFooter />
-
-
-
-
-
-
-
-
-
-{/* SAVE BUTTON */}
-
-
-
-<div className="mt-8">
-
-
-<button
-
-
-type="button"
-
-
-
-onClick={handleSave}
-
-
-
-className="
-w-full
-bg-green-600
-hover:bg-green-700
-text-white
-py-3
-rounded-xl
-font-semibold
-"
-
-
-
->
-
-
-Save Invoice
-
-
-</button>
-
-
-
-</div>
-
-</div>
-
-</div>
-
-);
+  );
 
 }

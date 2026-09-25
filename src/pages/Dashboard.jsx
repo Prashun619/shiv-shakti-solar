@@ -275,7 +275,7 @@ export default function Dashboard() {
 
       /* =================================================
          INVESTOR CHECK
-      ================================================== */
+      ================================================= */
 
       const investorNames = [
         "shubhendu",
@@ -410,7 +410,7 @@ export default function Dashboard() {
 
           /* =============================================
              CUSTOMER PAYMENT
-          ============================================== */
+          ============================================= */
 
           if (
             type ===
@@ -433,7 +433,7 @@ export default function Dashboard() {
 
           /* =============================================
              INVESTMENT
-          ============================================== */
+          ============================================= */
 
           if (
             type === "investment" ||
@@ -450,7 +450,7 @@ export default function Dashboard() {
 
           /* =============================================
              DEALER PAYMENT
-          ============================================== */
+          ============================================= */
 
           const isDealerPayment =
             type ===
@@ -500,7 +500,7 @@ export default function Dashboard() {
 
           /* =============================================
              NORMAL EXPENSE
-          ============================================== */
+          ============================================= */
 
           const isExpense =
             type === "expense" ||
@@ -839,7 +839,9 @@ export default function Dashboard() {
         min-h-screen
         overflow-hidden
         bg-[#050816]
-        p-6
+        p-3
+        sm:p-4
+        lg:p-6
         text-white
       "
     >
@@ -928,13 +930,16 @@ export default function Dashboard() {
 
         <div
           className="
-            mb-6
+            mb-4
+            sm:mb-6
             rounded-3xl
             border
             border-cyan-400/30
             bg-slate-950/60
-            px-5
-            py-4
+            px-3
+            sm:px-5
+            py-3
+            sm:py-4
             shadow-[0_0_35px_rgba(34,211,238,0.12)]
             backdrop-blur-2xl
             flex
@@ -942,7 +947,8 @@ export default function Dashboard() {
             lg:flex-row
             lg:justify-between
             lg:items-center
-            gap-5
+            gap-4
+            sm:gap-5
           "
         >
 
@@ -952,15 +958,19 @@ export default function Dashboard() {
               className="
                 flex
                 items-center
-                gap-5
+                gap-3
+                sm:gap-5
               "
             >
 
               <div
                 className="
                   relative
-                  h-16
-                  w-16
+                  h-14
+                  w-14
+                  sm:h-16
+                  sm:w-16
+                  shrink-0
                   rounded-2xl
                   border
                   border-cyan-300/50
@@ -987,8 +997,10 @@ export default function Dashboard() {
                   alt="Shiv Shakti Solar"
                   className="
                     relative
-                    h-14
-                    w-14
+                    h-12
+                    w-12
+                    sm:h-14
+                    sm:w-14
                     object-contain
                   "
                 />
@@ -996,11 +1008,12 @@ export default function Dashboard() {
               </div>
 
 
-              <div>
+              <div className="min-w-0">
 
                 <h1
                   className="
-                    text-3xl
+                    text-xl
+                    sm:text-3xl
                     font-black
                     tracking-tight
                     text-white
@@ -1013,7 +1026,8 @@ export default function Dashboard() {
                 <p
                   className="
                     mt-1
-                    text-sm
+                    text-xs
+                    sm:text-sm
                     font-medium
                     text-cyan-100/70
                   "
@@ -1028,15 +1042,19 @@ export default function Dashboard() {
 
             <div
               className="
-                mt-5
+                mt-4
+                sm:mt-5
                 inline-flex
+                max-w-full
                 items-center
-                gap-3
+                gap-2
+                sm:gap-3
                 rounded-full
                 border
                 border-emerald-400/30
                 bg-emerald-400/10
-                px-4
+                px-3
+                sm:px-4
                 py-1.5
                 shadow-[0_0_18px_rgba(16,185,129,0.15)]
                 backdrop-blur-md
@@ -1047,6 +1065,7 @@ export default function Dashboard() {
                 className="
                   h-2.5
                   w-2.5
+                  shrink-0
                   rounded-full
                   bg-emerald-400
                   animate-pulse
@@ -1056,7 +1075,8 @@ export default function Dashboard() {
 
               <span
                 className="
-                  text-sm
+                  text-xs
+                  sm:text-sm
                   font-bold
                   text-emerald-300
                 "
@@ -1066,7 +1086,8 @@ export default function Dashboard() {
 
               <span
                 className="
-                  text-sm
+                  text-xs
+                  sm:text-sm
                   text-emerald-200/50
                 "
               >
@@ -1075,8 +1096,10 @@ export default function Dashboard() {
 
               <span
                 className="
-                  text-sm
+                  text-xs
+                  sm:text-sm
                   text-cyan-100/60
+                  truncate
                 "
               >
                 Dashboard Overview
@@ -1091,13 +1114,16 @@ export default function Dashboard() {
 
           <div
             className="
-              min-w-[300px]
+              w-full
+              min-w-0
               rounded-2xl
               border
               border-purple-400/30
               bg-slate-900/70
-              px-5
-              py-4
+              px-4
+              sm:px-5
+              py-3
+              sm:py-4
               shadow-[0_0_30px_rgba(168,85,247,0.15)]
               backdrop-blur-xl
             "
@@ -1106,9 +1132,12 @@ export default function Dashboard() {
             <div
               className="
                 flex
-                items-center
-                justify-between
-                gap-8
+                flex-col
+                sm:flex-row
+                sm:items-center
+                sm:justify-between
+                gap-3
+                sm:gap-8
               "
             >
 
@@ -1141,7 +1170,7 @@ export default function Dashboard() {
 
 
               <div
-                className="text-right"
+                className="text-left sm:text-right"
               >
 
                 <p
@@ -1158,7 +1187,8 @@ export default function Dashboard() {
 
                 <h2
                   className="
-                    text-3xl
+                    text-2xl
+                    sm:text-3xl
                     font-black
                     text-cyan-300
                     drop-shadow-[0_0_12px_rgba(34,211,238,0.7)]
@@ -1174,14 +1204,17 @@ export default function Dashboard() {
 
             <div
               className="
-                mt-4
+                mt-3
+                sm:mt-4
                 border-t
                 border-white/10
                 pt-3
                 flex
+                flex-wrap
                 items-center
                 gap-2
-                text-sm
+                text-xs
+                sm:text-sm
                 text-slate-300
               "
             >
@@ -1220,9 +1253,11 @@ export default function Dashboard() {
           className="
             grid
             grid-cols-1
+            min-[420px]:grid-cols-2
             md:grid-cols-2
             xl:grid-cols-4
-            gap-5
+            gap-3
+            sm:gap-5
           "
         >
 
@@ -1395,12 +1430,14 @@ export default function Dashboard() {
 
         <div
           className="
-            mt-6
+            mt-4
+            sm:mt-6
             rounded-3xl
             border
             border-cyan-400/20
             bg-slate-950/60
-            p-6
+            p-3
+            sm:p-6
             shadow-[0_0_35px_rgba(34,211,238,0.10)]
             backdrop-blur-2xl
           "
@@ -1411,9 +1448,13 @@ export default function Dashboard() {
           <div
             className="
               flex
-              items-center
-              justify-between
-              mb-6
+              flex-col
+              sm:flex-row
+              sm:items-center
+              sm:justify-between
+              gap-2
+              mb-4
+              sm:mb-6
             "
           >
 
@@ -1421,7 +1462,8 @@ export default function Dashboard() {
 
               <h2
                 className="
-                  text-xl
+                  text-lg
+                  sm:text-xl
                   font-black
                   text-white
                   drop-shadow-[0_0_8px_rgba(34,211,238,0.25)]
@@ -1444,7 +1486,8 @@ export default function Dashboard() {
 
             <span
               className="
-                text-sm
+                text-xs
+                sm:text-sm
                 text-cyan-100/40
               "
             >
@@ -1455,525 +1498,528 @@ export default function Dashboard() {
 
 
           {/* =================================================
-    5 FINANCE CARDS
-================================================== */}
+              5 FINANCE CARDS
+          ================================================== */}
 
-<div
-  className="
-    grid
-    grid-cols-1
-    sm:grid-cols-2
-    lg:grid-cols-3
-    xl:grid-cols-5
-    gap-3
-  "
->
+          <div
+            className="
+              grid
+              grid-cols-1
+              sm:grid-cols-2
+              lg:grid-cols-3
+              xl:grid-cols-5
+              gap-3
+            "
+          >
 
-  {/* =================================================
-      CUSTOMER PAYMENT
-  ================================================== */}
+            {/* =================================================
+                CUSTOMER PAYMENT
+            ================================================== */}
 
-  <div
-    className="
-      group
-      relative
-      overflow-hidden
-      rounded-2xl
-      border
-      border-emerald-400/30
-      bg-gradient-to-br
-      from-emerald-500/10
-      via-slate-950/70
-      to-cyan-500/10
-      p-3
-      shadow-[0_0_18px_rgba(16,185,129,0.10)]
-      backdrop-blur-xl
-      transition-all
-      duration-300
-      hover:-translate-y-1
-      hover:border-emerald-300/60
-      hover:shadow-[0_0_30px_rgba(16,185,129,0.25)]
-    "
-  >
+            <div
+              className="
+                group
+                relative
+                overflow-hidden
+                rounded-2xl
+                border
+                border-emerald-400/30
+                bg-gradient-to-br
+                from-emerald-500/10
+                via-slate-950/70
+                to-cyan-500/10
+                p-3
+                shadow-[0_0_18px_rgba(16,185,129,0.10)]
+                backdrop-blur-xl
+                transition-all
+                duration-300
+                hover:-translate-y-1
+                hover:border-emerald-300/60
+                hover:shadow-[0_0_30px_rgba(16,185,129,0.25)]
+              "
+            >
 
-    <div
-      className="
-        absolute
-        -right-8
-        -top-8
-        h-20
-        w-20
-        rounded-full
-        bg-emerald-400/10
-        blur-2xl
-      "
-    />
+              <div
+                className="
+                  absolute
+                  -right-8
+                  -top-8
+                  h-20
+                  w-20
+                  rounded-full
+                  bg-emerald-400/10
+                  blur-2xl
+                "
+              />
 
-    <div className="relative">
+              <div className="relative">
 
-      <div
-        className="
-          mb-2
-          flex
-          h-9
-          w-9
-          items-center
-          justify-center
-          rounded-xl
-          border
-          border-emerald-400/30
-          bg-emerald-400/10
-          text-emerald-300
-          shadow-[0_0_14px_rgba(16,185,129,0.20)]
-        "
-      >
-        <IndianRupee size={18} />
-      </div>
+                <div
+                  className="
+                    mb-2
+                    flex
+                    h-9
+                    w-9
+                    items-center
+                    justify-center
+                    rounded-xl
+                    border
+                    border-emerald-400/30
+                    bg-emerald-400/10
+                    text-emerald-300
+                    shadow-[0_0_14px_rgba(16,185,129,0.20)]
+                  "
+                >
+                  <IndianRupee size={18} />
+                </div>
 
-      <p
-        className="
-          text-xs
-          font-bold
-          text-emerald-300
-          truncate
-        "
-      >
-        Customer Payment
-      </p>
+                <p
+                  className="
+                    text-xs
+                    font-bold
+                    text-emerald-300
+                    truncate
+                  "
+                >
+                  Customer Payment
+                </p>
 
-      <p
-        className="
-          mt-0.5
-          text-[10px]
-          text-slate-500
-          truncate
-        "
-      >
-        All customer payments
-      </p>
+                <p
+                  className="
+                    mt-0.5
+                    text-[10px]
+                    text-slate-500
+                    truncate
+                  "
+                >
+                  All customer payments
+                </p>
 
-      <h3
-        className="
-          mt-2
-          text-lg
-          font-black
-          text-emerald-300
-          drop-shadow-[0_0_8px_rgba(52,211,153,0.55)]
-          truncate
-        "
-      >
-        ₹ {formatIndianAmount(stats.customerPayment)}
-      </h3>
+                <h3
+                  className="
+                    mt-2
+                    text-lg
+                    font-black
+                    text-emerald-300
+                    drop-shadow-[0_0_8px_rgba(52,211,153,0.55)]
+                    truncate
+                  "
+                >
+                  ₹ {formatIndianAmount(stats.customerPayment)}
+                </h3>
 
-    </div>
+              </div>
 
-  </div>
-
-  {/* =================================================
-      PLANT COST
-  ================================================== */}
-
-  <div
-    className="
-      group
-      relative
-      overflow-hidden
-      rounded-2xl
-      border
-      border-cyan-400/30
-      bg-gradient-to-br
-      from-cyan-500/10
-      via-slate-950/70
-      to-blue-600/10
-      p-3
-      shadow-[0_0_18px_rgba(34,211,238,0.10)]
-      backdrop-blur-xl
-      transition-all
-      duration-300
-      hover:-translate-y-1
-      hover:border-cyan-300/60
-      hover:shadow-[0_0_30px_rgba(34,211,238,0.25)]
-    "
-  >
-
-    <div
-      className="
-        absolute
-        -right-8
-        -top-8
-        h-20
-        w-20
-        rounded-full
-        bg-cyan-400/10
-        blur-2xl
-      "
-    />
-
-    <div className="relative">
-
-      <div
-        className="
-          mb-2
-          flex
-          h-9
-          w-9
-          items-center
-          justify-center
-          rounded-xl
-          border
-          border-cyan-400/30
-          bg-cyan-400/10
-          text-cyan-300
-          shadow-[0_0_14px_rgba(34,211,238,0.20)]
-        "
-      >
-        <IndianRupee size={18} />
-      </div>
-
-      <p
-        className="
-          text-xs
-          font-bold
-          text-cyan-300
-          truncate
-        "
-      >
-        Plant Cost
-      </p>
-
-      <p
-        className="
-          mt-0.5
-          text-[10px]
-          text-slate-500
-          truncate
-        "
-      >
-        Total plant expenses
-      </p>
-
-      <h3
-        className="
-          mt-2
-          text-lg
-          font-black
-          text-red-500
-          drop-shadow-[0_0_8px_rgba(34,211,238,0.55)]
-          truncate
-        "
-      >
-        ₹ {formatIndianAmount(stats.plantCost)}
-      </h3>
-      </div>
-      </div>
+            </div>
 
 
+            {/* =================================================
+                PLANT COST
+            ================================================== */}
 
-  {/* =================================================
-      DEALER PAYMENT
-  ================================================== */}
+            <div
+              className="
+                group
+                relative
+                overflow-hidden
+                rounded-2xl
+                border
+                border-cyan-400/30
+                bg-gradient-to-br
+                from-cyan-500/10
+                via-slate-950/70
+                to-blue-600/10
+                p-3
+                shadow-[0_0_18px_rgba(34,211,238,0.10)]
+                backdrop-blur-xl
+                transition-all
+                duration-300
+                hover:-translate-y-1
+                hover:border-cyan-300/60
+                hover:shadow-[0_0_30px_rgba(34,211,238,0.25)]
+              "
+            >
 
-  <div
-    className="
-      group
-      relative
-      overflow-hidden
-      rounded-2xl
-      border
-      border-rose-400/30
-      bg-gradient-to-br
-      from-rose-500/10
-      via-slate-950/70
-      to-red-500/10
-      p-3
-      shadow-[0_0_18px_rgba(244,63,94,0.10)]
-      backdrop-blur-xl
-      transition-all
-      duration-300
-      hover:-translate-y-1
-      hover:border-rose-300/60
-      hover:shadow-[0_0_30px_rgba(244,63,94,0.25)]
-    "
-  >
+              <div
+                className="
+                  absolute
+                  -right-8
+                  -top-8
+                  h-20
+                  w-20
+                  rounded-full
+                  bg-cyan-400/10
+                  blur-2xl
+                "
+              />
 
-    <div
-      className="
-        absolute
-        -right-8
-        -top-8
-        h-20
-        w-20
-        rounded-full
-        bg-rose-400/10
-        blur-2xl
-      "
-    />
+              <div className="relative">
 
-    <div className="relative">
+                <div
+                  className="
+                    mb-2
+                    flex
+                    h-9
+                    w-9
+                    items-center
+                    justify-center
+                    rounded-xl
+                    border
+                    border-cyan-400/30
+                    bg-cyan-400/10
+                    text-cyan-300
+                    shadow-[0_0_14px_rgba(34,211,238,0.20)]
+                  "
+                >
+                  <IndianRupee size={18} />
+                </div>
 
-      <div
-        className="
-          mb-2
-          flex
-          h-9
-          w-9
-          items-center
-          justify-center
-          rounded-xl
-          border
-          border-rose-400/30
-          bg-rose-400/10
-          text-rose-300
-          shadow-[0_0_14px_rgba(244,63,94,0.20)]
-        "
-      >
-        <Wallet size={18} />
-      </div>
+                <p
+                  className="
+                    text-xs
+                    font-bold
+                    text-cyan-300
+                    truncate
+                  "
+                >
+                  Plant Cost
+                </p>
 
-      <p
-        className="
-          text-xs
-          font-bold
-          text-rose-300
-          truncate
-        "
-      >
-        Dealer Payment
-      </p>
+                <p
+                  className="
+                    mt-0.5
+                    text-[10px]
+                    text-slate-500
+                    truncate
+                  "
+                >
+                  Total plant expenses
+                </p>
 
-      <p
-        className="
-          mt-0.5
-          text-[10px]
-          text-slate-500
-          truncate
-        "
-      >
-        Payments made by Shiv Shakti Solar
-      </p>
+                <h3
+                  className="
+                    mt-2
+                    text-lg
+                    font-black
+                    text-red-500
+                    drop-shadow-[0_0_8px_rgba(34,211,238,0.55)]
+                    truncate
+                  "
+                >
+                  ₹ {formatIndianAmount(stats.plantCost)}
+                </h3>
 
-      <h3
-        className="
-          mt-2
-          text-lg
-          font-black
-          text-rose-300
-          drop-shadow-[0_0_8px_rgba(251,113,133,0.55)]
-          truncate
-        "
-      >
-        ₹ {formatIndianAmount(stats.dealerPayment)}
-      </h3>
+              </div>
 
-    </div>
-
-  </div>
-
-
-  {/* =================================================
-      EXPENSE
-  ================================================== */}
-
-  <div
-    className="
-      group
-      relative
-      overflow-hidden
-      rounded-2xl
-      border
-      border-orange-400/30
-      bg-gradient-to-br
-      from-orange-500/10
-      via-slate-950/70
-      to-amber-500/10
-      p-3
-      shadow-[0_0_18px_rgba(249,115,22,0.10)]
-      backdrop-blur-xl
-      transition-all
-      duration-300
-      hover:-translate-y-1
-      hover:border-orange-300/60
-      hover:shadow-[0_0_30px_rgba(249,115,22,0.25)]
-    "
-  >
-
-    <div
-      className="
-        absolute
-        -right-8
-        -top-8
-        h-20
-        w-20
-        rounded-full
-        bg-orange-400/10
-        blur-2xl
-      "
-    />
-
-    <div className="relative">
-
-      <div
-        className="
-          mb-2
-          flex
-          h-9
-          w-9
-          items-center
-          justify-center
-          rounded-xl
-          border
-          border-orange-400/30
-          bg-orange-400/10
-          text-orange-300
-          shadow-[0_0_14px_rgba(249,115,22,0.20)]
-        "
-      >
-        <TrendingUp size={18} />
-      </div>
-
-      <p
-        className="
-          text-xs
-          font-bold
-          text-orange-300
-          truncate
-        "
-      >
-        Expense
-      </p>
-
-      <p
-        className="
-          mt-0.5
-          text-[10px]
-          text-slate-500
-          truncate
-        "
-      >
-        Normal expenses and vendor payments
-      </p>
-
-      <h3
-        className="
-          mt-2
-          text-lg
-          font-black
-          text-orange-300
-          drop-shadow-[0_0_8px_rgba(249,115,22,0.55)]
-          truncate
-        "
-      >
-        ₹ {formatIndianAmount(stats.expense)}
-      </h3>
-
-    </div>
-
-  </div>
+            </div>
 
 
-  {/* =================================================
-      INVESTMENT
-  ================================================== */}
+            {/* =================================================
+                DEALER PAYMENT
+            ================================================== */}
 
-  <div
-    className="
-      group
-      relative
-      overflow-hidden
-      rounded-2xl
-      border
-      border-purple-400/30
-      bg-gradient-to-br
-      from-purple-500/10
-      via-slate-950/70
-      to-indigo-500/10
-      p-3
-      shadow-[0_0_18px_rgba(168,85,247,0.10)]
-      backdrop-blur-xl
-      transition-all
-      duration-300
-      hover:-translate-y-1
-      hover:border-purple-300/60
-      hover:shadow-[0_0_30px_rgba(168,85,247,0.25)]
-    "
-  >
+            <div
+              className="
+                group
+                relative
+                overflow-hidden
+                rounded-2xl
+                border
+                border-rose-400/30
+                bg-gradient-to-br
+                from-rose-500/10
+                via-slate-950/70
+                to-red-500/10
+                p-3
+                shadow-[0_0_18px_rgba(244,63,94,0.10)]
+                backdrop-blur-xl
+                transition-all
+                duration-300
+                hover:-translate-y-1
+                hover:border-rose-300/60
+                hover:shadow-[0_0_30px_rgba(244,63,94,0.25)]
+              "
+            >
 
-    <div
-      className="
-        absolute
-        -right-8
-        -top-8
-        h-20
-        w-20
-        rounded-full
-        bg-purple-400/10
-        blur-2xl
-      "
-    />
+              <div
+                className="
+                  absolute
+                  -right-8
+                  -top-8
+                  h-20
+                  w-20
+                  rounded-full
+                  bg-rose-400/10
+                  blur-2xl
+                "
+              />
 
-    <div className="relative">
+              <div className="relative">
 
-      <div
-        className="
-          mb-2
-          flex
-          h-9
-          w-9
-          items-center
-          justify-center
-          rounded-xl
-          border
-          border-purple-400/30
-          bg-purple-400/10
-          text-purple-300
-          shadow-[0_0_14px_rgba(168,85,247,0.20)]
-        "
-      >
-        <IndianRupee size={18} />
-      </div>
+                <div
+                  className="
+                    mb-2
+                    flex
+                    h-9
+                    w-9
+                    items-center
+                    justify-center
+                    rounded-xl
+                    border
+                    border-rose-400/30
+                    bg-rose-400/10
+                    text-rose-300
+                    shadow-[0_0_14px_rgba(244,63,94,0.20)]
+                  "
+                >
+                  <Wallet size={18} />
+                </div>
 
-      <p
-        className="
-          text-xs
-          font-bold
-          text-purple-300
-          truncate
-        "
-      >
-        Investment
-      </p>
+                <p
+                  className="
+                    text-xs
+                    font-bold
+                    text-rose-300
+                    truncate
+                  "
+                >
+                  Dealer Payment
+                </p>
 
-      <p
-        className="
-          mt-0.5
-          text-[10px]
-          text-slate-500
-          truncate
-        "
-      >
-        Investments and investor payments
-      </p>
+                <p
+                  className="
+                    mt-0.5
+                    text-[10px]
+                    text-slate-500
+                    truncate
+                  "
+                >
+                  Payments made by Shiv Shakti Solar
+                </p>
 
-      <h3
-        className="
-          mt-2
-          text-lg
-          font-black
-          text-green-400
-          drop-shadow-[0_0_8px_rgba(192,132,252,0.55)]
-          truncate
-        "
-      >
-        ₹ {formatIndianAmount(stats.investment)}
-      </h3>
+                <h3
+                  className="
+                    mt-2
+                    text-lg
+                    font-black
+                    text-rose-300
+                    drop-shadow-[0_0_8px_rgba(251,113,133,0.55)]
+                    truncate
+                  "
+                >
+                  ₹ {formatIndianAmount(stats.dealerPayment)}
+                </h3>
 
-    </div>
+              </div>
 
-  </div>
+            </div>
 
-</div>
 
-</div>
+            {/* =================================================
+                EXPENSE
+            ================================================== */}
+
+            <div
+              className="
+                group
+                relative
+                overflow-hidden
+                rounded-2xl
+                border
+                border-orange-400/30
+                bg-gradient-to-br
+                from-orange-500/10
+                via-slate-950/70
+                to-amber-500/10
+                p-3
+                shadow-[0_0_18px_rgba(249,115,22,0.10)]
+                backdrop-blur-xl
+                transition-all
+                duration-300
+                hover:-translate-y-1
+                hover:border-orange-300/60
+                hover:shadow-[0_0_30px_rgba(249,115,22,0.25)]
+              "
+            >
+
+              <div
+                className="
+                  absolute
+                  -right-8
+                  -top-8
+                  h-20
+                  w-20
+                  rounded-full
+                  bg-orange-400/10
+                  blur-2xl
+                "
+              />
+
+              <div className="relative">
+
+                <div
+                  className="
+                    mb-2
+                    flex
+                    h-9
+                    w-9
+                    items-center
+                    justify-center
+                    rounded-xl
+                    border
+                    border-orange-400/30
+                    bg-orange-400/10
+                    text-orange-300
+                    shadow-[0_0_14px_rgba(249,115,22,0.20)]
+                  "
+                >
+                  <TrendingUp size={18} />
+                </div>
+
+                <p
+                  className="
+                    text-xs
+                    font-bold
+                    text-orange-300
+                    truncate
+                  "
+                >
+                  Expense
+                </p>
+
+                <p
+                  className="
+                    mt-0.5
+                    text-[10px]
+                    text-slate-500
+                    truncate
+                  "
+                >
+                  Normal expenses and vendor payments
+                </p>
+
+                <h3
+                  className="
+                    mt-2
+                    text-lg
+                    font-black
+                    text-orange-300
+                    drop-shadow-[0_0_8px_rgba(249,115,22,0.55)]
+                    truncate
+                  "
+                >
+                  ₹ {formatIndianAmount(stats.expense)}
+                </h3>
+
+              </div>
+
+            </div>
+
+
+            {/* =================================================
+                INVESTMENT
+            ================================================== */}
+
+            <div
+              className="
+                group
+                relative
+                overflow-hidden
+                rounded-2xl
+                border
+                border-purple-400/30
+                bg-gradient-to-br
+                from-purple-500/10
+                via-slate-950/70
+                to-indigo-500/10
+                p-3
+                shadow-[0_0_18px_rgba(168,85,247,0.10)]
+                backdrop-blur-xl
+                transition-all
+                duration-300
+                hover:-translate-y-1
+                hover:border-purple-300/60
+                hover:shadow-[0_0_30px_rgba(168,85,247,0.25)]
+              "
+            >
+
+              <div
+                className="
+                  absolute
+                  -right-8
+                  -top-8
+                  h-20
+                  w-20
+                  rounded-full
+                  bg-purple-400/10
+                  blur-2xl
+                "
+              />
+
+              <div className="relative">
+
+                <div
+                  className="
+                    mb-2
+                    flex
+                    h-9
+                    w-9
+                    items-center
+                    justify-center
+                    rounded-xl
+                    border
+                    border-purple-400/30
+                    bg-purple-400/10
+                    text-purple-300
+                    shadow-[0_0_14px_rgba(168,85,247,0.20)]
+                  "
+                >
+                  <IndianRupee size={18} />
+                </div>
+
+                <p
+                  className="
+                    text-xs
+                    font-bold
+                    text-purple-300
+                    truncate
+                  "
+                >
+                  Investment
+                </p>
+
+                <p
+                  className="
+                    mt-0.5
+                    text-[10px]
+                    text-slate-500
+                    truncate
+                  "
+                >
+                  Investments and investor payments
+                </p>
+
+                <h3
+                  className="
+                    mt-2
+                    text-lg
+                    font-black
+                    text-green-400
+                    drop-shadow-[0_0_8px_rgba(192,132,252,0.55)]
+                    truncate
+                  "
+                >
+                  ₹ {formatIndianAmount(stats.investment)}
+                </h3>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
 
         {/* =================================================
             RECENT CUSTOMERS + PROJECTS
@@ -1984,8 +2030,10 @@ export default function Dashboard() {
             grid
             grid-cols-1
             xl:grid-cols-2
-            gap-6
-            mt-6
+            gap-4
+            sm:gap-6
+            mt-4
+            sm:mt-6
           "
         >
 
@@ -1999,7 +2047,8 @@ export default function Dashboard() {
               border
               border-cyan-400/25
               bg-slate-950/60
-              p-6
+              p-3
+              sm:p-6
               shadow-[0_0_35px_rgba(34,211,238,0.10)]
               backdrop-blur-2xl
               transition-all
@@ -2012,9 +2061,13 @@ export default function Dashboard() {
             <div
               className="
                 flex
-                items-center
-                justify-between
-                mb-5
+                flex-col
+                sm:flex-row
+                sm:items-center
+                sm:justify-between
+                gap-2
+                mb-4
+                sm:mb-5
               "
             >
 
@@ -2030,6 +2083,7 @@ export default function Dashboard() {
                   className="
                     h-9
                     w-1
+                    shrink-0
                     rounded-full
                     bg-cyan-400
                     shadow-[0_0_12px_rgba(34,211,238,1)]
@@ -2038,7 +2092,8 @@ export default function Dashboard() {
 
                 <h2
                   className="
-                    text-xl
+                    text-lg
+                    sm:text-xl
                     font-black
                     text-white
                   "
@@ -2071,7 +2126,10 @@ export default function Dashboard() {
             >
 
               <table
-                className="w-full"
+                className="
+                  w-full
+                  min-w-[520px]
+                "
               >
 
                 <thead
@@ -2246,7 +2304,8 @@ export default function Dashboard() {
               border
               border-purple-400/25
               bg-slate-950/60
-              p-6
+              p-3
+              sm:p-6
               shadow-[0_0_35px_rgba(168,85,247,0.10)]
               backdrop-blur-2xl
               transition-all
@@ -2259,9 +2318,13 @@ export default function Dashboard() {
             <div
               className="
                 flex
-                items-center
-                justify-between
-                mb-5
+                flex-col
+                sm:flex-row
+                sm:items-center
+                sm:justify-between
+                gap-2
+                mb-4
+                sm:mb-5
               "
             >
 
@@ -2277,6 +2340,7 @@ export default function Dashboard() {
                   className="
                     h-9
                     w-1
+                    shrink-0
                     rounded-full
                     bg-purple-400
                     shadow-[0_0_12px_rgba(168,85,247,1)]
@@ -2285,7 +2349,8 @@ export default function Dashboard() {
 
                 <h2
                   className="
-                    text-xl
+                    text-lg
+                    sm:text-xl
                     font-black
                     text-white
                   "
@@ -2318,7 +2383,10 @@ export default function Dashboard() {
             >
 
               <table
-                className="w-full"
+                className="
+                  w-full
+                  min-w-[650px]
+                "
               >
 
                 <thead

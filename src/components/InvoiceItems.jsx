@@ -10,60 +10,52 @@ export default function InvoiceItems({
   const totalRows = 12;
 
 
+  useEffect(() => {
 
-  useEffect(()=>{
-
-    if(items.length === 0){
+    if (items.length === 0) {
 
       setItems(
-        Array(totalRows).fill(null).map(()=>({
+        Array(totalRows).fill(null).map(() => ({
 
-          item_name:"",
-          hsn:"",
-          qty:""
+          item_name: "",
+          hsn: "",
+          qty: ""
 
         }))
       );
 
     }
 
-  },[]);
+  }, []);
 
 
+  function updateItem(index, field, value) {
+
+    const updated = [...items];
 
 
-  function updateItem(index,field,value){
-
-
-    const updated=[...items];
-
-
-    updated[index]={
+    updated[index] = {
 
       ...updated[index],
 
-      [field]:value
+      [field]: value
 
     };
 
 
     setItems(updated);
 
-
   }
 
 
+  function getSerial(index) {
+
+    let count = 0;
 
 
-  function getSerial(index){
+    for (let i = 0; i <= index; i++) {
 
-
-    let count=0;
-
-
-    for(let i=0;i<=index;i++){
-
-      if(items[i]?.item_name?.trim()){
+      if (items[i]?.item_name?.trim()) {
 
         count++;
 
@@ -79,240 +71,300 @@ export default function InvoiceItems({
   }
 
 
+  return (
 
+    <div className="
+      mt-6
+      w-full
+      min-w-0
+    ">
 
 
-return (
+      {/* Mobile table scrolling is kept inside
+          the invoice items section. */}
 
-<div className="mt-6">
+      <div className="
+        w-full
+        overflow-x-auto
+        overflow-y-hidden
+        overscroll-x-contain
+      ">
 
 
-<table className="w-full border-collapse border border-green-600">
+        <table className="
+          w-full
+          min-w-[700px]
+          border-collapse
+          border
+          border-green-600
+        ">
 
 
-<thead>
+          <thead>
 
 
-<tr className="text-center font-semibold">
+            <tr className="
+              text-center
+              font-semibold
+            ">
 
 
-<th className="border border-green-600 w-[8%] p-2">
+              <th className="
+                border
+                border-green-600
+                w-[8%]
+                p-2
+                whitespace-nowrap
+              ">
 
-S.No.
+                S.No.
 
-</th>
+              </th>
 
 
-<th className="border border-green-600 w-[38%] p-2">
+              <th className="
+                border
+                border-green-600
+                w-[38%]
+                p-2
+                whitespace-nowrap
+              ">
 
-Item Name
+                Item Name
 
-</th>
+              </th>
 
 
-<th className="border border-green-600 w-[15%] p-2">
+              <th className="
+                border
+                border-green-600
+                w-[15%]
+                p-2
+                whitespace-nowrap
+              ">
 
-HSN/SAC
+                HSN/SAC
 
-</th>
+              </th>
 
 
-<th className="border border-green-600 w-[10%] p-2">
+              <th className="
+                border
+                border-green-600
+                w-[10%]
+                p-2
+                whitespace-nowrap
+              ">
 
-Qty
+                Qty
 
-</th>
+              </th>
 
 
-<th className="border border-green-600 w-[14%] p-2">
+              <th className="
+                border
+                border-green-600
+                w-[14%]
+                p-2
+                whitespace-nowrap
+              ">
 
-Price
+                Price
 
-</th>
+              </th>
 
 
-<th className="border border-green-600 w-[15%] p-2">
+              <th className="
+                border
+                border-green-600
+                w-[15%]
+                p-2
+                whitespace-nowrap
+              ">
 
-Amount
+                Amount
 
-</th>
+              </th>
 
 
-</tr>
+            </tr>
 
 
-</thead>
+          </thead>
 
 
+          <tbody>
 
 
-<tbody>
+            {
 
+              Array.from({
+                length: totalRows
+              }).map((_, index) => {
 
-{
 
-Array.from({length:totalRows}).map((_,index)=>{
+                const item =
+                  items[index] || {};
 
 
-const item=items[index] || {};
+                return (
 
+                  <tr
+                    key={index}
+                    className="h-12"
+                  >
 
 
-return (
+                    <td className="
+                      border
+                      border-green-600
+                      text-center
+                    ">
 
-<tr 
-key={index}
-className="h-12"
->
+                      {getSerial(index)}
 
+                    </td>
 
 
-<td className="border border-green-600 text-center">
+                    <td className="
+                      border
+                      border-green-600
+                    ">
 
-{getSerial(index)}
 
-</td>
+                      <input
 
+                        value={
+                          item.item_name || ""
+                        }
 
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "item_name",
+                            e.target.value
+                          )
+                        }
 
+                        className="
+                          w-full
+                          h-full
+                          min-w-0
+                          px-2
+                          outline-none
+                          bg-transparent
+                        "
 
-<td className="border border-green-600">
+                      />
 
+                    </td>
 
-<input
 
-value={item.item_name || ""}
+                    <td className="
+                      border
+                      border-green-600
+                    ">
 
-onChange={(e)=>
-updateItem(
-index,
-"item_name",
-e.target.value
-)
-}
 
-className="
-w-full
-h-full
-px-2
-outline-none
-bg-transparent
-"
+                      <input
 
-/>
+                        value={
+                          item.hsn || ""
+                        }
 
-</td>
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "hsn",
+                            e.target.value
+                          )
+                        }
 
+                        className="
+                          w-full
+                          h-full
+                          min-w-0
+                          px-2
+                          outline-none
+                          bg-transparent
+                        "
 
+                      />
 
+                    </td>
 
 
-<td className="border border-green-600">
+                    <td className="
+                      border
+                      border-green-600
+                    ">
 
 
-<input
+                      <input
 
-value={item.hsn || ""}
+                        value={
+                          item.qty || ""
+                        }
 
-onChange={(e)=>
-updateItem(
-index,
-"hsn",
-e.target.value
-)
-}
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "qty",
+                            e.target.value
+                          )
+                        }
 
-className="
-w-full
-h-full
-px-2
-outline-none
-bg-transparent
-"
+                        className="
+                          w-full
+                          h-full
+                          min-w-0
+                          text-center
+                          outline-none
+                          bg-transparent
+                        "
 
-/>
+                      />
 
+                    </td>
 
-</td>
 
+                    <td className="
+                      border
+                      border-green-600
+                    ">
 
+                    </td>
 
 
+                    <td className="
+                      border
+                      border-green-600
+                    ">
 
+                    </td>
 
-<td className="border border-green-600">
 
+                  </tr>
 
-<input
+                );
 
-value={item.qty || ""}
 
-onChange={(e)=>
-updateItem(
-index,
-"qty",
-e.target.value
-)
-}
+              })
 
-className="
-w-full
-h-full
-text-center
-outline-none
-bg-transparent
-"
+            }
 
-/>
 
+          </tbody>
 
-</td>
 
+        </table>
 
 
+      </div>
 
 
+    </div>
 
-<td className="border border-green-600">
-
-
-</td>
-
-
-
-
-
-<td className="border border-green-600">
-
-
-</td>
-
-
-
-
-
-
-</tr>
-
-
-)
-
-
-})
-
-
-}
-
-
-</tbody>
-
-
-</table>
-
-
-</div>
-
-);
-
+  );
 
 }
