@@ -1,485 +1,709 @@
-import { supabase } from "./supabase";
+  import { supabase } from "./supabase";
 
 
-// =====================================================
-// HELPERS
-// =====================================================
+  // =====================================================
+  // HELPERS
+  // =====================================================
 
-function num(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
+  function num(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  }
 
-function normalize(value) {
-  return String(value ?? "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .toLowerCase();
-}
+  function normalize(value) {
+    return String(value ?? "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  }
 
-function isKg(item) {
-  return normalize(item?.unit) === "kg";
-}
+  function isKg(item) {
+    return normalize(item?.unit) === "kg";
+  }
 
-function isKit(item) {
-  return (
-    item?.type === "Kit" ||
-    item?.purchase_type === "Kit" ||
-    normalize(item?.category) === "kit" ||
-    normalize(item?.unit) === "kit"
-  );
-}
+  function isCChannel(item) {
+    const productName = normalize(item?.product_name);
+
+    return (
+      productName ===
+        normalize("C Channel 140x50x2 mm 9ft") ||
+      productName ===
+        normalize("C Channel 140x50x2 mm 21ft")
+    );
+  }
+
+  function isKit(item) {
+    return (
+      item?.type === "Kit" ||
+      item?.purchase_type === "Kit" ||
+      normalize(item?.category) === "kit" ||
+      normalize(item?.unit) === "kit"
+    );
+  }
 
 
-// =====================================================
-// PRODUCT KEY
-// =====================================================
+  // =====================================================
+  // PRODUCT KEY
+  // =====================================================
 
-function cleanText(value) {
-  return String(value ?? "").trim();
-}
+  function cleanText(value) {
+    return String(value ?? "").trim();
+  }
 
-function getProductKey(product = {}) {
-  return [
-    cleanText(product.company),
-    cleanText(product.product_name),
-    cleanText(product.specification),
+  function getProductKey(product = {}) {
+    const lengthFt =
+      isCChannel(product)
+        ? num(product.length_ft ?? product.length)
+        : 0;
+
+    return [
+      cleanText(product.company),
+      cleanText(product.product_name),
+      cleanText(product.specification),
+      lengthFt,
+    ]
+      .join("|")
+      .toLowerCase();
+  }
+
+
+  // =====================================================
+  // GET MASTER INVENTORY
+  // =====================================================
+
+  export async function getMasterInventory() {
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .select("*")
+      .order("date", {
+        ascending: true,
+      })
+      .order("id", {
+        ascending: true,
+      });
+
+    if (error) {
+      console.error(
+        "GET MASTER INVENTORY ERROR:",
+        error
+      );
+
+      throw error;
+    }
+
+    const rows = data || [];
+
+    const masterMap = new Map();
+
+    rows.forEach((row) => {
+      if (row.active === false) {
+        return;
+      }
+
+      const company =
+        String(row.company || "").trim();
+
+      const productName =
+        String(row.product_name || "").trim();
+
+      const specification =
+        String(row.specification || "").trim();
+
+      const category =
+        String(row.category || "").trim();
+
+      const unit =
+        String(row.unit || "Nos").trim();
+
+      const lengthFt =
+    isCChannel(row)
+      ? num(row.length_ft ?? row.length)
+      : 0;
+
+      if (
+    String(row.product_name || "")
+      .toLowerCase()
+      .includes("c channel")
+  ) {
+    console.log(
+      "C CHANNEL MASTER DEBUG:",
+      {
+        product_name: row.product_name,
+        length_ft: row.length_ft,
+        length: row.length,
+        isCChannel: isCChannel(row),
+        lengthFt: lengthFt,
+        quantity: row.quantity,
+        purchased_quantity:
+  row.purchased_quantity,
+
+used_quantity:
+  row.used_quantity,
+      }
+    );
+  }
+
+  const key = [
+    company,
+    productName,
+    specification,
+    lengthFt,
   ]
-    .join("|")
-    .toLowerCase();
-}
+    .map(normalize)
+    .join("|");
+
+      if (!masterMap.has(key)) {
+        masterMap.set(key, {
+          id: row.id,
+
+          product_name:
+            productName,
+
+            length_ft:
+    lengthFt,
+
+          company:
+            company,
+
+          specification:
+            specification,
+
+          category:
+            category,
+
+          purchase_type:
+            row.purchase_type || "",
+
+          unit:
+            unit,
+
+          purchased_quantity: 0,
+
+          used_quantity: 0,
+
+          total_weight: 0,
+
+          used_weight: 0,
+
+          unit_cost: 0,
+
+          total_cost: 0,
+
+          inventory_ids: [],
+        });
+      }
+
+      const master =
+        masterMap.get(key);
 
 
-// =====================================================
-// GET MASTER INVENTORY
-// =====================================================
+      // =================================================
+      // PURCHASE QUANTITY
+      // =================================================
 
-export async function getMasterInventory() {
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .select("*")
-    .order("date", {
-      ascending: true,
-    })
-    .order("id", {
-      ascending: true,
+      const purchasedQuantity =
+        num(
+          row.purchased_quantity ??
+          row.quantity
+        );
+
+      master.purchased_quantity +=
+        purchasedQuantity;
+
+
+      // =================================================
+      // PURCHASE COST
+      // =================================================
+
+      const rowQuantity =
+        purchasedQuantity;
+
+      const rowPrice =
+        num(row.price);
+
+      const rowGST =
+        num(row.gst);
+
+      const rowTransportation =
+        num(row.transportation);
+
+      let rowBaseCost = 0;
+
+      if (isKg(row)) {
+
+        const totalWeight =
+          num(row.total_weight);
+
+        rowBaseCost =
+          totalWeight *
+          rowPrice;
+
+      } else if (isKit(row)) {
+
+        const kitValue =
+          num(
+            row.kit_overall_value ??
+            row.price
+          );
+
+        rowBaseCost =
+          rowQuantity *
+          kitValue;
+
+            } else if (isCChannel(row)) {
+
+        // C Channel purchase price is ₹ / Kg.
+        // Total purchase cost is based on total weight.
+
+        rowBaseCost =
+          num(row.total_weight) *
+          rowPrice;
+
+      } else {
+
+        rowBaseCost =
+          rowQuantity *
+          rowPrice;
+      }
+
+
+      const rowGSTAmount =
+        rowBaseCost *
+        rowGST /
+        100;
+
+
+      // =================================================
+      // FINAL LANDED PURCHASE COST
+      // =================================================
+
+      const rowTotalCost =
+        rowBaseCost +
+        rowGSTAmount +
+        rowTransportation;
+
+
+      master.total_cost +=
+        rowTotalCost;
+
+
+      // =================================================
+      // USED QUANTITY
+      // =================================================
+
+      const usedQuantity =
+        num(row.used_quantity);
+
+      master.used_quantity +=
+        usedQuantity;
+
+
+      // =================================================
+      // WEIGHT
+      // =================================================
+
+      if (isKg(row)) {
+
+    master.total_weight +=
+      num(row.total_weight);
+
+    master.used_weight +=
+      num(row.used_weight);
+
+  } else if (isCChannel(row)) {
+
+    master.total_weight +=
+      num(row.total_weight);
+
+    master.used_weight +=
+      num(row.used_weight);
+  }
+
+
+      // =================================================
+      // INVENTORY IDS
+      // =================================================
+
+      master.inventory_ids.push(
+        row.id
+      );
     });
 
-  if (error) {
-    console.error(
-      "GET MASTER INVENTORY ERROR:",
-      error
-    );
 
-    throw error;
-  }
+    // =====================================================
+    // CALCULATE REMAINING
+    // =====================================================
 
-  const rows = data || [];
+      masterMap.forEach((master) => {
 
-  const masterMap = new Map();
-
-  rows.forEach((row) => {
-    if (row.active === false) {
-      return;
-    }
-
-    const company =
-      String(row.company || "").trim();
-
-    const productName =
-      String(row.product_name || "").trim();
-
-    const specification =
-      String(row.specification || "").trim();
-
-    const category =
-      String(row.category || "").trim();
-
-    const unit =
-      String(row.unit || "Nos").trim();
-
-    const key = [
-      company,
-      productName,
-      specification,
-    ]
-      .map(normalize)
-      .join("|");
-
-    if (!masterMap.has(key)) {
-      masterMap.set(key, {
-        id: row.id,
-
-        product_name:
-          productName,
-
-        company:
-          company,
-
-        specification:
-          specification,
-
-        category:
-          category,
-
-        purchase_type:
-          row.purchase_type || "",
-
-        unit:
-          unit,
-
-        purchased_quantity: 0,
-
-        used_quantity: 0,
-
-        total_weight: 0,
-
-        used_weight: 0,
-
-        unit_cost: 0,
-
-        total_cost: 0,
-
-        inventory_ids: [],
-      });
-    }
-
-    const master =
-      masterMap.get(key);
-
-
-    // =================================================
-    // PURCHASE QUANTITY
-    // =================================================
-
-    const purchasedQuantity =
-      num(
-        row.purchased_quantity ??
-        row.quantity
-      );
-
-    master.purchased_quantity +=
-      purchasedQuantity;
-
-
-    // =================================================
-    // PURCHASE COST
-    // =================================================
-
-    const rowQuantity =
-      purchasedQuantity;
-
-    const rowPrice =
-      num(row.price);
-
-    const rowGST =
-      num(row.gst);
-
-    const rowTransportation =
-      num(row.transportation);
-
-    let rowBaseCost = 0;
-
-    if (isKg(row)) {
-
-      const totalWeight =
-        num(row.total_weight);
-
-      rowBaseCost =
-        totalWeight *
-        rowPrice;
-
-    } else if (isKit(row)) {
-
-      const kitValue =
-        num(
-          row.kit_overall_value ??
-          row.price
-        );
-
-      rowBaseCost =
-        rowQuantity *
-        kitValue;
-
-    } else {
-
-      rowBaseCost =
-        rowQuantity *
-        rowPrice;
-    }
-
-
-    const rowGSTAmount =
-      rowBaseCost *
-      rowGST /
-      100;
-
-
-    // =================================================
-    // FINAL LANDED PURCHASE COST
-    // =================================================
-
-    const rowTotalCost =
-      rowBaseCost +
-      rowGSTAmount +
-      rowTransportation;
-
-
-    master.total_cost +=
-      rowTotalCost;
-
-
-    // =================================================
-    // USED QUANTITY
-    // =================================================
-
-    const usedQuantity =
-      num(row.used_quantity);
-
-    master.used_quantity +=
-      usedQuantity;
-
-
-    // =================================================
-    // WEIGHT
-    // =================================================
-
-    if (isKg(row)) {
-
-      master.total_weight +=
-        num(row.total_weight);
-
-      master.used_weight +=
-        num(row.used_weight);
-    }
-
-
-    // =================================================
-    // INVENTORY IDS
-    // =================================================
-
-    master.inventory_ids.push(
-      row.id
-    );
-  });
-
-
-  // =====================================================
-  // CALCULATE REMAINING
-  // =====================================================
-
-  masterMap.forEach((master) => {
-
-    if (isKg(master)) {
-
-      const remainingWeight =
-        Math.max(
-          num(master.total_weight) -
-          num(master.used_weight),
-          0
-        );
-
-      master.available_weight =
-        remainingWeight;
-
-      master.quantity =
-        remainingWeight;
-
-      master.remaining =
-        remainingWeight;
-
-    } else {
-
-      const remainingQuantity =
-        Math.max(
-          num(master.purchased_quantity) -
-          num(master.used_quantity),
-          0
-        );
-
-      master.quantity =
-        remainingQuantity;
-
-      master.remaining =
-        remainingQuantity;
-    }
-
-
-    // ===================================================
-    // MASTER UNIT COST
-    // ===================================================
-
-    const purchasedQty =
-      num(master.purchased_quantity);
-
-    master.unit_cost =
-      purchasedQty > 0
-        ? master.total_cost /
-          purchasedQty
-        : 0;
-  });
-
-
-  return Array.from(
-    masterMap.values()
-  );
-}
-
-
-// =====================================================
-// GET LIVE INVENTORY STOCK
-// =====================================================
-//
-// MASTER INVENTORY IS THE SOURCE OF TRUTH.
-//
-// When editing Material Consumption, the old
-// consumption is excluded so that its quantity
-// becomes available again for validation.
-//
-
-export async function getLiveInventoryStock(
-  excludeConsumptionId = null
-) {
-
-  // ===================================================
-  // GET MASTER INVENTORY
-  // ===================================================
-
-  const masterInventory =
-    await getMasterInventory();
-
-
-  // ===================================================
-  // GET ALL USED MATERIAL CONSUMPTION
-  // ===================================================
-
-  const {
-    data: usedRows,
-    error,
-  } = await supabase
-    .from("used_inventory")
-    .select("*");
-
-  if (error) {
-    console.error(
-      "GET LIVE INVENTORY STOCK ERROR:",
-      error
-    );
-
-    throw error;
-  }
-
-  const consumptionRows =
-    usedRows || [];
-
-
-  // ===================================================
-  // BUILD EXCLUDED CONSUMPTION
-  // ===================================================
-
-  const excludedProducts =
-    new Map();
-
-
-  if (excludeConsumptionId) {
-
-    const excludedRow =
-      consumptionRows.find(
-        (row) =>
-          String(row.id) ===
-          String(excludeConsumptionId)
-      );
-
-
-    if (
-      excludedRow &&
-      Array.isArray(excludedRow.products)
-    ) {
-
-      excludedRow.products.forEach(
-        (product) => {
-
-          const key =
-            getProductKey(product);
-
-          const quantity =
-            num(product.quantity);
-
-
-          if (!key || quantity <= 0) {
-            return;
-          }
-
-
-          excludedProducts.set(
-            key,
-            (
-              excludedProducts.get(key) ||
-              0
-            ) + quantity
-          );
-        }
-      );
-    }
-  }
-
-
-  // ===================================================
-  // CALCULATE LIVE STOCK
-  // ===================================================
-
-  return masterInventory.map(
-    (master) => {
-
-      const key =
-        getProductKey(master);
-
-      const masterPurchased =
-        num(
-          master.purchased_quantity
-        );
-
-      const masterUsed =
-        num(
-          master.used_quantity
-        );
-
-      const excludedQuantity =
-        num(
-          excludedProducts.get(key)
-        );
-
-
-      // =================================================
-      // LIVE AVAILABLE QUANTITY
-      // =================================================
-
-      const availableQuantity =
-        Math.max(
-          masterPurchased -
-          (
-            masterUsed -
-            excludedQuantity
-          ),
-          0
-        );
-
-
-      // =================================================
+      // ===================================================
       // KG
-      // =================================================
+      // ===================================================
 
       if (isKg(master)) {
 
-        const totalWeight =
-          num(master.total_weight);
+        const remainingWeight =
+          Math.max(
+            num(master.total_weight) -
+            num(master.used_weight),
+            0
+          );
 
-        const usedWeight =
-          num(master.used_weight);
+        master.available_weight =
+          remainingWeight;
 
+        master.quantity =
+          remainingWeight;
+
+        master.remaining =
+          remainingWeight;
+
+      }
+
+      // ===================================================
+      // C CHANNEL
+      // ===================================================
+      //
+      // Inventory purchase quantity = PIECES
+      // Material consumption quantity = FEET
+      //
+      // Example:
+      //
+      // 14 pieces × 9 ft = 126 ft
+      // Used = 15 ft
+      // Remaining = 111 ft
+      //
+      // ===================================================
+
+      else if (isCChannel(master)) {
+
+        const purchasedPieces =
+          num(
+            master.purchased_quantity
+          );
+
+        const lengthFt =
+          num(
+            master.length_ft
+          );
+
+        const purchasedFeet =
+          purchasedPieces *
+          lengthFt;
+
+        const usedFeet =
+          num(
+            master.used_quantity
+          );
+
+        const remainingFeet =
+          Math.max(
+            purchasedFeet -
+            usedFeet,
+            0
+          );
+
+        master.quantity =
+          remainingFeet;
+
+        master.remaining =
+          remainingFeet;
+
+        master.available_quantity =
+          remainingFeet;
+
+        master.live_quantity =
+          remainingFeet;
+
+        master.live_remaining =
+          remainingFeet;
+      }
+
+      // ===================================================
+      // NORMAL PRODUCTS
+      // ===================================================
+
+      else {
+
+        const remainingQuantity =
+          Math.max(
+            num(master.purchased_quantity) -
+            num(master.used_quantity),
+            0
+          );
+
+        master.quantity =
+          remainingQuantity;
+
+        master.remaining =
+          remainingQuantity;
+      }
+
+
+      // ===================================================
+// MASTER UNIT COST
+// ===================================================
+//
+// C CHANNEL:
+// unit_cost = total landed cost / total feet
+//
+// NORMAL PRODUCTS:
+// unit_cost = total landed cost / quantity
+// ===================================================
+
+const purchasedQty =
+  num(
+    master.purchased_quantity
+  );
+
+if (isCChannel(master)) {
+  const purchasedFeet =
+    purchasedQty *
+    num(master.length_ft);
+
+  master.unit_cost =
+    purchasedFeet > 0
+      ? master.total_cost /
+        purchasedFeet
+      : 0;
+} else {
+  master.unit_cost =
+    purchasedQty > 0
+      ? master.total_cost /
+        purchasedQty
+      : 0;
+}
+    });
+
+
+    return Array.from(
+      masterMap.values()
+    );
+  }
+
+
+  // =====================================================
+  // GET LIVE INVENTORY STOCK
+  // =====================================================
+  //
+  // MASTER INVENTORY IS THE SOURCE OF TRUTH.
+  //
+  // When editing Material Consumption, the old
+  // consumption is excluded so that its quantity
+  // becomes available again for validation.
+  //
+
+  export async function getLiveInventoryStock(
+    excludeConsumptionId = null
+  ) {
+
+    // ===================================================
+    // GET MASTER INVENTORY
+    // ===================================================
+
+    const masterInventory =
+      await getMasterInventory();
+
+
+    // ===================================================
+    // GET ALL USED MATERIAL CONSUMPTION
+    // ===================================================
+
+    const {
+      data: usedRows,
+      error,
+    } = await supabase
+      .from("used_inventory")
+      .select("*");
+
+    if (error) {
+      console.error(
+        "GET LIVE INVENTORY STOCK ERROR:",
+        error
+      );
+
+      throw error;
+    }
+
+    const consumptionRows =
+      usedRows || [];
+
+
+    // ===================================================
+    // BUILD EXCLUDED CONSUMPTION
+    // ===================================================
+
+    const excludedProducts =
+      new Map();
+
+
+    if (excludeConsumptionId) {
+
+      const excludedRow =
+        consumptionRows.find(
+          (row) =>
+            String(row.id) ===
+            String(excludeConsumptionId)
+        );
+
+
+      if (
+        excludedRow &&
+        Array.isArray(excludedRow.products)
+      ) {
+
+        excludedRow.products.forEach(
+          (product) => {
+
+            const key =
+              getProductKey(product);
+
+            const quantity =
+              num(product.quantity);
+
+
+            if (!key || quantity <= 0) {
+              return;
+            }
+
+
+            excludedProducts.set(
+              key,
+              (
+                excludedProducts.get(key) ||
+                0
+              ) + quantity
+            );
+          }
+        );
+      }
+    }
+
+
+    // ===================================================
+    // CALCULATE LIVE STOCK
+    // ===================================================
+
+    return masterInventory.map(
+      (master) => {
+
+        const key =
+          getProductKey(master);
+
+            const masterPurchased =
+          num(
+            master.purchased_quantity
+          );
+
+        const masterUsed =
+          num(
+            master.used_quantity
+          );
+
+        const excludedQuantity =
+          num(
+            excludedProducts.get(key)
+          );
+
+
+        // =================================================
+        // LIVE AVAILABLE QUANTITY
+        // =================================================
+        //
+        // C CHANNEL
+        //
+        // Purchased = pieces
+        // Used      = feet
+        //
+        // Therefore convert purchased pieces
+        // into feet before subtracting used feet.
+        //
+        // Example:
+        //
+        // 14 × 9 ft = 126 ft
+        // Used = 15 ft
+        // Available = 111 ft
+        //
+        // =================================================
+
+        let availableQuantity;
+
+        if (isCChannel(master)) {
+
+          const lengthFt =
+            num(
+              master.length_ft
+            );
+
+          const purchasedFeet =
+            masterPurchased *
+            lengthFt;
+
+          const usedFeet =
+            Math.max(
+              masterUsed -
+              excludedQuantity,
+              0
+            );
+
+          availableQuantity =
+            Math.max(
+              purchasedFeet -
+              usedFeet,
+              0
+            );
+
+        } else {
+
+          availableQuantity =
+            Math.max(
+              masterPurchased -
+              (
+                masterUsed -
+                excludedQuantity
+              ),
+              0
+            );
+        }
+
+        // =================================================
+        // KG
+        // =================================================
+
+        if (isKg(master)) {
+
+          const totalWeight =
+            num(master.total_weight);
+
+          const usedWeight =
+            num(master.used_weight);
+
+
+          return {
+            ...master,
+
+            live_quantity:
+              availableQuantity,
+
+            live_remaining:
+              availableQuantity,
+
+            live_weight:
+              Math.max(
+                totalWeight -
+                usedWeight,
+                0
+              ),
+          };
+        }
+
+
+        // =================================================
+        // NORMAL / PANEL / INVERTER / KIT
+        // =================================================
 
         return {
           ...master,
@@ -489,208 +713,190 @@ export async function getLiveInventoryStock(
 
           live_remaining:
             availableQuantity,
-
-          live_weight:
-            Math.max(
-              totalWeight -
-              usedWeight,
-              0
-            ),
         };
       }
-
-
-      // =================================================
-      // NORMAL / PANEL / INVERTER / KIT
-      // =================================================
-
-      return {
-        ...master,
-
-        live_quantity:
-          availableQuantity,
-
-        live_remaining:
-          availableQuantity,
-      };
-    }
-  );
-}
-
-
-// =====================================================
-// VALIDATE LIVE STOCK
-// =====================================================
-
-export async function validateLiveStock(
-  products = [],
-  excludeConsumptionId = null
-) {
-
-  const liveStock =
-    await getLiveInventoryStock(
-      excludeConsumptionId
     );
+  }
 
 
-  const stockMap =
-    new Map();
+  // =====================================================
+  // VALIDATE LIVE STOCK
+  // =====================================================
 
-
-  liveStock.forEach(
-    (item) => {
-
-      stockMap.set(
-        getProductKey(item),
-        item
-      );
-    }
-  );
-
-
-  for (
-    const product of products
+  export async function validateLiveStock(
+    products = [],
+    excludeConsumptionId = null
   ) {
 
-    const requiredQuantity =
-      num(product.quantity);
-
-
-    if (
-      requiredQuantity <= 0
-    ) {
-      continue;
-    }
-
-
-    const key =
-      getProductKey(product);
-
-
-    const stock =
-      stockMap.get(key);
-
-
-    const available =
-      num(
-        stock?.live_quantity
+    const liveStock =
+      await getLiveInventoryStock(
+        excludeConsumptionId
       );
 
 
-    if (
-      requiredQuantity >
-      available
-    ) {
-
-      throw new Error(
-        `${product.product_name || "Product"} has only ${available} ${product.unit || "Nos"} available. You are trying to use ${requiredQuantity} ${product.unit || "Nos"}.`
-      );
-    }
-  }
+    const stockMap =
+      new Map();
 
 
-  return true;
-}
+    liveStock.forEach(
+      (item) => {
 
-
-// =====================================================
-// GET INVENTORY BATCHES FOR FIFO CONSUMPTION
-// =====================================================
-
-export async function getInventoryBatchesForConsumption(
-  productName,
-  company = "",
-  specification = ""
-) {
-
-  if (!productName) {
-    return [];
-  }
-
-
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .select("*")
-    .eq(
-      "active",
-      true
-    )
-    .order(
-      "date",
-      {
-        ascending: true,
-      }
-    )
-    .order(
-      "id",
-      {
-        ascending: true,
+        stockMap.set(
+          getProductKey(item),
+          item
+        );
       }
     );
 
 
-  if (error) {
-
-    console.error(
-      "GET INVENTORY BATCHES FOR CONSUMPTION ERROR:",
-      error
-    );
-
-    throw error;
-  }
-
-
-  const wantedProduct =
-    normalize(productName);
-
-  const wantedCompany =
-    normalize(company);
-
-  const wantedSpecification =
-    normalize(specification);
-
-
-  return (data || []).filter((row) => {
-
-    if (
-      normalize(row.product_name) !==
-      wantedProduct
+    for (
+      const product of products
     ) {
-      return false;
-    }
+
+      const requiredQuantity =
+        num(product.quantity);
 
 
-    if (
-      wantedCompany &&
-      normalize(row.company) !==
-      wantedCompany
-    ) {
-      return false;
-    }
+      if (
+        requiredQuantity <= 0
+      ) {
+        continue;
+      }
 
 
-    if (
-      wantedSpecification &&
-      normalize(row.specification) !==
-      wantedSpecification
-    ) {
-      return false;
+      const key =
+        getProductKey(product);
+
+
+      const stock =
+        stockMap.get(key);
+
+
+      const available =
+        num(
+          stock?.live_quantity
+        );
+
+
+      if (
+        requiredQuantity >
+        available
+      ) {
+
+              const displayUnit =
+          isCChannel(product)
+            ? "ft"
+            : product.unit || "Nos";
+
+        throw new Error(
+          `${product.product_name || "Product"} has only ${available} ${displayUnit} available. You are trying to use ${requiredQuantity} ${displayUnit}.`
+        );
+      }
     }
 
 
     return true;
-  });
-}
+  }
 
 
-// =====================================================
-// CALCULATE PRODUCT BASE
-// =====================================================
+  // =====================================================
+  // GET INVENTORY BATCHES FOR FIFO CONSUMPTION
+  // =====================================================
 
-export function calculateProductBase(item = {}) {
+  export async function getInventoryBatchesForConsumption(
+    productName,
+    company = "",
+    specification = ""
+  ) {
+
+    if (!productName) {
+      return [];
+    }
+
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .select("*")
+      .eq(
+        "active",
+        true
+      )
+      .order(
+        "date",
+        {
+          ascending: true,
+        }
+      )
+      .order(
+        "id",
+        {
+          ascending: true,
+        }
+      );
+
+
+    if (error) {
+
+      console.error(
+        "GET INVENTORY BATCHES FOR CONSUMPTION ERROR:",
+        error
+      );
+
+      throw error;
+    }
+
+
+    const wantedProduct =
+      normalize(productName);
+
+    const wantedCompany =
+      normalize(company);
+
+    const wantedSpecification =
+      normalize(specification);
+
+
+    return (data || []).filter((row) => {
+
+      if (
+        normalize(row.product_name) !==
+        wantedProduct
+      ) {
+        return false;
+      }
+
+
+      if (
+        wantedCompany &&
+        normalize(row.company) !==
+        wantedCompany
+      ) {
+        return false;
+      }
+
+
+      if (
+        wantedSpecification &&
+        normalize(row.specification) !==
+        wantedSpecification
+      ) {
+        return false;
+      }
+
+
+      return true;
+    });
+  }
+
+
+  // =====================================================
+  // CALCULATE PRODUCT BASE
+  // =====================================================
+
+ export function calculateProductBase(item = {}) {
 
   const quantity =
     num(item.quantity);
@@ -702,7 +908,35 @@ export function calculateProductBase(item = {}) {
   let baseAmount = 0;
 
 
-  if (isKg(item)) {
+  // =================================================
+  // C CHANNEL
+  // =================================================
+  //
+  // quantity    = pieces
+  // length_ft   = feet per piece
+  // total_weight = total kg
+  // price       = ₹ / Kg
+  //
+  // Purchase cost is calculated from TOTAL WEIGHT.
+  //
+  // =================================================
+
+  if (isCChannel(item)) {
+
+    const totalWeight =
+      num(item.total_weight);
+
+    baseAmount =
+      totalWeight *
+      price;
+
+  }
+
+  // =================================================
+  // KG PRODUCTS
+  // =================================================
+
+  else if (isKg(item)) {
 
     const totalWeight =
       item.weight_per_piece !== undefined &&
@@ -718,7 +952,13 @@ export function calculateProductBase(item = {}) {
       totalWeight *
       price;
 
-  } else {
+  }
+
+  // =================================================
+  // NORMAL PRODUCTS
+  // =================================================
+
+  else {
 
     baseAmount =
       quantity *
@@ -730,340 +970,34 @@ export function calculateProductBase(item = {}) {
 }
 
 
-// =====================================================
-// CALCULATE PRODUCT GST
-// =====================================================
+  // =====================================================
+  // CALCULATE PRODUCT GST
+  // =====================================================
 
-export function calculateProductGST(item = {}) {
+  export function calculateProductGST(item = {}) {
 
-  const baseAmount =
-    calculateProductBase(item);
-
-  const gst =
-    num(item.gst);
-
-
-  return (
-    baseAmount *
-    gst /
-    100
-  );
-}
-
-
-// =====================================================
-// CALCULATE KIT BASE
-// =====================================================
-
-export function calculateKitBase(item = {}) {
-
-  const kitQty =
-    num(item.quantity);
-
-  const kitValue =
-    num(
-      item.kit_overall_value ??
-      item.price
-    );
-
-
-  return (
-    kitQty *
-    kitValue
-  );
-}
-
-
-// =====================================================
-// CALCULATE KIT GST
-// =====================================================
-
-export function calculateKitGST(item = {}) {
-
-  const base =
-    calculateKitBase(item);
-
-  const gst =
-    num(
-      item.kit_gst ??
-      item.gst
-    );
-
-
-  return (
-    base *
-    gst /
-    100
-  );
-}
-
-
-// =====================================================
-// ITEM BASE
-// =====================================================
-
-function calculateItemBase(item = {}) {
-
-  if (isKit(item)) {
-    return calculateKitBase(item);
-  }
-
-  return calculateProductBase(item);
-}
-
-
-// =====================================================
-// ITEM GST
-// =====================================================
-
-function calculateItemGST(item = {}) {
-
-  if (isKit(item)) {
-    return calculateKitGST(item);
-  }
-
-  return calculateProductGST(item);
-}
-
-
-// =====================================================
-// GET ALL INVENTORY
-// =====================================================
-
-export async function getInventory() {
-
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .select("*")
-    .order(
-      "date",
-      {
-        ascending: false,
-      }
-    )
-    .order(
-      "id",
-      {
-        ascending: false,
-      }
-    );
-
-
-  if (error) {
-    throw error;
-  }
-
-
-  const rows =
-    data || [];
-
-
-  return rows.map((item) => {
-
-    const quantity =
-      num(
-        item.purchased_quantity ??
-        item.quantity
-      );
-
-    const price =
-      num(item.price);
+    const baseAmount =
+      calculateProductBase(item);
 
     const gst =
       num(item.gst);
 
-    const transportation =
-      num(item.transportation);
 
-
-    // =================================================
-    // BASE AMOUNT
-    // =================================================
-
-    const baseAmount =
-      calculateItemBase({
-        ...item,
-        quantity,
-        price,
-      });
-
-
-    // =================================================
-    // GST
-    // =================================================
-
-    const gstAmount =
-      calculateItemGST({
-        ...item,
-        quantity,
-        price,
-      });
-
-
-    // =================================================
-    // FINAL LANDED COST
-    // =================================================
-    //
-    // Base Price
-    // + GST
-    // + Allocated Transportation
-    //
-
-    const totalCost =
-      baseAmount +
-      gstAmount +
-      transportation;
-
-
-    // =================================================
-// FINAL UNIT COST
-// =================================================
-//
-// IMPORTANT:
-// Use the exact unit_cost stored in the inventory
-// table.
-//
-// Material Consumption FIFO also uses this same
-// value, so Inventory View and Material Consumption
-// will always show/use the same Unit Cost.
-//
-
-const storedUnitCost =
-  num(item.unit_cost);
-
-return {
-  ...item,
-
-  unit_cost:
-    storedUnitCost,
-
-  total_amount:
-    totalCost,
-};
-
-   
-  });
-}
-
-
-// =====================================================
-// GENERATE BATCH ID
-// =====================================================
-
-function createBatchId() {
-
-  return (
-    `PUR${Date.now()}` +
-    `${Math.floor(
-      Math.random() * 1000
-    )}`
-  );
-}
-
-
-// =====================================================
-// TRANSPORTATION ALLOCATION
-// =====================================================
-//
-// Transportation is divided according to the
-// purchase value of each product.
-//
-// Example:
-//
-// Product A = ₹1,00,000
-// Product B = ₹50,000
-// Transportation = ₹15,000
-//
-// A gets ₹10,000
-// B gets ₹5,000
-//
-// Last row receives the remaining amount to avoid
-// rounding differences.
-//
-
-function calculateTransportationAllocation(
-  totalTransportation,
-  itemValue,
-  totalPurchaseValue,
-  isLastItem,
-  allocatedTransportation
-) {
-
-  const transport =
-    Number(totalTransportation || 0);
-
-  const value =
-    Number(itemValue || 0);
-
-  const totalValue =
-    Number(totalPurchaseValue || 0);
-
-
-  if (
-    transport <= 0 ||
-    value <= 0 ||
-    totalValue <= 0
-  ) {
-    return 0;
-  }
-
-
-  // ===================================================
-  // LAST ITEM
-  // ===================================================
-
-  if (isLastItem) {
-
-    return Math.max(
-      0,
-      transport -
-      Number(
-        allocatedTransportation || 0
-      )
+    return (
+      baseAmount *
+      gst /
+      100
     );
   }
 
 
-  // ===================================================
-  // PROPORTIONAL ALLOCATION
-  // ===================================================
+  // =====================================================
+  // CALCULATE KIT BASE
+  // =====================================================
 
-  return (
-    value /
-    totalValue
-  ) *
-  transport;
-}
+  export function calculateKitBase(item = {}) {
 
-
-// =====================================================
-// GET PURCHASE VALUE
-// =====================================================
-//
-// This value is ONLY used to divide transportation.
-//
-// Normal Product:
-// quantity × price
-//
-// KG:
-// total weight × price
-//
-// Kit:
-// kit quantity × kit value
-//
-
-function getPurchaseValue(item) {
-
-  // ===================================================
-  // KIT
-  // ===================================================
-
-  if (isKit(item)) {
-
-    const kitQuantity =
+    const kitQty =
       num(item.quantity);
 
     const kitValue =
@@ -1074,125 +1008,645 @@ function getPurchaseValue(item) {
 
 
     return (
-      kitQuantity *
+      kitQty *
       kitValue
     );
   }
 
 
-  // ===================================================
-  // NORMAL PRODUCT
-  // ===================================================
+  // =====================================================
+  // CALCULATE KIT GST
+  // =====================================================
 
-  return calculateProductBase(item);
-}
+  export function calculateKitGST(item = {}) {
 
+    const base =
+      calculateKitBase(item);
 
-// =====================================================
-// PREPARE PURCHASE ITEM
-// =====================================================
-
-function preparePurchaseItem(
-  item,
-  transportation,
-  itemValue,
-  totalPurchaseValue,
-  isLastItem,
-  allocatedTransportation,
-  batchId,
-  date,
-  supplier,
-  existingRow = null
-) {
-
-  const type =
-    item.type ||
-    item.purchase_type ||
-    item.category ||
-    "Product";
-
-
-  // ===================================================
-  // ALLOCATED TRANSPORTATION
-  // ===================================================
-
-  const rowTransportation =
-    calculateTransportationAllocation(
-      transportation,
-      itemValue,
-      totalPurchaseValue,
-      isLastItem,
-      allocatedTransportation
-    );
-
-
-  // ===================================================
-  // KIT
-  // ===================================================
-
-  if (isKit(item)) {
-
-    const kitQty =
-      num(item.quantity);
-
-    const kitGST =
+    const gst =
       num(
         item.kit_gst ??
         item.gst
       );
 
 
-    const kitName =
-      item.kit_name ||
-      item.product_name ||
-      "";
+    return (
+      base *
+      gst /
+      100
+    );
+  }
 
 
-    const componentCost =
-      (item.kit_components || []).reduce(
-        (sum, component) => {
+  // =====================================================
+  // ITEM BASE
+  // =====================================================
 
-          const componentQuantity =
-            num(component.quantity);
+  function calculateItemBase(item = {}) {
 
-          const componentPrice =
-            num(
-              component.unit_price ??
-              component.price
-            );
+    if (isKit(item)) {
+      return calculateKitBase(item);
+    }
+
+    return calculateProductBase(item);
+  }
 
 
-          return (
-            sum +
-            componentQuantity *
-            componentPrice
-          );
-        },
-        0
+  // =====================================================
+  // ITEM GST
+  // =====================================================
+
+  function calculateItemGST(item = {}) {
+
+    if (isKit(item)) {
+      return calculateKitGST(item);
+    }
+
+    return calculateProductGST(item);
+  }
+
+
+  // =====================================================
+  // GET ALL INVENTORY
+  // =====================================================
+
+  export async function getInventory() {
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .select("*")
+      .order(
+        "date",
+        {
+          ascending: false,
+        }
+      )
+      .order(
+        "id",
+        {
+          ascending: false,
+        }
       );
 
 
+    if (error) {
+      throw error;
+    }
+
+
+    const rows =
+      data || [];
+
+
+    return rows.map((item) => {
+
+      const quantity =
+        num(
+          item.purchased_quantity ??
+          item.quantity
+        );
+
+      const price =
+        num(item.price);
+
+      const gst =
+        num(item.gst);
+
+      const transportation =
+        num(item.transportation);
+
+
+      // =================================================
+      // BASE AMOUNT
+      // =================================================
+
+      const baseAmount =
+        calculateItemBase({
+          ...item,
+          quantity,
+          price,
+        });
+
+
+      // =================================================
+      // GST
+      // =================================================
+
+      const gstAmount =
+        calculateItemGST({
+          ...item,
+          quantity,
+          price,
+        });
+
+
+      // =================================================
+      // FINAL LANDED COST
+      // =================================================
+      //
+      // Base Price
+      // + GST
+      // + Allocated Transportation
+      //
+
+      const totalCost =
+        baseAmount +
+        gstAmount +
+        transportation;
+
+
+      // =================================================
+  // FINAL UNIT COST
+  // =================================================
+  //
+  // IMPORTANT:
+  // Use the exact unit_cost stored in the inventory
+  // table.
+  //
+  // Material Consumption FIFO also uses this same
+  // value, so Inventory View and Material Consumption
+  // will always show/use the same Unit Cost.
+  //
+
+  const storedUnitCost =
+    num(item.unit_cost);
+
+  return {
+    ...item,
+
+    unit_cost:
+      storedUnitCost,
+
+    total_amount:
+      totalCost,
+  };
+
+    
+    });
+  }
+
+
+  // =====================================================
+  // GENERATE BATCH ID
+  // =====================================================
+
+  function createBatchId() {
+
+    return (
+      `PUR${Date.now()}` +
+      `${Math.floor(
+        Math.random() * 1000
+      )}`
+    );
+  }
+
+
+  // =====================================================
+  // TRANSPORTATION ALLOCATION
+  // =====================================================
+  //
+  // Transportation is divided according to the
+  // purchase value of each product.
+  //
+  // Example:
+  //
+  // Product A = ₹1,00,000
+  // Product B = ₹50,000
+  // Transportation = ₹15,000
+  //
+  // A gets ₹10,000
+  // B gets ₹5,000
+  //
+  // Last row receives the remaining amount to avoid
+  // rounding differences.
+  //
+
+  function calculateTransportationAllocation(
+    totalTransportation,
+    itemValue,
+    totalPurchaseValue,
+    isLastItem,
+    allocatedTransportation
+  ) {
+
+    const transport =
+      Number(totalTransportation || 0);
+
+    const value =
+      Number(itemValue || 0);
+
+    const totalValue =
+      Number(totalPurchaseValue || 0);
+
+
+    if (
+      transport <= 0 ||
+      value <= 0 ||
+      totalValue <= 0
+    ) {
+      return 0;
+    }
+
+
+    // ===================================================
+    // LAST ITEM
+    // ===================================================
+
+    if (isLastItem) {
+
+      return Math.max(
+        0,
+        transport -
+        Number(
+          allocatedTransportation || 0
+        )
+      );
+    }
+
+
+    // ===================================================
+    // PROPORTIONAL ALLOCATION
+    // ===================================================
+
+    return (
+      value /
+      totalValue
+    ) *
+    transport;
+  }
+
+
+  // =====================================================
+  // GET PURCHASE VALUE
+  // =====================================================
+  //
+  // This value is ONLY used to divide transportation.
+  //
+  // Normal Product:
+  // quantity × price
+  //
+  // KG:
+  // total weight × price
+  //
+  // Kit:
+  // kit quantity × kit value
+  //
+
+  function getPurchaseValue(item) {
+
+    // ===================================================
+    // KIT
+    // ===================================================
+
+    if (isKit(item)) {
+
+      const kitQuantity =
+        num(item.quantity);
+
+      const kitValue =
+        num(
+          item.kit_overall_value ??
+          item.price
+        );
+
+
+      return (
+        kitQuantity *
+        kitValue
+      );
+    }
+
+
+    // ===================================================
+    // NORMAL PRODUCT
+    // ===================================================
+
+    return calculateProductBase(item);
+  }
+
+
+  // =====================================================
+  // PREPARE PURCHASE ITEM
+  // =====================================================
+
+  function preparePurchaseItem(
+    item,
+    transportation,
+    itemValue,
+    totalPurchaseValue,
+    isLastItem,
+    allocatedTransportation,
+    batchId,
+    date,
+    supplier,
+    existingRow = null
+  ) {
+
+    const type =
+      item.type ||
+      item.purchase_type ||
+      item.category ||
+      "Product";
+
+
+    // ===================================================
+    // ALLOCATED TRANSPORTATION
+    // ===================================================
+
+    const rowTransportation =
+      calculateTransportationAllocation(
+        transportation,
+        itemValue,
+        totalPurchaseValue,
+        isLastItem,
+        allocatedTransportation
+      );
+
+
+    // ===================================================
+    // KIT
+    // ===================================================
+
+    if (isKit(item)) {
+
+      const kitQty =
+        num(item.quantity);
+
+      const kitGST =
+        num(
+          item.kit_gst ??
+          item.gst
+        );
+
+
+      const kitName =
+        item.kit_name ||
+        item.product_name ||
+        "";
+
+
+      const componentCost =
+        (item.kit_components || []).reduce(
+          (sum, component) => {
+
+            const componentQuantity =
+              num(component.quantity);
+
+            const componentPrice =
+              num(
+                component.unit_price ??
+                component.price
+              );
+
+
+            return (
+              sum +
+              componentQuantity *
+              componentPrice
+            );
+          },
+          0
+        );
+
+
+      // =================================================
+      // KIT BASE
+      // =================================================
+
+      const baseAmount =
+        componentCost *
+        kitQty;
+
+
+      // =================================================
+      // KIT GST
+      // =================================================
+
+      const gstAmount =
+        baseAmount *
+        kitGST /
+        100;
+
+
+      // =================================================
+      // KIT FINAL LANDED COST
+      // =================================================
+
+      const totalAmount =
+        baseAmount +
+        gstAmount +
+        rowTransportation;
+
+
+      // =================================================
+      // KIT FINAL UNIT COST
+      // =================================================
+      //
+      // Component Price
+      // + GST
+      // + Allocated Transportation
+      //
+
+      const unitCost =
+        kitQty > 0
+          ? totalAmount /
+            kitQty
+          : 0;
+
+
+      return {
+
+        ...(existingRow?.id
+          ? {
+              id:
+                existingRow.id,
+            }
+          : {}),
+
+        date,
+
+        supplier,
+
+        product_name:
+          kitName,
+
+        category:
+          "Kit",
+
+        company:
+          item.company ||
+          kitName
+            .replace(
+              /\s+Kit$/i,
+              ""
+            )
+            .trim(),
+
+        specification:
+          item.kit_panel_watt ||
+          item.specification ||
+          "",
+
+        quantity:
+          kitQty,
+
+        purchased_quantity:
+          kitQty,
+
+        used_quantity:
+          existingRow
+            ? num(
+                existingRow.used_quantity
+              )
+            : 0,
+
+        unit:
+          "Kit",
+
+        // Original component purchase value
+        price:
+          componentCost,
+
+        total_weight:
+          0,
+
+        gst:
+          kitGST,
+
+        cgst:
+          0,
+
+        sgst:
+          0,
+
+        // Allocated transportation
+        transportation:
+          rowTransportation,
+
+        // Final total including GST + transport
+        total_amount:
+          totalAmount,
+
+        // Final landed unit cost
+        unit_cost:
+          unitCost,
+
+        remarks:
+          item.remarks ||
+          "Includes Panel, Inverter, ACDB, DCDB and Earthing Kit",
+
+        active:
+          existingRow?.active ??
+          true,
+
+        is_default:
+          existingRow?.is_default ??
+          false,
+
+        batch_id:
+          batchId,
+
+        purchase_type:
+          "Kit",
+
+        kit_name:
+          kitName,
+
+        kit_panel_watt:
+          item.kit_panel_watt ||
+          null,
+
+        kit_panel_qty:
+          num(
+            item.kit_panel_qty
+          ),
+
+        kit_inverter_brand:
+          item.kit_inverter_brand ||
+          null,
+
+        kit_overall_value:
+          componentCost,
+
+        kit_gst:
+          kitGST,
+
+        kit_components:
+          Array.isArray(
+            item.kit_components
+          )
+            ? item.kit_components
+            : [],
+      };
+    }
+
+
+    // ===================================================
+    // NORMAL PRODUCT
+    // ===================================================
+
+    const quantity =
+      num(item.quantity);
+
+    const price =
+      num(item.price);
+
+
+  const weightPerPiece =
+    num(
+      item.weight_per_piece ??
+      item.total_weight
+    );
+
+
+
+  const totalWeight =
+    isCChannel(item)
+      ? num(item.total_weight)
+      : isKg(item)
+        ? quantity * weightPerPiece
+        : 0;
+
+
+    const gst =
+      num(item.gst);
+
+
     // =================================================
-    // KIT BASE
+    // BASE AMOUNT
     // =================================================
 
     const baseAmount =
-      componentCost *
-      kitQty;
+      calculateProductBase({
+        ...item,
+
+        quantity,
+
+        price,
+
+        total_weight:
+          totalWeight,
+
+        weight_per_piece:
+          undefined,
+      });
 
 
     // =================================================
-    // KIT GST
+    // GST AMOUNT
     // =================================================
 
     const gstAmount =
       baseAmount *
-      kitGST /
+      gst /
       100;
 
 
     // =================================================
-    // KIT FINAL LANDED COST
+    // FINAL LANDED TOTAL
     // =================================================
 
     const totalAmount =
@@ -1201,20 +1655,43 @@ function preparePurchaseItem(
       rowTransportation;
 
 
-    // =================================================
-    // KIT FINAL UNIT COST
-    // =================================================
-    //
-    // Component Price
-    // + GST
-    // + Allocated Transportation
-    //
+   
 
-    const unitCost =
-      kitQty > 0
-        ? totalAmount /
-          kitQty
-        : 0;
+    // =================================================
+// FINAL UNIT COST
+// =================================================
+//
+// C CHANNEL:
+// unit_cost = final landed cost / total feet
+//
+// Normal products:
+// unit_cost = final landed cost / quantity
+//
+// =================================================
+
+const cChannelTotalFeet =
+  isCChannel(item)
+    ? quantity *
+      num(item.length_ft)
+    : 0;
+
+
+const unitCost =
+  isCChannel(item)
+
+    ? (
+        cChannelTotalFeet > 0
+          ? totalAmount /
+            cChannelTotalFeet
+          : 0
+      )
+
+    : (
+        quantity > 0
+          ? totalAmount /
+            quantity
+          : 0
+      );
 
 
     return {
@@ -1231,30 +1708,29 @@ function preparePurchaseItem(
       supplier,
 
       product_name:
-        kitName,
+        item.product_name,
 
       category:
-        "Kit",
+        item.category || "",
 
       company:
-        item.company ||
-        kitName
-          .replace(
-            /\s+Kit$/i,
-            ""
-          )
-          .trim(),
+        item.company || "",
 
       specification:
-        item.kit_panel_watt ||
-        item.specification ||
-        "",
+    item.specification || "",
 
-      quantity:
-        kitQty,
+  length_ft:
+  isCChannel(item)
+    ? num(item.length_ft)
+    : num(
+        item.length_ft ??
+        item.length
+      ),
+
+  quantity,
 
       purchased_quantity:
-        kitQty,
+        quantity,
 
       used_quantity:
         existingRow
@@ -1264,17 +1740,15 @@ function preparePurchaseItem(
           : 0,
 
       unit:
-        "Kit",
+        item.unit || "Nos",
 
-      // Original component purchase value
-      price:
-        componentCost,
+      // Original purchase price
+      price,
 
       total_weight:
-        0,
+        totalWeight,
 
-      gst:
-        kitGST,
+      gst,
 
       cgst:
         0,
@@ -1286,7 +1760,7 @@ function preparePurchaseItem(
       transportation:
         rowTransportation,
 
-      // Final total including GST + transport
+      // Final total
       total_amount:
         totalAmount,
 
@@ -1295,8 +1769,7 @@ function preparePurchaseItem(
         unitCost,
 
       remarks:
-        item.remarks ||
-        "Includes Panel, Inverter, ACDB, DCDB and Earthing Kit",
+        item.remarks || "",
 
       active:
         existingRow?.active ??
@@ -1310,564 +1783,479 @@ function preparePurchaseItem(
         batchId,
 
       purchase_type:
-        "Kit",
+        "Product",
 
       kit_name:
-        kitName,
+        null,
 
       kit_panel_watt:
-        item.kit_panel_watt ||
         null,
 
       kit_panel_qty:
-        num(
-          item.kit_panel_qty
-        ),
+        0,
 
       kit_inverter_brand:
-        item.kit_inverter_brand ||
         null,
 
       kit_overall_value:
-        componentCost,
+        0,
 
       kit_gst:
-        kitGST,
+        0,
 
       kit_components:
-        Array.isArray(
-          item.kit_components
-        )
-          ? item.kit_components
-          : [],
+        null,
     };
   }
 
 
-  // ===================================================
-  // NORMAL PRODUCT
-  // ===================================================
+  // =====================================================
+  // GET PURCHASE QUANTITY
+  // =====================================================
 
-  const quantity =
-    num(item.quantity);
+  function getPurchaseQuantity(item) {
 
-  const price =
-    num(item.price);
-
-
-  const weightPerPiece =
-    num(
-      item.weight_per_piece ??
-      item.total_weight
+    return num(
+      item.quantity
     );
+  }
 
 
-  const totalWeight =
-    isKg(item)
-      ? quantity *
-        weightPerPiece
-      : 0;
+  // =====================================================
+  // ADD INVENTORY
+  // =====================================================
+
+  export async function addInventory(
+    purchase
+  ) {
+
+    const {
+      date,
+      supplier,
+      transportation = 0,
+      products = [],
+    } = purchase;
 
 
-  const gst =
-    num(item.gst);
+    if (
+      !Array.isArray(products) ||
+      products.length === 0
+    ) {
+
+      throw new Error(
+        "At least one product or kit is required."
+      );
+    }
 
 
-  // =================================================
-  // BASE AMOUNT
-  // =================================================
-
-  const baseAmount =
-    calculateProductBase({
-      ...item,
-
-      quantity,
-
-      price,
-
-      total_weight:
-        totalWeight,
-
-      weight_per_piece:
-        undefined,
-    });
+    const batchId =
+      createBatchId();
 
 
-  // =================================================
-  // GST AMOUNT
-  // =================================================
+    // ===================================================
+    // TOTAL PURCHASE VALUE
+    // ===================================================
 
-  const gstAmount =
-    baseAmount *
-    gst /
-    100;
-
-
-  // =================================================
-  // FINAL LANDED TOTAL
-  // =================================================
-
-  const totalAmount =
-    baseAmount +
-    gstAmount +
-    rowTransportation;
+    const totalPurchaseValue =
+      products.reduce(
+        (sum, item) =>
+          sum +
+          getPurchaseValue(item),
+        0
+      );
 
 
-  // =================================================
-  // FINAL UNIT COST
-  // =================================================
-  //
-  // Purchase Price
-  // + GST
-  // + Allocated Transportation per unit
-  //
-
-  const unitCost =
-    quantity > 0
-      ? totalAmount /
-        quantity
-      : 0;
+    let allocatedTransportation = 0;
 
 
-  return {
+    // ===================================================
+    // PREPARE ROWS
+    // ===================================================
 
-    ...(existingRow?.id
-      ? {
-          id:
-            existingRow.id,
+    const rows =
+      products.map(
+        (item, index) => {
+
+          const isLastItem =
+            index ===
+            products.length - 1;
+
+
+          const itemValue =
+            getPurchaseValue(item);
+
+
+          const row =
+            preparePurchaseItem(
+              item,
+              transportation,
+              itemValue,
+              totalPurchaseValue,
+              isLastItem,
+              allocatedTransportation,
+              batchId,
+              date,
+              supplier
+            );
+
+
+          if (!isLastItem) {
+
+            allocatedTransportation +=
+              num(
+                row.transportation
+              );
+          }
+
+
+          return row;
         }
-      : {}),
+      );
 
-    date,
 
-    supplier,
+    // ===================================================
+    // INSERT
+    // ===================================================
 
-    product_name:
-      item.product_name,
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .insert(rows)
+      .select();
 
-    category:
-      item.category || "",
 
-    company:
-      item.company || "",
+    if (error) {
+      throw error;
+    }
 
-    specification:
-      item.specification || "",
 
-    quantity,
+    return data || [];
+  }
 
-    purchased_quantity:
-      quantity,
 
-    used_quantity:
-      existingRow
-        ? num(
-            existingRow.used_quantity
+  // =====================================================
+  // UPDATE COMPLETE INVENTORY BATCH
+  // =====================================================
+
+  export async function updateInventoryBatch(
+    batchId,
+    {
+      date,
+      supplier,
+      transportation = 0,
+      products = [],
+    }
+  ) {
+
+    if (!batchId) {
+
+      throw new Error(
+        "Batch ID is required."
+      );
+    }
+
+
+    if (
+      !Array.isArray(products) ||
+      products.length === 0
+    ) {
+
+      throw new Error(
+        "At least one product or kit is required."
+      );
+    }
+
+
+    const existingRows =
+      await getInventoryByBatch(
+        batchId
+      );
+
+
+    const existingMap =
+      new Map(
+        existingRows.map(
+          (row) => [
+            row.id,
+            row,
+          ]
+        )
+      );
+
+
+    const usedExistingIds =
+      new Set();
+
+
+    // ===================================================
+    // TOTAL PURCHASE VALUE
+    // ===================================================
+
+    const totalPurchaseValue =
+      products.reduce(
+        (sum, item) =>
+          sum +
+          getPurchaseValue(item),
+        0
+      );
+
+
+    let allocatedTransportation = 0;
+
+
+    // ===================================================
+    // PREPARE UPDATED ROWS
+    // ===================================================
+
+    const preparedRows =
+      products.map(
+        (item, index) => {
+
+          const existingRow =
+            item.id
+              ? existingMap.get(
+                  item.id
+                )
+              : null;
+
+
+          if (existingRow?.id) {
+
+            usedExistingIds.add(
+              existingRow.id
+            );
+          }
+
+
+          const isLastItem =
+            index ===
+            products.length - 1;
+
+
+          const itemValue =
+            getPurchaseValue(item);
+
+
+          const row =
+            preparePurchaseItem(
+              item,
+              transportation,
+              itemValue,
+              totalPurchaseValue,
+              isLastItem,
+              allocatedTransportation,
+              batchId,
+              date,
+              supplier,
+              existingRow
+            );
+
+
+          if (!isLastItem) {
+
+            allocatedTransportation +=
+              num(
+                row.transportation
+              );
+          }
+
+
+          return row;
+        }
+      );
+
+
+    // ===================================================
+    // UPDATE / INSERT
+    // ===================================================
+
+    for (
+      const row of preparedRows
+    ) {
+
+      if (row.id) {
+
+        const {
+          id,
+          ...payload
+        } = row;
+
+
+        const {
+          error,
+        } = await supabase
+          .from("inventory")
+          .update(payload)
+          .eq(
+            "id",
+            id
+          );
+
+
+        if (error) {
+          throw error;
+        }
+
+      } else {
+
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("inventory")
+          .insert(row)
+          .select()
+          .single();
+
+
+        if (error) {
+          throw error;
+        }
+
+
+        row.id =
+          data?.id;
+      }
+    }
+
+
+    // ===================================================
+    // DELETE REMOVED ROWS
+    // ===================================================
+
+    const rowsToDelete =
+      existingRows.filter(
+        (row) =>
+          !usedExistingIds.has(
+            row.id
+          ) &&
+          !preparedRows.some(
+            (newRow) =>
+              newRow.id ===
+              row.id
           )
-        : 0,
+      );
 
-    unit:
-      item.unit || "Nos",
 
-    // Original purchase price
-    price,
-
-    total_weight:
-      totalWeight,
-
-    gst,
-
-    cgst:
-      0,
-
-    sgst:
-      0,
-
-    // Allocated transportation
-    transportation:
-      rowTransportation,
-
-    // Final total
-    total_amount:
-      totalAmount,
-
-    // Final landed unit cost
-    unit_cost:
-      unitCost,
-
-    remarks:
-      item.remarks || "",
-
-    active:
-      existingRow?.active ??
-      true,
-
-    is_default:
-      existingRow?.is_default ??
-      false,
-
-    batch_id:
-      batchId,
-
-    purchase_type:
-      "Product",
-
-    kit_name:
-      null,
-
-    kit_panel_watt:
-      null,
-
-    kit_panel_qty:
-      0,
-
-    kit_inverter_brand:
-      null,
-
-    kit_overall_value:
-      0,
-
-    kit_gst:
-      0,
-
-    kit_components:
-      null,
-  };
-}
-
-
-// =====================================================
-// GET PURCHASE QUANTITY
-// =====================================================
-
-function getPurchaseQuantity(item) {
-
-  return num(
-    item.quantity
-  );
-}
-
-
-// =====================================================
-// ADD INVENTORY
-// =====================================================
-
-export async function addInventory(
-  purchase
-) {
-
-  const {
-    date,
-    supplier,
-    transportation = 0,
-    products = [],
-  } = purchase;
-
-
-  if (
-    !Array.isArray(products) ||
-    products.length === 0
-  ) {
-
-    throw new Error(
-      "At least one product or kit is required."
-    );
-  }
-
-
-  const batchId =
-    createBatchId();
-
-
-  // ===================================================
-  // TOTAL PURCHASE VALUE
-  // ===================================================
-
-  const totalPurchaseValue =
-    products.reduce(
-      (sum, item) =>
-        sum +
-        getPurchaseValue(item),
-      0
-    );
-
-
-  let allocatedTransportation = 0;
-
-
-  // ===================================================
-  // PREPARE ROWS
-  // ===================================================
-
-  const rows =
-    products.map(
-      (item, index) => {
-
-        const isLastItem =
-          index ===
-          products.length - 1;
-
-
-        const itemValue =
-          getPurchaseValue(item);
-
-
-        const row =
-          preparePurchaseItem(
-            item,
-            transportation,
-            itemValue,
-            totalPurchaseValue,
-            isLastItem,
-            allocatedTransportation,
-            batchId,
-            date,
-            supplier
-          );
-
-
-        if (!isLastItem) {
-
-          allocatedTransportation +=
-            num(
-              row.transportation
-            );
-        }
-
-
-        return row;
-      }
-    );
-
-
-  // ===================================================
-  // INSERT
-  // ===================================================
-
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .insert(rows)
-    .select();
-
-
-  if (error) {
-    throw error;
-  }
-
-
-  return data || [];
-}
-
-
-// =====================================================
-// UPDATE COMPLETE INVENTORY BATCH
-// =====================================================
-
-export async function updateInventoryBatch(
-  batchId,
-  {
-    date,
-    supplier,
-    transportation = 0,
-    products = [],
-  }
-) {
-
-  if (!batchId) {
-
-    throw new Error(
-      "Batch ID is required."
-    );
-  }
-
-
-  if (
-    !Array.isArray(products) ||
-    products.length === 0
-  ) {
-
-    throw new Error(
-      "At least one product or kit is required."
-    );
-  }
-
-
-  const existingRows =
-    await getInventoryByBatch(
-      batchId
-    );
-
-
-  const existingMap =
-    new Map(
-      existingRows.map(
-        (row) => [
-          row.id,
-          row,
-        ]
-      )
-    );
-
-
-  const usedExistingIds =
-    new Set();
-
-
-  // ===================================================
-  // TOTAL PURCHASE VALUE
-  // ===================================================
-
-  const totalPurchaseValue =
-    products.reduce(
-      (sum, item) =>
-        sum +
-        getPurchaseValue(item),
-      0
-    );
-
-
-  let allocatedTransportation = 0;
-
-
-  // ===================================================
-  // PREPARE UPDATED ROWS
-  // ===================================================
-
-  const preparedRows =
-    products.map(
-      (item, index) => {
-
-        const existingRow =
-          item.id
-            ? existingMap.get(
-                item.id
-              )
-            : null;
-
-
-        if (existingRow?.id) {
-
-          usedExistingIds.add(
-            existingRow.id
-          );
-        }
-
-
-        const isLastItem =
-          index ===
-          products.length - 1;
-
-
-        const itemValue =
-          getPurchaseValue(item);
-
-
-        const row =
-          preparePurchaseItem(
-            item,
-            transportation,
-            itemValue,
-            totalPurchaseValue,
-            isLastItem,
-            allocatedTransportation,
-            batchId,
-            date,
-            supplier,
-            existingRow
-          );
-
-
-        if (!isLastItem) {
-
-          allocatedTransportation +=
-            num(
-              row.transportation
-            );
-        }
-
-
-        return row;
-      }
-    );
-
-
-  // ===================================================
-  // UPDATE / INSERT
-  // ===================================================
-
-  for (
-    const row of preparedRows
-  ) {
-
-    if (row.id) {
-
-      const {
-        id,
-        ...payload
-      } = row;
-
+    for (
+      const row of rowsToDelete
+    ) {
 
       const {
         error,
       } = await supabase
         .from("inventory")
-        .update(payload)
+        .delete()
         .eq(
           "id",
-          id
+          row.id
         );
 
 
       if (error) {
         throw error;
       }
-
-    } else {
-
-      const {
-        data,
-        error,
-      } = await supabase
-        .from("inventory")
-        .insert(row)
-        .select()
-        .single();
-
-
-      if (error) {
-        throw error;
-      }
-
-
-      row.id =
-        data?.id;
     }
+
+
+    return true;
   }
 
 
-  // ===================================================
-  // DELETE REMOVED ROWS
-  // ===================================================
+  // =====================================================
+  // UPDATE SINGLE INVENTORY ROW
+  // =====================================================
 
-  const rowsToDelete =
-    existingRows.filter(
-      (row) =>
-        !usedExistingIds.has(
-          row.id
-        ) &&
-        !preparedRows.some(
-          (newRow) =>
-            newRow.id ===
-            row.id
-        )
-    );
+  export async function updateInventory(
+    id,
+    item
+  ) {
+
+    if (!id) {
+
+      throw new Error(
+        "Inventory ID is required."
+      );
+    }
 
 
-  for (
-    const row of rowsToDelete
+    const existingRows =
+      item.batch_id
+        ? await getInventoryByBatch(
+            item.batch_id
+          )
+        : [];
+
+
+    const existingRow =
+      existingRows.find(
+        (row) =>
+          row.id === id
+      );
+
+
+    const batchId =
+      item.batch_id ||
+      existingRow?.batch_id ||
+      createBatchId();
+
+
+    const itemValue =
+      getPurchaseValue(item);
+
+
+    const row =
+      preparePurchaseItem(
+        item,
+        item.transportation || 0,
+        itemValue,
+        itemValue,
+        true,
+        0,
+        batchId,
+        item.date,
+        item.supplier,
+        existingRow
+      );
+
+
+    const {
+      id: rowId,
+      ...payload
+    } = row;
+
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .update(payload)
+      .eq(
+        "id",
+        rowId || id
+      )
+      .select()
+      .single();
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    return data;
+  }
+
+
+  // =====================================================
+  // DELETE INVENTORY
+  // =====================================================
+
+  export async function deleteInventory(
+    id
   ) {
 
     const {
@@ -1877,7 +2265,7 @@ export async function updateInventoryBatch(
       .delete()
       .eq(
         "id",
-        row.id
+        id
       );
 
 
@@ -1887,133 +2275,22 @@ export async function updateInventoryBatch(
   }
 
 
-  return true;
-}
-
-
-// =====================================================
-// UPDATE SINGLE INVENTORY ROW
-// =====================================================
-
-export async function updateInventory(
-  id,
-  item
-) {
-
-  if (!id) {
-
-    throw new Error(
-      "Inventory ID is required."
-    );
-  }
-
-
-  const existingRows =
-    item.batch_id
-      ? await getInventoryByBatch(
-          item.batch_id
-        )
-      : [];
-
-
-  const existingRow =
-    existingRows.find(
-      (row) =>
-        row.id === id
-    );
-
-
-  const batchId =
-    item.batch_id ||
-    existingRow?.batch_id ||
-    createBatchId();
-
-
-  const itemValue =
-    getPurchaseValue(item);
-
-
-  const row =
-    preparePurchaseItem(
-      item,
-      item.transportation || 0,
-      itemValue,
-      itemValue,
-      true,
-      0,
-      batchId,
-      item.date,
-      item.supplier,
-      existingRow
-    );
-
-
-  const {
-    id: rowId,
-    ...payload
-  } = row;
-
-
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .update(payload)
-    .eq(
-      "id",
-      rowId || id
-    )
-    .select()
-    .single();
-
-
-  if (error) {
-    throw error;
-  }
-
-
-  return data;
-}
-
-
-// =====================================================
-// DELETE INVENTORY
-// =====================================================
-
-export async function deleteInventory(
-  id
-) {
-
-  const {
-    error,
-  } = await supabase
-    .from("inventory")
-    .delete()
-    .eq(
-      "id",
-      id
-    );
-
-
-  if (error) {
-    throw error;
-  }
-}
-
+  // =====================================================
+  // CALCULATE UNIT COST
+  // =====================================================
+  //
+  // FINAL UNIT COST:
+  //
+  // Purchase Price
+  // + GST
+  // + Allocated Transportation per unit
+  //
+  // This function returns the final landed unit cost.
+  //
 
 // =====================================================
 // CALCULATE UNIT COST
 // =====================================================
-//
-// FINAL UNIT COST:
-//
-// Purchase Price
-// + GST
-// + Allocated Transportation per unit
-//
-// This function returns the final landed unit cost.
-//
 
 export function calculateUnitCost(
   product = {}
@@ -2043,29 +2320,25 @@ export function calculateUnitCost(
     const transportation =
       num(product.transportation);
 
-
     const baseAmount =
       quantity *
       kitValue;
-
 
     const gstAmount =
       baseAmount *
       gst /
       100;
 
-
     const totalCost =
       baseAmount +
       gstAmount +
       transportation;
 
-
-    return quantity > 0
-      ? totalCost /
-        quantity
-      : 0;
-  }
+      return quantity > 0
+        ? totalCost /
+          quantity
+        : 0;
+    }
 
 
   // ===================================================
@@ -2084,21 +2357,46 @@ export function calculateUnitCost(
   const transportation =
     num(product.transportation);
 
-
   let baseAmount = 0;
 
 
-  if (isKg(product)) {
+  // ===================================================
+  // C CHANNEL
+  // ===================================================
+
+  if (isCChannel(product)) {
 
     const totalWeight =
       num(product.total_weight);
-
 
     baseAmount =
       totalWeight *
       price;
 
-  } else {
+  }
+
+
+  // ===================================================
+  // KG PRODUCT
+  // ===================================================
+
+  else if (isKg(product)) {
+
+    const totalWeight =
+      num(product.total_weight);
+
+    baseAmount =
+      totalWeight *
+      price;
+
+  }
+
+
+  // ===================================================
+  // OTHER PRODUCTS
+  // ===================================================
+
+  else {
 
     baseAmount =
       quantity *
@@ -2106,11 +2404,14 @@ export function calculateUnitCost(
   }
 
 
+  // ===================================================
+  // GST + TRANSPORT
+  // ===================================================
+
   const gstAmount =
     baseAmount *
     gst /
     100;
-
 
   const totalCost =
     baseAmount +
@@ -2118,858 +2419,1061 @@ export function calculateUnitCost(
     transportation;
 
 
-  return quantity > 0
-    ? totalCost /
-      quantity
+// ===================================================
+// C CHANNEL = ₹ / FT
+// ===================================================
+//
+// Total cost already includes:
+//   Material Cost
+//   + GST
+//   + Transportation
+//
+// Convert the total landed cost into ₹ / ft.
+//
+
+if (isCChannel(product)) {
+
+  const totalFeet =
+    quantity *
+    num(product.length_ft);
+
+  return totalFeet > 0
+    ? totalCost / totalFeet
     : 0;
 }
 
 
-// =====================================================
-// GET INVENTORY BY BATCH
-// =====================================================
+  // ===================================================
+  // OTHER PRODUCTS = ₹ / UNIT
+  // ===================================================
 
-export async function getInventoryByBatch(
-  batchId
-) {
-
-  if (!batchId) {
-    return [];
-  }
-
-
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .select("*")
-    .eq(
-      "batch_id",
-      batchId
-    )
-    .order(
-      "id",
-      {
-        ascending: true,
-      }
-    );
-
-
-  if (error) {
-
-    console.error(
-      "GET INVENTORY BY BATCH ERROR:",
-      error
-    );
-
-    throw error;
-  }
-
-
-  return data || [];
+  return quantity > 0
+    ? totalCost / quantity
+    : 0;
 }
 
+  // =====================================================
+  // GET INVENTORY BY BATCH
+  // =====================================================
 
-// =====================================================
-// GET LATEST INVENTORY BY PRODUCT
-// =====================================================
-
-export async function getLatestInventoryByProduct(
-  productName
-) {
-
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .select("*")
-    .eq(
-      "product_name",
-      productName
-    )
-    .eq(
-      "active",
-      true
-    )
-    .order(
-      "date",
-      {
-        ascending: false,
-      }
-    )
-    .order(
-      "id",
-      {
-        ascending: false,
-      }
-    )
-    .limit(1);
-
-
-  if (error) {
-    throw error;
-  }
-
-
-  return data?.[0] || null;
-}
-
-
-// =====================================================
-// GET INVENTORY BY PRODUCT
-// =====================================================
-
-export async function getInventoryByProduct(
-  productName
-) {
-
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .select("*")
-    .eq(
-      "product_name",
-      productName
-    )
-    .eq(
-      "active",
-      true
-    )
-    .order(
-      "company",
-      {
-        ascending: true,
-      }
-    )
-    .order(
-      "date",
-      {
-        ascending: true,
-      }
-    )
-    .order(
-      "id",
-      {
-        ascending: true,
-      }
-    );
-
-
-  if (error) {
-    throw error;
-  }
-
-
-  return data || [];
-}
-
-
-// =====================================================
-// GET FIFO INVENTORY PRICE BREAKDOWN
-// =====================================================
-
-export async function getFIFOInventoryCost(
-  productName,
-  company = "",
-  specification = "",
-  category = "",
-  requiredQuantity = 0
-) {
-
-  const quantityRequired =
-    num(requiredQuantity);
-
-
-  if (
-    !productName ||
-    quantityRequired <= 0
+  export async function getInventoryByBatch(
+    batchId
   ) {
 
+    if (!batchId) {
+      return [];
+    }
+
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .select("*")
+      .eq(
+        "batch_id",
+        batchId
+      )
+      .order(
+        "id",
+        {
+          ascending: true,
+        }
+      );
+
+
+    if (error) {
+
+      console.error(
+        "GET INVENTORY BY BATCH ERROR:",
+        error
+      );
+
+      throw error;
+    }
+
+
+    return data || [];
+  }
+
+
+  // =====================================================
+  // GET LATEST INVENTORY BY PRODUCT
+  // =====================================================
+
+  export async function getLatestInventoryByProduct(
+    productName
+  ) {
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .select("*")
+      .eq(
+        "product_name",
+        productName
+      )
+      .eq(
+        "active",
+        true
+      )
+      .order(
+        "date",
+        {
+          ascending: false,
+        }
+      )
+      .order(
+        "id",
+        {
+          ascending: false,
+        }
+      )
+      .limit(1);
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    return data?.[0] || null;
+  }
+
+
+  // =====================================================
+  // GET INVENTORY BY PRODUCT
+  // =====================================================
+
+  export async function getInventoryByProduct(
+    productName
+  ) {
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .select("*")
+      .eq(
+        "product_name",
+        productName
+      )
+      .eq(
+        "active",
+        true
+      )
+      .order(
+        "company",
+        {
+          ascending: true,
+        }
+      )
+      .order(
+        "date",
+        {
+          ascending: true,
+        }
+      )
+      .order(
+        "id",
+        {
+          ascending: true,
+        }
+      );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    return data || [];
+  }
+
+
+  // =====================================================
+  // GET FIFO INVENTORY PRICE BREAKDOWN
+  // =====================================================
+
+  export async function getFIFOInventoryCost(
+    productName,
+    company = "",
+    specification = "",
+    category = "",
+    requiredQuantity = 0,
+    lengthFt = ""
+  ) {
+
+    const quantityRequired =
+      num(requiredQuantity);
+
+
+    if (
+      !productName ||
+      quantityRequired <= 0
+    ) {
+
+      return {
+        totalCost: 0,
+        averagePrice: 0,
+        breakdown: [],
+        insufficientStock: false,
+        remainingRequired: 0,
+      };
+    }
+
+
+    // ===================================================
+    // GET ALL ACTIVE PURCHASE ROWS
+    // ===================================================
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .select("*")
+      .eq(
+        "active",
+        true
+      )
+      .order(
+        "date",
+        {
+          ascending: true,
+        }
+      )
+      .order(
+        "id",
+        {
+          ascending: true,
+        }
+      );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    // ===================================================
+    // FILTER EXACT PRODUCT
+    // ===================================================
+
+    const wantedProduct =
+      normalize(productName);
+
+    const wantedCompany =
+      normalize(company);
+
+    const wantedSpecification =
+      normalize(specification);
+
+    const wantedCategory =
+      normalize(category);
+
+      const wantedLengthFt =
+    num(lengthFt);
+
+
+    const rows =
+      (data || []).filter(
+        (row) => {
+
+          if (
+            normalize(row.product_name) !==
+            wantedProduct
+          ) {
+            return false;
+          }
+
+
+          if (
+            wantedCompany &&
+            normalize(row.company) !==
+            wantedCompany
+          ) {
+            return false;
+          }
+
+
+          if (
+            wantedSpecification &&
+            normalize(row.specification) !==
+            wantedSpecification
+          ) {
+            return false;
+          }
+
+
+          if (
+            wantedCategory &&
+            normalize(row.category) !==
+            wantedCategory
+          ) {
+            return false;
+          }
+
+          if (
+    isCChannel(row) &&
+    wantedLengthFt > 0 &&
+    num(row.length_ft ?? row.length) !==
+    wantedLengthFt
+  ) {
+    return false;
+  }
+
+
+          return true;
+        }
+      );
+
+
+    // ===================================================
+    // FIFO
+    // ===================================================
+
+    let remainingRequired =
+      quantityRequired;
+
+    let totalCost =
+      0;
+
+    const breakdown = [];
+
+
+    for (
+      const row of rows
+    ) {
+
+      if (
+        remainingRequired <= 0
+      ) {
+        break;
+      }
+      // =================================================
+      // PURCHASED / USED / AVAILABLE
+      // =================================================
+      //
+      // C CHANNEL:
+      //
+      // purchased_quantity = PIECES
+      // length_ft           = FEET PER PIECE
+      // used_quantity       = FEET
+      //
+      // Example:
+      //
+      // 14 pieces × 9 ft = 126 ft
+      // Used = 20 ft
+      // Available = 106 ft
+      //
+      // Normal products:
+      // purchased_quantity and used_quantity
+      // are already in the same unit.
+      // =================================================
+
+      const purchasedQuantity =
+        num(
+          row.purchased_quantity ??
+          row.quantity
+        );
+
+      const usedQuantity =
+        num(row.used_quantity);
+
+      let purchased =
+        purchasedQuantity;
+
+      let used =
+        usedQuantity;
+
+      if (isCChannel(row)) {
+
+        const channelLength =
+          num(
+            row.length_ft ??
+            row.length
+          );
+
+        purchased =
+          purchasedQuantity *
+          channelLength;
+
+        // used_quantity for C Channel
+        // is already stored in FEET.
+        used =
+          usedQuantity;
+      }
+
+      const available =
+        Math.max(
+          purchased -
+          used,
+          0
+        );
+
+
+      if (
+        available <= 0
+      ) {
+        continue;
+      }
+
+
+      const take =
+        Math.min(
+          available,
+          remainingRequired
+        );
+
+
+      // =================================================
+      // ACTUAL PURCHASE PRICE
+      // =================================================
+
+      const purchasePrice =
+        num(row.price);
+
+
+      // =================================================
+      // FINAL STORED UNIT COST
+      // =================================================
+
+      let unitCost =
+        num(row.unit_cost);
+
+
+      // =================================================
+      // FALLBACK CALCULATION
+      // =================================================
+
+      if (unitCost <= 0) {
+
+        if (isKit(row)) {
+
+          const kitValue =
+            num(
+              row.kit_overall_value ??
+              row.price
+            );
+
+
+          const kitGST =
+            num(
+              row.kit_gst ??
+              row.gst
+            );
+
+
+          const gstAmount =
+            kitValue *
+            kitGST /
+            100;
+
+
+          unitCost =
+            kitValue +
+            gstAmount +
+            num(
+              row.transportation
+            );
+
+        }
+
+        // =================================================
+        // KG
+        // =================================================
+
+        else if (isKg(row)) {
+
+          const totalWeight =
+            num(row.total_weight);
+
+          const totalPurchaseBase =
+            totalWeight *
+            purchasePrice;
+
+          const gst =
+            num(row.gst);
+
+          const gstAmount =
+            totalPurchaseBase *
+            gst /
+            100;
+
+          const totalPurchaseCost =
+            totalPurchaseBase +
+            gstAmount +
+            num(
+              row.transportation
+            );
+
+
+          unitCost =
+            purchased > 0
+              ? totalPurchaseCost /
+                purchased
+              : 0;
+
+        }
+
+       // =================================================
+// C CHANNEL
+// =================================================
+//
+// purchasePrice = ₹ / Kg
+// total_weight  = total Kg
+// purchased     = total feet
+//
+// Therefore:
+// material cost = total_weight × ₹/Kg
+// unit cost     = landed cost ÷ total feet
+//
+// =================================================
+
+else if (isCChannel(row)) {
+
+  const totalWeight =
+    num(row.total_weight);
+
+  const baseAmount =
+    totalWeight *
+    purchasePrice;
+
+  const gst =
+    num(row.gst);
+
+  const gstAmount =
+    baseAmount *
+    gst /
+    100;
+
+  const totalPurchaseCost =
+    baseAmount +
+    gstAmount +
+    num(row.transportation);
+
+
+  unitCost =
+    purchased > 0
+      ? totalPurchaseCost /
+        purchased
+      : 0;
+}
+
+// =================================================
+// NORMAL PRODUCT / INVERTER / PANEL
+// =================================================
+
+else {
+
+  const baseAmount =
+    purchasePrice;
+
+  const gst =
+    num(row.gst);
+
+  const gstAmount =
+    baseAmount *
+    gst /
+    100;
+
+
+  unitCost =
+    baseAmount +
+    gstAmount +
+    num(
+      row.transportation
+    );
+}
+      }
+
+
+      // =================================================
+      // COST FOR THIS FIFO PORTION
+      // =================================================
+
+      const cost =
+        take *
+        unitCost;
+
+
+      totalCost +=
+        cost;
+
+
+      breakdown.push({
+
+        inventory_id:
+          row.id,
+
+        batch_id:
+          row.batch_id,
+
+        quantity:
+          take,
+
+        available_quantity:
+          available,
+
+        purchase_price:
+          purchasePrice,
+
+        price:
+          unitCost,
+
+        unit_cost:
+          unitCost,
+
+        cost,
+
+        date:
+          row.date,
+
+        supplier:
+          row.supplier,
+
+        product_name:
+          row.product_name,
+
+        company:
+          row.company,
+
+        specification:
+          row.specification,
+
+        category:
+          row.category,
+      });
+
+
+      remainingRequired -=
+        take;
+    }
+
+
     return {
-      totalCost: 0,
-      averagePrice: 0,
-      breakdown: [],
-      insufficientStock: false,
-      remainingRequired: 0,
+
+      totalCost,
+
+      averagePrice:
+        quantityRequired > 0
+          ? totalCost /
+            quantityRequired
+          : 0,
+
+      breakdown,
+
+      insufficientStock:
+        remainingRequired > 0,
+
+      remainingRequired,
     };
   }
 
 
-  // ===================================================
-  // GET ALL ACTIVE PURCHASE ROWS
-  // ===================================================
-
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .select("*")
-    .eq(
-      "active",
-      true
-    )
-    .order(
-      "date",
-      {
-        ascending: true,
-      }
-    )
-    .order(
-      "id",
-      {
-        ascending: true,
-      }
-    );
-
-
-  if (error) {
-    throw error;
-  }
-
-
-  // ===================================================
-  // FILTER EXACT PRODUCT
-  // ===================================================
-
-  const wantedProduct =
-    normalize(productName);
-
-  const wantedCompany =
-    normalize(company);
-
-  const wantedSpecification =
-    normalize(specification);
-
-  const wantedCategory =
-    normalize(category);
-
-
-  const rows =
-    (data || []).filter(
-      (row) => {
-
-        if (
-          normalize(row.product_name) !==
-          wantedProduct
-        ) {
-          return false;
-        }
-
-
-        if (
-          wantedCompany &&
-          normalize(row.company) !==
-          wantedCompany
-        ) {
-          return false;
-        }
-
-
-        if (
-          wantedSpecification &&
-          normalize(row.specification) !==
-          wantedSpecification
-        ) {
-          return false;
-        }
-
-
-        if (
-          wantedCategory &&
-          normalize(row.category) !==
-          wantedCategory
-        ) {
-          return false;
-        }
-
-
-        return true;
-      }
-    );
-
-
-  // ===================================================
-  // FIFO
-  // ===================================================
-
-  let remainingRequired =
-    quantityRequired;
-
-  let totalCost =
-    0;
-
-  const breakdown = [];
-
-
-  for (
-    const row of rows
-  ) {
-
-    if (
-      remainingRequired <= 0
-    ) {
-      break;
-    }
-
-
-    const purchased =
-      num(
-        row.purchased_quantity ??
-        row.quantity
-      );
-
-
-    const used =
-      num(row.used_quantity);
-
-
-    const available =
-      Math.max(
-        purchased -
-        used,
-        0
-      );
-
-
-    if (
-      available <= 0
-    ) {
-      continue;
-    }
-
-
-    const take =
-      Math.min(
-        available,
-        remainingRequired
-      );
-
-
-    // =================================================
-    // ACTUAL PURCHASE PRICE
-    // =================================================
-
-    const purchasePrice =
-      num(row.price);
-
-
-    // =================================================
-    // FINAL STORED UNIT COST
-    // =================================================
-
-    let unitCost =
-      num(row.unit_cost);
-
-
-    // =================================================
-    // FALLBACK CALCULATION
-    // =================================================
-
-    if (unitCost <= 0) {
-
-      if (isKit(row)) {
-
-        const kitValue =
-          num(
-            row.kit_overall_value ??
-            row.price
-          );
-
-
-        const kitGST =
-          num(
-            row.kit_gst ??
-            row.gst
-          );
-
-
-        const gstAmount =
-          kitValue *
-          kitGST /
-          100;
-
-
-        unitCost =
-          kitValue +
-          gstAmount +
-          num(
-            row.transportation
-          );
-
-      }
-
-      // =================================================
-      // KG
-      // =================================================
-
-      else if (isKg(row)) {
-
-        const totalWeight =
-          num(row.total_weight);
-
-        const totalPurchaseBase =
-          totalWeight *
-          purchasePrice;
-
-        const gst =
-          num(row.gst);
-
-        const gstAmount =
-          totalPurchaseBase *
-          gst /
-          100;
-
-        const totalPurchaseCost =
-          totalPurchaseBase +
-          gstAmount +
-          num(
-            row.transportation
-          );
-
-
-        unitCost =
-          purchased > 0
-            ? totalPurchaseCost /
-              purchased
-            : 0;
-
-      }
-
-      // =================================================
-      // NORMAL PRODUCT / INVERTER / PANEL
-      // =================================================
-
-      else {
-
-        const baseAmount =
-          purchasePrice;
-
-        const gst =
-          num(row.gst);
-
-        const gstAmount =
-          baseAmount *
-          gst /
-          100;
-
-
-        unitCost =
-          baseAmount +
-          gstAmount +
-          num(
-            row.transportation
-          );
-      }
-    }
-
-
-    // =================================================
-    // COST FOR THIS FIFO PORTION
-    // =================================================
-
-    const cost =
-      take *
-      unitCost;
-
-
-    totalCost +=
-      cost;
-
-
-    breakdown.push({
-
-      inventory_id:
-        row.id,
-
-      batch_id:
-        row.batch_id,
-
-      quantity:
-        take,
-
-      available_quantity:
-        available,
-
-      purchase_price:
-        purchasePrice,
-
-      price:
-        unitCost,
-
-      unit_cost:
-        unitCost,
-
-      cost,
-
-      date:
-        row.date,
-
-      supplier:
-        row.supplier,
-
-      product_name:
-        row.product_name,
-
-      company:
-        row.company,
-
-      specification:
-        row.specification,
-
-      category:
-        row.category,
-    });
-
-
-    remainingRequired -=
-      take;
-  }
-
-
-  return {
-
-    totalCost,
-
-    averagePrice:
-      quantityRequired > 0
-        ? totalCost /
-          quantityRequired
-        : 0,
-
-    breakdown,
-
-    insufficientStock:
-      remainingRequired > 0,
-
-    remainingRequired,
-  };
-}
-
-
-// =====================================================
-// GET INVENTORY PRODUCTS
-// =====================================================
-//
-// Master Inventory remains the source for
-// stock/availability.
-//
-// Material Consumption pricing uses
-// getFIFOInventoryCost().
-//
-
-// =====================================================
-// GET INVENTORY PRODUCTS
-// =====================================================
-//
-// IMPORTANT:
-// Material Consumption FIFO must use the RAW inventory
-// rows, not Master Inventory.
-//
-// Each inventory row is a separate FIFO batch.
-// Therefore:
-//   Opening Stock  -> keeps opening unit_cost
-//   Purchase 1     -> keeps Purchase 1 unit_cost
-//   Purchase 2     -> keeps Purchase 2 unit_cost
-//
-// Master Inventory is still used separately for
-// current stock / availability.
-// =====================================================
-
-export async function getInventoryProducts() {
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .select("*")
-    .order("date", {
-      ascending: true,
-    })
-    .order("id", {
-      ascending: true,
-    });
-
-  if (error) {
-    console.error(
-      "GET INVENTORY PRODUCTS ERROR:",
-      error
-    );
-
-    throw error;
-  }
-
-  return data || [];
-}
-// =====================================================
-// FINANCE EXPENSE → INVENTORY
-// =====================================================
-
-const FINANCE_INVENTORY_PRODUCTS = [
-  "Panel",
-  "Inverter",
-  "Rafter",
-  "Purlin 13 ft",
-  "Purlin 21 ft",
-  "Leg 6ft",
-  "Leg 8ft",
-  "Leg 10ft",
-  "Base Plate",
-  "Fastener",
-  "Nut Bolts",
-  "Spring Bolt",
-  "Spring",
-  "ACDB",
-  "DCDB",
-  "DC Wire",
-  "AC Wire",
-  "LA Wire",
-  "Armoured Wire",
-  "End Clamp",
-  "Mid Clamp",
-  "Universal Clamp",
-  "MC4 Connector",
-  "PVC Pipe",
-  "L Bend",
-  "U Bend",
-  "T Bend",
-  "Catchup 25mm",
-  "Catchup 12mm",
-  "Earthing Kit",
-  "Tie",
-  "Chemical",
-  "LA Copper Wire 2.5mm",
-];
-
-export function isFinanceInventoryProduct(productName) {
-  const normalized = normalize(productName);
-
-  return FINANCE_INVENTORY_PRODUCTS.some(
-    (product) => normalize(product) === normalized
-  );
-}
-
-export function getFinanceInventoryProducts() {
-  return [...FINANCE_INVENTORY_PRODUCTS];
-}
-
-// =====================================================
-// CREATE / UPDATE INVENTORY FROM FINANCE EXPENSE
-// =====================================================
-
-export async function syncFinanceExpenseInventory({
-  billingId,
-  date,
-  productName,
-  quantity,
-  amount,
-  company = "",
-  specification = "",
-  remarks = "",
-}) {
-  if (!billingId) {
-    throw new Error(
-      "Finance inventory sync failed: billing ID is missing."
-    );
-  }
-
-  const normalizedProduct = String(
-    productName || ""
-  ).trim();
-
-  const qty = num(quantity);
-  const totalAmount = num(amount);
-
-  // ---------------------------------------------------
-  // No inventory product selected
-  // ---------------------------------------------------
-
-  if (!isFinanceInventoryProduct(normalizedProduct)) {
-    return null;
-  }
-
-  if (qty <= 0) {
-    throw new Error(
-      "Inventory quantity must be greater than zero."
-    );
-  }
-
-  if (totalAmount < 0) {
-    throw new Error(
-      "Inventory amount cannot be negative."
-    );
-  }
-
-  const normalizedCompany = String(
-    company || ""
-  ).trim();
-
-  const normalizedSpecification = String(
-    specification || ""
-  ).trim();
-
-  // ---------------------------------------------------
-  // Find existing inventory row linked to this billing
-  // ---------------------------------------------------
-
-  const {
-    data: existingRows,
-    error: existingError,
-  } = await supabase
-    .from("inventory")
-    .select("*")
-    .eq("billing_id", String(billingId))
-    .limit(1);
-
-  if (existingError) {
-    throw existingError;
-  }
-
-  const existingRow =
-    existingRows?.[0] || null;
-
-  // ---------------------------------------------------
-  // Determine unit
+  // =====================================================
+  // GET INVENTORY PRODUCTS
+  // =====================================================
   //
-  // Prefer the unit from an existing linked row.
-  // Otherwise use the latest matching inventory row.
-  // Otherwise default to Nos.
-  // ---------------------------------------------------
+  // Master Inventory remains the source for
+  // stock/availability.
+  //
+  // Material Consumption pricing uses
+  // getFIFOInventoryCost().
+  //
 
-  let unit =
-    existingRow?.unit || "";
+  // =====================================================
+  // GET INVENTORY PRODUCTS
+  // =====================================================
+  //
+  // IMPORTANT:
+  // Material Consumption FIFO must use the RAW inventory
+  // rows, not Master Inventory.
+  //
+  // Each inventory row is a separate FIFO batch.
+  // Therefore:
+  //   Opening Stock  -> keeps opening unit_cost
+  //   Purchase 1     -> keeps Purchase 1 unit_cost
+  //   Purchase 2     -> keeps Purchase 2 unit_cost
+  //
+  // Master Inventory is still used separately for
+  // current stock / availability.
+  // =====================================================
 
-  if (!unit) {
+  export async function getInventoryProducts() {
     const {
-      data: latestRows,
-      error: latestError,
+      data,
+      error,
     } = await supabase
       .from("inventory")
-      .select("unit")
-      .eq(
-        "product_name",
-        normalizedProduct
-      )
-      .eq(
-        "company",
-        normalizedCompany
-      )
-      .eq(
-        "specification",
-        normalizedSpecification
-      )
-      .eq("active", true)
+      .select("*")
       .order("date", {
-        ascending: false,
+        ascending: true,
       })
       .order("id", {
-        ascending: false,
-      })
-      .limit(1);
+        ascending: true,
+      });
 
-    if (latestError) {
-      throw latestError;
+    if (error) {
+      console.error(
+        "GET INVENTORY PRODUCTS ERROR:",
+        error
+      );
+
+      throw error;
     }
 
-    unit =
-      latestRows?.[0]?.unit ||
-      "Nos";
+    return data || [];
+  }
+  // =====================================================
+  // FINANCE EXPENSE → INVENTORY
+  // =====================================================
+
+  const FINANCE_INVENTORY_PRODUCTS = [
+    "Panel",
+    "Inverter",
+    "Rafter",
+    "C Channel 140x50x2 mm 9ft",
+    "C Channel 140x50x2 mm 21ft",
+    "Purlin 13 ft",
+    "Purlin 21 ft",
+    "Leg 6ft",
+    "Leg 8ft",
+    "Leg 10ft",
+    "Base Plate",
+    "Fastener",
+    "Nut Bolts",
+    "Spring Bolt",
+    "Spring",
+    "ACDB",
+    "DCDB",
+    "DC Wire",
+    "AC Wire",
+    "LA Wire",
+    "Armoured Wire",
+    "End Clamp",
+    "Mid Clamp",
+    "Universal Clamp",
+    "MC4 Connector",
+    "PVC Pipe",
+    "L Bend",
+    "U Bend",
+    "T Bend",
+    "Catchup 25mm",
+    "Catchup 12mm",
+    "Earthing Kit",
+    "Tie",
+    "Chemical",
+    "LA Copper Wire 2.5mm",
+  ];
+
+  export function isFinanceInventoryProduct(productName) {
+    const normalized = normalize(productName);
+
+    return FINANCE_INVENTORY_PRODUCTS.some(
+      (product) => normalize(product) === normalized
+    );
   }
 
-  // ---------------------------------------------------
-  // Finance expense amount becomes landed inventory cost
-  //
-  // We deliberately use GST = 0 and transportation = 0
-  // because Finance Expense already stores the final
-  // expense amount.
-  // ---------------------------------------------------
+  export function getFinanceInventoryProducts() {
+    return [...FINANCE_INVENTORY_PRODUCTS];
+  }
 
-  const unitCost =
-    qty > 0
-      ? totalAmount / qty
-      : 0;
+  // =====================================================
+  // CREATE / UPDATE INVENTORY FROM FINANCE EXPENSE
+  // =====================================================
 
-  // ---------------------------------------------------
-  // UPDATE EXISTING LINKED INVENTORY
-  // ---------------------------------------------------
-
-  if (existingRow) {
-    const usedQuantity = num(
-      existingRow.used_quantity
-    );
-
-    const productChanged =
-      normalize(existingRow.product_name) !==
-      normalize(normalizedProduct);
-
-    const companyChanged =
-      normalize(existingRow.company) !==
-      normalize(normalizedCompany);
-
-    const specificationChanged =
-      normalize(existingRow.specification) !==
-      normalize(normalizedSpecification);
-
-    // Never allow an already-consumed inventory row
-    // to be moved to another product/variant.
-    if (
-      usedQuantity > 0 &&
-      (
-        productChanged ||
-        companyChanged ||
-        specificationChanged
-      )
-    ) {
+  export async function syncFinanceExpenseInventory({
+    billingId,
+    date,
+    productName,
+    quantity,
+    amount,
+    company = "",
+    specification = "",
+    remarks = "",
+  }) {
+    if (!billingId) {
       throw new Error(
-        "This expense's inventory stock has already been consumed. Product, company or specification cannot be changed."
+        "Finance inventory sync failed: billing ID is missing."
       );
     }
 
-    if (qty < usedQuantity) {
+    const normalizedProduct = String(
+      productName || ""
+    ).trim();
+
+    const qty = num(quantity);
+    const totalAmount = num(amount);
+
+    // ---------------------------------------------------
+    // No inventory product selected
+    // ---------------------------------------------------
+
+    if (!isFinanceInventoryProduct(normalizedProduct)) {
+      return null;
+    }
+
+    if (qty <= 0) {
       throw new Error(
-        `Quantity cannot be less than already consumed quantity (${usedQuantity}).`
+        "Inventory quantity must be greater than zero."
       );
     }
 
-    const { data, error } =
-      await supabase
+    if (totalAmount < 0) {
+      throw new Error(
+        "Inventory amount cannot be negative."
+      );
+    }
+
+    const normalizedCompany = String(
+      company || ""
+    ).trim();
+
+    const normalizedSpecification = String(
+      specification || ""
+    ).trim();
+
+    // ---------------------------------------------------
+    // Find existing inventory row linked to this billing
+    // ---------------------------------------------------
+
+    const {
+      data: existingRows,
+      error: existingError,
+    } = await supabase
+      .from("inventory")
+      .select("*")
+      .eq("billing_id", String(billingId))
+      .limit(1);
+
+    if (existingError) {
+      throw existingError;
+    }
+
+    const existingRow =
+      existingRows?.[0] || null;
+
+    // ---------------------------------------------------
+    // Determine unit
+    //
+    // Prefer the unit from an existing linked row.
+    // Otherwise use the latest matching inventory row.
+    // Otherwise default to Nos.
+    // ---------------------------------------------------
+
+    let unit =
+      existingRow?.unit || "";
+
+    if (!unit) {
+      const {
+        data: latestRows,
+        error: latestError,
+      } = await supabase
         .from("inventory")
-        .update({
-          date,
-          supplier:
-            normalizedCompany ||
-            "Finance Expense",
-          product_name:
-            normalizedProduct,
-          company:
-            normalizedCompany,
-          specification:
-            normalizedSpecification,
-          quantity: qty,
-          purchased_quantity: qty,
-          used_quantity: usedQuantity,
-          unit,
-          price: unitCost,
-          total_weight: 0,
-          gst: 0,
-          transportation: 0,
-          total_amount: totalAmount,
-          unit_cost: unitCost,
-          remarks:
-            remarks ||
-            `Finance Expense ${billingId}`,
-          active: true,
-          billing_id:
-            String(billingId),
-          purchase_type: "Product",
+        .select("unit")
+        .eq(
+          "product_name",
+          normalizedProduct
+        )
+        .eq(
+          "company",
+          normalizedCompany
+        )
+        .eq(
+          "specification",
+          normalizedSpecification
+        )
+        .eq("active", true)
+        .order("date", {
+          ascending: false,
         })
-        .eq("id", existingRow.id)
-        .select()
-        .single();
+        .order("id", {
+          ascending: false,
+        })
+        .limit(1);
+
+      if (latestError) {
+        throw latestError;
+      }
+
+      unit =
+        latestRows?.[0]?.unit ||
+        "Nos";
+    }
+
+    // ---------------------------------------------------
+    // Finance expense amount becomes landed inventory cost
+    //
+    // We deliberately use GST = 0 and transportation = 0
+    // because Finance Expense already stores the final
+    // expense amount.
+    // ---------------------------------------------------
+
+    const unitCost =
+      qty > 0
+        ? totalAmount / qty
+        : 0;
+
+    // ---------------------------------------------------
+    // UPDATE EXISTING LINKED INVENTORY
+    // ---------------------------------------------------
+
+    if (existingRow) {
+      const usedQuantity = num(
+        existingRow.used_quantity
+      );
+
+      const productChanged =
+        normalize(existingRow.product_name) !==
+        normalize(normalizedProduct);
+
+      const companyChanged =
+        normalize(existingRow.company) !==
+        normalize(normalizedCompany);
+
+      const specificationChanged =
+        normalize(existingRow.specification) !==
+        normalize(normalizedSpecification);
+
+      // Never allow an already-consumed inventory row
+      // to be moved to another product/variant.
+      if (
+        usedQuantity > 0 &&
+        (
+          productChanged ||
+          companyChanged ||
+          specificationChanged
+        )
+      ) {
+        throw new Error(
+          "This expense's inventory stock has already been consumed. Product, company or specification cannot be changed."
+        );
+      }
+
+      if (qty < usedQuantity) {
+        throw new Error(
+          `Quantity cannot be less than already consumed quantity (${usedQuantity}).`
+        );
+      }
+
+      const { data, error } =
+        await supabase
+          .from("inventory")
+          .update({
+            date,
+            supplier:
+              normalizedCompany ||
+              "Finance Expense",
+            product_name:
+              normalizedProduct,
+            company:
+              normalizedCompany,
+            specification:
+              normalizedSpecification,
+            quantity: qty,
+            purchased_quantity: qty,
+            used_quantity: usedQuantity,
+            unit,
+            price: unitCost,
+            total_weight: 0,
+            gst: 0,
+            transportation: 0,
+            total_amount: totalAmount,
+            unit_cost: unitCost,
+            remarks:
+              remarks ||
+              `Finance Expense ${billingId}`,
+            active: true,
+            billing_id:
+              String(billingId),
+            purchase_type: "Product",
+          })
+          .eq("id", existingRow.id)
+          .select()
+          .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
+    }
+
+    // ---------------------------------------------------
+    // CREATE NEW INVENTORY ROW
+    // ---------------------------------------------------
+
+    const batchId =
+      `FIN-${String(billingId)}-${Date.now()}`;
+
+    const inventoryRow = {
+      date,
+
+      supplier:
+        normalizedCompany ||
+        "Finance Expense",
+
+      product_name:
+        normalizedProduct,
+
+      category: "",
+
+      company:
+        normalizedCompany,
+
+      specification:
+        normalizedSpecification,
+
+      quantity: qty,
+
+      purchased_quantity: qty,
+
+      used_quantity: 0,
+
+      unit,
+
+      price: unitCost,
+
+      total_weight: 0,
+
+      gst: 0,
+
+      transportation: 0,
+
+      total_amount: totalAmount,
+
+      unit_cost: unitCost,
+
+      remarks:
+        remarks ||
+        `Finance Expense ${billingId}`,
+
+      active: true,
+
+      is_default: false,
+
+      batch_id: batchId,
+
+      purchase_type: "Product",
+
+      billing_id:
+        String(billingId),
+    };
+
+    const {
+      data,
+      error,
+    } = await supabase
+      .from("inventory")
+      .insert([inventoryRow])
+      .select()
+      .single();
 
     if (error) {
       throw error;
@@ -2978,136 +3482,59 @@ export async function syncFinanceExpenseInventory({
     return data;
   }
 
-  // ---------------------------------------------------
-  // CREATE NEW INVENTORY ROW
-  // ---------------------------------------------------
+  // =====================================================
+  // DELETE INVENTORY CREATED FROM FINANCE EXPENSE
+  // =====================================================
 
-  const batchId =
-    `FIN-${String(billingId)}-${Date.now()}`;
+  export async function deleteFinanceExpenseInventory(
+    billingId
+  ) {
+    if (!billingId) {
+      return;
+    }
 
-  const inventoryRow = {
-    date,
+    const {
+      data: rows,
+      error: findError,
+    } = await supabase
+      .from("inventory")
+      .select("id, used_quantity")
+      .eq(
+        "billing_id",
+        String(billingId)
+      );
 
-    supplier:
-      normalizedCompany ||
-      "Finance Expense",
+    if (findError) {
+      throw findError;
+    }
 
-    product_name:
-      normalizedProduct,
+    if (!rows || rows.length === 0) {
+      return;
+    }
 
-    category: "",
+    const consumedRow =
+      rows.find(
+        (row) =>
+          num(row.used_quantity) > 0
+      );
 
-    company:
-      normalizedCompany,
+    if (consumedRow) {
+      throw new Error(
+        "This Finance Expense cannot be deleted because its inventory stock has already been consumed."
+      );
+    }
 
-    specification:
-      normalizedSpecification,
+    const {
+      error: deleteError,
+    } = await supabase
+      .from("inventory")
+      .delete()
+      .eq(
+        "billing_id",
+        String(billingId)
+      );
 
-    quantity: qty,
-
-    purchased_quantity: qty,
-
-    used_quantity: 0,
-
-    unit,
-
-    price: unitCost,
-
-    total_weight: 0,
-
-    gst: 0,
-
-    transportation: 0,
-
-    total_amount: totalAmount,
-
-    unit_cost: unitCost,
-
-    remarks:
-      remarks ||
-      `Finance Expense ${billingId}`,
-
-    active: true,
-
-    is_default: false,
-
-    batch_id: batchId,
-
-    purchase_type: "Product",
-
-    billing_id:
-      String(billingId),
-  };
-
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("inventory")
-    .insert([inventoryRow])
-    .select()
-    .single();
-
-  if (error) {
-    throw error;
+    if (deleteError) {
+      throw deleteError;
+    }
   }
-
-  return data;
-}
-
-// =====================================================
-// DELETE INVENTORY CREATED FROM FINANCE EXPENSE
-// =====================================================
-
-export async function deleteFinanceExpenseInventory(
-  billingId
-) {
-  if (!billingId) {
-    return;
-  }
-
-  const {
-    data: rows,
-    error: findError,
-  } = await supabase
-    .from("inventory")
-    .select("id, used_quantity")
-    .eq(
-      "billing_id",
-      String(billingId)
-    );
-
-  if (findError) {
-    throw findError;
-  }
-
-  if (!rows || rows.length === 0) {
-    return;
-  }
-
-  const consumedRow =
-    rows.find(
-      (row) =>
-        num(row.used_quantity) > 0
-    );
-
-  if (consumedRow) {
-    throw new Error(
-      "This Finance Expense cannot be deleted because its inventory stock has already been consumed."
-    );
-  }
-
-  const {
-    error: deleteError,
-  } = await supabase
-    .from("inventory")
-    .delete()
-    .eq(
-      "billing_id",
-      String(billingId)
-    );
-
-  if (deleteError) {
-    throw deleteError;
-  }
-}

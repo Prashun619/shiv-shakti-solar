@@ -5,8 +5,10 @@ export default function ViewUsedInventoryModal({
   open,
   onClose,
   item,
+  pdfMode = false,
 }) {
   const [plantTotalValue, setPlantTotalValue] = useState(0);
+  const [inventoryUnits, setInventoryUnits] = useState([]);
 
   useEffect(() => {
     async function loadPlantTotalValue() {
@@ -39,82 +41,112 @@ export default function ViewUsedInventoryModal({
     loadPlantTotalValue();
   }, [open, item]);
 
-  if (!open || !item) return null;
+ // ============================================================
+// HELPERS
+// ============================================================
+
+  useEffect(() => {
+  async function loadInventoryUnits() {
+    if (!open || !item) {
+      setInventoryUnits([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("inventory")
+      .select(
+        "product_name, unit, company, specification"
+      );
+
+    if (error) {
+      console.error(
+        "Error fetching inventory units:",
+        error
+      );
+
+      setInventoryUnits([]);
+      return;
+    }
+
+    setInventoryUnits(data || []);
+  }
+
+  loadInventoryUnits();
+}, [open, item]);
+
+if (!open || !item) return null;
 
   // ============================================================
   // HELPERS
   // ============================================================
 
-  function getDisplayProductName(product) {
-    const productName =
-      String(product.product_name || "").trim();
+ function getDisplayProductName(product) {
+  const productName = String(
+    product?.product_name || ""
+  ).trim();
 
-    const category =
-      String(product.category || "").trim();
+  const category = String(
+    product?.category || ""
+  ).trim();
 
-    const company =
-      String(
-        product.company ||
-          product.brand ||
-          product.manufacturer ||
-          ""
-      ).trim();
+  const company = String(
+    product?.company ||
+      product?.brand ||
+      product?.manufacturer ||
+      ""
+  ).trim();
 
-    const specification =
-      String(
-        product.specification ||
-          product.capacity ||
-          product.panel_capacity ||
-          product.inverter_capacity ||
-          ""
-      ).trim();
+  const specification = String(
+    product?.specification ||
+      product?.capacity ||
+      product?.panel_capacity ||
+      product?.inverter_capacity ||
+      ""
+  ).trim();
 
-    const lowerName = productName.toLowerCase();
+  const lowerName = productName.toLowerCase();
+  const lowerCategory = category.toLowerCase();
 
-    // PANEL
-    if (
-      lowerName === "panel" ||
-      category.toLowerCase() === "panel"
-    ) {
-      return [
-        company,
-        specification,
-        "panel",
-      ]
-        .filter(Boolean)
-        .join(" ");
-    }
+  // ============================================================
+  // PANEL
+  // ============================================================
 
-    // INVERTER
-    if (
-      lowerName === "inverter" ||
-      category.toLowerCase() === "inverter"
-    ) {
-      return [
-        company,
-        specification,
-        "inverter",
-      ]
-        .filter(Boolean)
-        .join(" ");
-    }
-
-    // KIT
-    if (
-      lowerName === "kit" ||
-      category.toLowerCase() === "kit"
-    ) {
-      return [
-        company,
-        specification,
-        "kit",
-      ]
-        .filter(Boolean)
-        .join(" ");
-    }
-
-    return productName || "-";
+  if (
+    lowerName === "panel" ||
+    lowerCategory === "panel"
+  ) {
+    return [
+      company,
+      "Panel",
+      specification,
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
+
+  // ============================================================
+  // INVERTER
+  // ============================================================
+
+  if (
+    lowerName === "inverter" ||
+    lowerCategory === "inverter"
+  ) {
+    return [
+      company,
+      "Inverter",
+      specification,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  // ============================================================
+  // FALLBACK
+  // ============================================================
+
+  return productName || "-";
+}
 
   function isPanel(product) {
     return (
@@ -145,6 +177,200 @@ export default function ViewUsedInventoryModal({
       String(entry ?? "").trim()
     );
   }
+
+   function formatInventoryUnit(product) {
+  const productName = String(
+    product?.product_name || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  // ============================================================
+  // C CHANNEL
+  // Consumption is always displayed in FEET
+  // ============================================================
+
+  if (productName.includes("c channel")) {
+    return "Ft";
+  }
+
+  // ============================================================
+  // FIND ACTUAL UNIT FROM INVENTORY
+  // This fixes old saved consumption records where unit was
+  // incorrectly stored as "Nos".
+  // ============================================================
+
+  const productCompany = String(
+    product?.company || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const productSpecification = String(
+    product?.specification || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const inventoryProduct =
+    inventoryUnits.find((inventoryItem) => {
+      const inventoryName = String(
+        inventoryItem?.product_name || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      const inventoryCompany = String(
+        inventoryItem?.company || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      const inventorySpecification = String(
+        inventoryItem?.specification || ""
+      )
+        .trim()
+        .toLowerCase();
+
+      const sameName =
+        inventoryName === productName;
+
+      const sameCompany =
+        !productCompany ||
+        !inventoryCompany ||
+        inventoryCompany === productCompany;
+
+      const sameSpecification =
+        !productSpecification ||
+        !inventorySpecification ||
+        inventorySpecification ===
+          productSpecification;
+
+      return (
+        sameName &&
+        sameCompany &&
+        sameSpecification
+      );
+    });
+
+  // Use actual Inventory unit first
+  const unit = String(
+    inventoryProduct?.unit ||
+      product?.unit ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+
+  // ============================================================
+  // UNIT FORMAT
+  // ============================================================
+
+  if (
+    unit === "ft" ||
+    unit === "feet" ||
+    unit === "foot"
+  ) {
+    return "Ft";
+  }
+
+  if (
+    unit === "mtr" ||
+    unit === "meter" ||
+    unit === "metre" ||
+    unit === "meters" ||
+    unit === "metres"
+  ) {
+    return "Mtr";
+  }
+
+  if (
+    unit === "nos" ||
+    unit === "no" ||
+    unit === "pcs" ||
+    unit === "pc" ||
+    unit === "piece" ||
+    unit === "pieces"
+  ) {
+    return "Nos";
+  }
+
+  if (
+    unit === "kg" ||
+    unit === "kgs"
+  ) {
+    return "Kg";
+  }
+
+  if (
+    unit === "pair" ||
+    unit === "pairs"
+  ) {
+    return "Pair";
+  }
+
+  if (
+    unit === "set" ||
+    unit === "sets"
+  ) {
+    return "Set";
+  }
+
+  if (
+    unit === "pack" ||
+    unit === "packs"
+  ) {
+    return "Pack";
+  }
+
+  if (
+    unit === "roll" ||
+    unit === "rolls"
+  ) {
+    return "Roll";
+  }
+
+  if (
+    unit === "box" ||
+    unit === "boxes"
+  ) {
+    return "Box";
+  }
+
+  return "Nos";
+}
+
+console.log(
+  "========== VIEW PANEL PRODUCTS =========="
+);
+
+console.log(
+  (item?.products || []).filter(
+    (product) =>
+      String(product?.category || "")
+        .trim()
+        .toLowerCase() === "panel" ||
+      String(product?.product_name || "")
+        .trim()
+        .toLowerCase() === "panel"
+  )
+);
+
+console.log(
+  "========== VIEW INVERTER PRODUCTS =========="
+);
+
+console.log(
+  (item?.products || []).filter(
+    (product) =>
+      String(product?.category || "")
+        .trim()
+        .toLowerCase() === "inverter" ||
+      String(product?.product_name || "")
+        .trim()
+        .toLowerCase() === "inverter"
+  )
+);
 
   // ============================================================
   // PRODUCTS
@@ -184,14 +410,34 @@ export default function ViewUsedInventoryModal({
         );
 
         if (!acc[key]) {
-          acc[key] = {
-            ...product,
+  acc[key] = {
+    ...product,
 
-            product_name:
-              getDisplayProductName(product),
+    display_product_name:
+  String(product.product_name || "")
+    .trim()
+    .toLowerCase() === "panel"
+    ? [
+        product.company,
+        "Panel",
+        product.specification,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : String(product.product_name || "")
+        .trim()
+        .toLowerCase() === "inverter"
+      ? [
+          product.company,
+          "Inverter",
+          product.specification,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      : product.product_name || "-",
 
-            category:
-              product.category || "",
+    category:
+      product.category || "",
 
             company:
               product.company || "",
@@ -477,9 +723,20 @@ export default function ViewUsedInventoryModal({
   // ============================================================
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-5">
+  <div
+    className={`fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-5 ${
+      pdfMode
+        ? "pointer-events-none"
+        : ""
+    }`}
+  >
 
-      <div className="bg-white rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.25)] border border-slate-200 w-full max-w-7xl max-h-[92vh] overflow-auto">
+     <div
+  id="used-inventory-print-area"
+  className={`bg-white rounded-3xl shadow-[0_25px_80px_rgba(0,0,0,0.25)] border border-slate-200 w-full max-w-7xl max-h-[92vh] overflow-auto ${
+    pdfMode ? "fixed -left-[10000px] top-0" : ""
+  }`}
+>
 
         {/* =====================================================
             HEADER
@@ -672,163 +929,138 @@ export default function ViewUsedInventoryModal({
               PRODUCTS USED
           ==================================================== */}
 
-          <div className="flex justify-between items-center mb-4">
-
-            <h3 className="text-xl font-bold border-l-4 border-indigo-700 pl-3">
-              Products Used
-            </h3>
-
-          </div>
-
           <div className="overflow-x-auto rounded-lg border border-black shadow-sm">
 
-            <table className="w-full min-w-[900px] border-collapse text-sm">
+  <table className="w-full min-w-[900px] border-collapse text-sm">
 
-              <thead className="bg-gradient-to-r from-indigo-700 to-blue-700 text-white">
+    <thead className="bg-gradient-to-r from-indigo-700 to-blue-700 text-white">
 
-                <tr>
+      <tr>
 
-                  <th className="border border-black px-3 py-2 text-center text-xs font-bold">
-                    Product
-                  </th>
+        <th className="border border-black px-3 py-2 text-center text-xs font-bold">
+          Product
+        </th>
 
-                  <th className="border border-black px-3 py-2 text-center text-xs font-bold">
-                    Category
-                  </th>
+        <th className="border border-black px-3 py-2 text-center text-xs font-bold">
+          Quantity
+        </th>
 
-                  <th className="border border-black px-3 py-2 text-center text-xs font-bold">
-                    Quantity
-                  </th>
+        <th className="border border-black px-3 py-2 text-center text-xs font-bold">
+          Unit Price
+        </th>
 
-                  <th className="border border-black px-3 py-2 text-center text-xs font-bold">
-                    Unit Price
-                  </th>
+        <th className="border border-black px-3 py-2 text-center text-xs font-bold">
+          Total
+        </th>
 
-                  <th className="border border-black px-3 py-2 text-center text-xs font-bold">
-                    Total
-                  </th>
+      </tr>
 
-                </tr>
+    </thead>
 
-              </thead>
+    <tbody>
 
-              <tbody>
+      {allProducts.map((product, index) => {
 
-                {allProducts.map(
-                  (product, index) => (
-                    <tr
-                      key={index}
-                      className="hover:bg-blue-50 transition border border-black"
-                    >
+      
 
-                      <td className="border border-black px-3 py-2 font-semibold text-center text-sm">
-                        {product.product_name}
-                      </td>
+        return (
+          <tr
+            key={index}
+            className="hover:bg-blue-50 transition border border-black"
+          >
 
-                      <td className="border border-black px-3 py-2 text-center text-sm">
-                        {product.category}
-                      </td>
+           <td className="border border-black px-3 py-2 font-semibold text-center text-sm">
+  {getDisplayProductName(product)}
+</td>
 
-                      <td className="border border-black px-3 py-2 text-center text-sm">
+            <td className="border border-black px-3 py-2 text-center text-sm">
+              <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold text-sm">
+                {product.quantity}{" "}
+                {formatInventoryUnit(product)}
+              </span>
+            </td>
 
-                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold text-sm">
-                          {product.quantity}
-                        </span>
+            <td className="border border-black px-3 py-2 text-center font-semibold text-indigo-700">
+              ₹{" "}
+              {Number(
+                product.unit_price || 0
+              ).toLocaleString(
+                "en-IN",
+                {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }
+              )}
+            </td>
 
-                      </td>
+            <td className="border border-black px-3 py-2 text-center font-bold text-emerald-700 text-sm">
+              ₹{" "}
+              {Number(
+                product.total || 0
+              ).toLocaleString(
+                "en-IN",
+                {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }
+              )}
+            </td>
 
-                      <td className="border border-black px-3 py-2 text-center font-semibold text-indigo-700">
+          </tr>
+        );
+      })}
 
-                        ₹{" "}
-                        {Number(
-                          product.unit_price || 0
-                        ).toLocaleString(
-                          "en-IN",
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }
-                        )}
+      {additionalCharges.map(
+        (charge, index) => (
+          <tr
+            key={`charge-${index}`}
+            className="hover:bg-blue-50 transition border border-black"
+          >
 
-                      </td>
+            <td className="border border-black px-3 py-2 font-semibold text-center text-sm">
+              {charge.name}
+            </td>
 
-                      <td className="border border-black px-3 py-2 text-center font-bold text-emerald-700 text-sm">
+            <td className="border border-black px-3 py-2 text-center text-sm">
+              1
+            </td>
 
-                        ₹{" "}
-                        {Number(
-                          product.total || 0
-                        ).toLocaleString(
-                          "en-IN",
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }
-                        )}
+            <td className="border border-black px-3 py-2 text-center font-semibold text-indigo-700">
+              ₹{" "}
+              {charge.amount.toLocaleString(
+                "en-IN",
+                {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }
+              )}
+            </td>
 
-                      </td>
+            <td className="border border-black px-3 py-2 text-center font-bold text-emerald-700 text-sm">
+              ₹{" "}
+              {charge.amount.toLocaleString(
+                "en-IN",
+                {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }
+              )}
+            </td>
 
-                    </tr>
-                  )
-                )}
+          </tr>
+        )
+      )}
 
-                {/* ADDITIONAL CHARGES */}
+    </tbody>
 
-                {additionalCharges.map(
-                  (charge, index) => (
-                    <tr
-                      key={`charge-${index}`}
-                      className="hover:bg-blue-50 transition border border-black"
-                    >
+  </table>
 
-                      <td className="border border-black px-3 py-2 font-semibold text-center text-sm">
-                        {charge.name}
-                      </td>
+</div>
 
-                      <td className="border border-black px-3 py-2 text-center text-sm">
-                        Additional Charges
-                      </td>
+          
 
-                      <td className="border border-black px-3 py-2 text-center text-sm">
-                        1
-                      </td>
-
-                      <td className="border border-black px-3 py-2 text-center font-semibold text-indigo-700">
-
-                        ₹{" "}
-                        {charge.amount.toLocaleString(
-                          "en-IN",
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }
-                        )}
-
-                      </td>
-
-                      <td className="border border-black px-3 py-2 text-center font-bold text-emerald-700 text-sm">
-
-                        ₹{" "}
-                        {charge.amount.toLocaleString(
-                          "en-IN",
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }
-                        )}
-
-                      </td>
-
-                    </tr>
-                  )
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-         {/* ===================================================
+      
+{/* ===================================================
     PANEL / INVERTER DETAILS
 ==================================================== */}
 
@@ -850,23 +1082,11 @@ export default function ViewUsedInventoryModal({
           <tr>
 
             <th className="border border-black px-4 py-3 text-center text-xs font-bold">
-              Panel Company
+              Product
             </th>
 
             <th className="border border-black px-4 py-3 text-center text-xs font-bold">
-              Panel Serial Number
-            </th>
-
-            <th className="border border-black px-4 py-3 text-center text-xs font-bold">
-              Inverter Company
-            </th>
-
-            <th className="border border-black px-4 py-3 text-center text-xs font-bold">
-              Model
-            </th>
-
-            <th className="border border-black px-4 py-3 text-center text-xs font-bold">
-              Inverter Serial Number
+              Serial Number
             </th>
 
           </tr>
@@ -874,100 +1094,92 @@ export default function ViewUsedInventoryModal({
         </thead>
 
         <tbody>
-  {(() => {
-    const panelData = panelProducts.flatMap((product) => {
-      const serials = cleanArray(product.serial_numbers).filter(Boolean);
 
-      const quantity = Number(product.quantity || 0);
+          {panelProducts.flatMap((product, productIndex) => {
 
-      const count = Math.max(quantity, serials.length);
+            const serials =
+              cleanArray(product.serial_numbers)
+                .filter(Boolean);
 
-      return Array.from({ length: count }, (_, index) => ({
-        company: product.company || "-",
-        serial: serials[index] || "-",
-      }));
-    });
+            const quantity =
+              Number(product.quantity || 0);
 
-    const inverterData = inverterProducts.flatMap((product) => {
-      const serials = cleanArray(product.serial_numbers).filter(Boolean);
+            const count =
+              Math.max(quantity, serials.length);
 
-      let models = cleanArray(product.inverter_models).filter(Boolean);
+            return Array.from(
+              { length: count },
+              (_, index) => (
 
-      // Backward compatibility for old records
-      if (!models.length) {
-        const specification = String(
-          product.specification || ""
-        ).trim();
+                <tr
+                  key={`panel-${productIndex}-${index}`}
+                  className="hover:bg-blue-50 transition"
+                >
 
-        if (specification) {
-          models = [specification];
-        }
-      }
+                  <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
+                    {[
+                      product.company,
+                      "Panel",
+                      product.specification,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  </td>
 
-      const quantity = Number(product.quantity || 0);
+                  <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
+                    {serials[index] || "-"}
+                  </td>
 
-      const count = Math.max(
-        quantity,
-        serials.length,
-        models.length
-      );
+                </tr>
 
-      return Array.from({ length: count }, (_, index) => ({
-        company: product.company || "-",
-        model: models[index] || "-",
-        serial: serials[index] || "-",
-      }));
-    });
+              )
+            );
 
-    const rowCount = Math.max(
-      panelData.length,
-      inverterData.length
-    );
+          })}
 
-    return Array.from({ length: rowCount }, (_, index) => {
-      const panel = panelData[index];
-      const inverter = inverterData[index];
+          {inverterProducts.flatMap((product, productIndex) => {
 
-      return (
-        <tr
-          key={`panel-inverter-${index}`}
-          className="hover:bg-blue-50 transition"
-        >
-          {/* PANEL COMPANY */}
-          <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
-            {index === 0
-              ? panel?.company || "-"
-              : ""}
-          </td>
+            const serials =
+              cleanArray(product.serial_numbers)
+                .filter(Boolean);
 
-          {/* PANEL SERIAL NUMBER */}
-          <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
-            {panel?.serial || "-"}
-          </td>
+            const quantity =
+              Number(product.quantity || 0);
 
-          {/* INVERTER COMPANY */}
-          <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
-            {index === 0
-              ? inverter?.company || "-"
-              : ""}
-          </td>
+            const count =
+              Math.max(quantity, serials.length);
 
-          {/* MODEL */}
-          <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-indigo-700">
-            {index === 0
-              ? inverter?.model || "-"
-              : ""}
-          </td>
+            return Array.from(
+              { length: count },
+              (_, index) => (
 
-          {/* INVERTER SERIAL NUMBER */}
-          <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
-            {inverter?.serial || "-"}
-          </td>
-        </tr>
-      );
-    });
-  })()}
-</tbody>
+                <tr
+                  key={`inverter-${productIndex}-${index}`}
+                  className="hover:bg-blue-50 transition"
+                >
+
+                  <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
+                    {[
+                      product.company,
+                      "Inverter",
+                      product.specification,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  </td>
+
+                  <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
+                    {serials[index] || "-"}
+                  </td>
+
+                </tr>
+
+              )
+            );
+
+          })}
+
+        </tbody>
 
       </table>
 
@@ -976,6 +1188,7 @@ export default function ViewUsedInventoryModal({
   </div>
 
 )}
+
           {/* ===================================================
               COST SUMMARY
           ==================================================== */}
@@ -1052,19 +1265,21 @@ export default function ViewUsedInventoryModal({
           </div>
 
           {/* ===================================================
-              CLOSE BUTTON
-          ==================================================== */}
+    CLOSE BUTTON
+=================================================== */}
 
-          <div className="flex justify-end mt-8">
+{!pdfMode && (
+  <div className="flex justify-end mt-8">
 
-            <button
-              onClick={onClose}
-              className="bg-gradient-to-r from-indigo-700 to-blue-700 hover:from-indigo-800 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300 text-white px-8 py-3 rounded-xl font-semibold"
-            >
-              Close
-            </button>
+    <button
+      onClick={onClose}
+      className="bg-gradient-to-r from-indigo-700 to-blue-700 hover:from-indigo-800 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300 text-white px-8 py-3 rounded-xl font-semibold"
+    >
+      Close
+    </button>
 
-          </div>
+  </div>
+)}
 
         </div>
 

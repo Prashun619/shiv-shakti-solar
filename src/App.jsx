@@ -118,74 +118,14 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <>
-      <style>{`
-
-        /* =================================================
-           SIDEBAR NEON ANIMATION
-        ================================================= */
-
-        @keyframes sidebarNeonMove {
-
-          0% {
-            background-position: 0% 0%;
-          }
-
-          50% {
-            background-position: 0% 100%;
-          }
-
-          100% {
-            background-position: 0% 0%;
-          }
-
-        }
-
-
-        @keyframes sidebarGlowPulse {
-
-          0% {
-            opacity: 0.35;
-          }
-
-          50% {
-            opacity: 0.75;
-          }
-
-          100% {
-            opacity: 0.35;
-          }
-
-        }
-
-
-        .sidebar-neon-line {
-
-          background-size: 100% 300%;
-
-          animation:
-            sidebarNeonMove 5s linear infinite;
-
-        }
-
-
-        .sidebar-neon-glow {
-
-          background-size: 100% 300%;
-
-          animation:
-            sidebarNeonMove 5s linear infinite,
-            sidebarGlowPulse 3s ease-in-out infinite;
-
-        }
-
-      `}</style>
+      
 
 
       {/* =================================================
           MAIN APPLICATION
       ================================================= */}
 
-      <div className="h-screen flex bg-[#050816] overflow-hidden">
+     <div className="h-screen flex bg-gradient-to-br from-slate-50 via-cyan-100 to-purple-100 overflow-hidden">
 
 
         {/* =================================================
@@ -199,19 +139,21 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   />
 )}
 
-          <aside
-            className={`
+<aside
+         className={`
   fixed
   inset-y-0
   left-0
   w-64
-  text-white
+  text-slate-700
   flex
   flex-col
-  shadow-2xl
+  shadow-lg
   z-50
   overflow-hidden
-  bg-[#050816]
+  bg-green-50
+  border-r
+  border-slate-200
 
   transform
   transition-transform
@@ -232,117 +174,7 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
             ================================================= */}
 
 
-            {/* Cyan Glow */}
-
-            <div
-              className="
-                pointer-events-none
-                absolute
-                -top-32
-                -left-32
-                w-[400px]
-                h-[400px]
-                bg-cyan-500/20
-                rounded-full
-                blur-[110px]
-              "
-            />
-
-
-            {/* Purple Glow */}
-
-            <div
-              className="
-                pointer-events-none
-                absolute
-                top-1/3
-                -right-40
-                w-[450px]
-                h-[450px]
-                bg-purple-600/25
-                rounded-full
-                blur-[120px]
-              "
-            />
-
-
-            {/* Pink Glow */}
-
-            <div
-              className="
-                pointer-events-none
-                absolute
-                -bottom-40
-                left-1/3
-                w-[400px]
-                h-[400px]
-                bg-fuchsia-500/15
-                rounded-full
-                blur-[110px]
-              "
-            />
-
-
-            {/* Overall Neon Gradient */}
-
-            <div
-              className="
-                pointer-events-none
-                absolute
-                inset-0
-                bg-gradient-to-br
-                from-cyan-500/5
-                via-purple-600/10
-                to-fuchsia-500/5
-              "
-            />
-
-
-            {/* =================================================
-                MOVING NEON EDGE
-            ================================================= */}
-
-            <div
-              className="
-                sidebar-neon-line
-                pointer-events-none
-                absolute
-                top-0
-                right-0
-                h-full
-                w-[3px]
-                z-50
-              "
-              style={{
-                background:
-                  "linear-gradient(180deg, #22d3ee, #3b82f6, #8b5cf6, #d946ef, #22d3ee)",
-                backgroundSize: "100% 300%",
-              }}
-            />
-
-
-            {/* Neon Blur */}
-
-            <div
-              className="
-                sidebar-neon-glow
-                pointer-events-none
-                absolute
-                top-0
-                right-[-7px]
-                h-full
-                w-[18px]
-                z-40
-              "
-              style={{
-                background:
-                  "linear-gradient(180deg, #22d3ee, #3b82f6, #8b5cf6, #d946ef, #22d3ee)",
-                backgroundSize: "100% 300%",
-                filter: "blur(10px)",
-                opacity: 0.65,
-              }}
-            />
-
+           
 
             {/* =================================================
                 SIDEBAR CONTENT
@@ -357,11 +189,14 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
               <div
                 className="
-                  p-5
-                  border-b
-                  border-white/10
-                  bg-white/[0.02]
-                "
+  p-5
+  border-b
+  border-slate-200
+  bg-gradient-to-r
+  from-blue-50
+  via-blue-300
+  to-purple-50
+"
               >
 
                 <div className="flex items-center gap-3">
@@ -372,36 +207,22 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                   <div
                     className="
                       relative
-                      w-11
-                      h-11
+                      w-10
+                      h-10
                       flex
                       items-center
                       justify-center
                     "
                   >
 
-                    {/* Logo Glow */}
-
-                    <div
-                      className="
-                        absolute
-                        inset-0
-                        rounded-full
-                        bg-cyan-400/20
-                        blur-xl
-                      "
-                    />
-
-
-                    <img
+                      <img
                       src="/logo.png"
                       className="
-                        relative
-                        h-10
-                        w-auto
-                        object-contain
-                        drop-shadow-[0_0_12px_rgba(34,211,238,0.7)]
-                      "
+  relative
+  h-10
+  w-auto
+  object-contain
+"
                       alt="Shiv Shakti Solar"
                     />
 
@@ -416,7 +237,7 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                       className="
                         text-sm
                         font-bold
-                        text-white
+                        text-slate-800
                         tracking-wide
                       "
                     >
@@ -463,10 +284,10 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                     rounded-xl
                     text-sm
                     font-medium
-                    text-slate-200
-                    hover:bg-cyan-400/10
-                    hover:text-cyan-300
-                    hover:translate-x-1
+                    text-black-600
+hover:bg-blue-200
+hover:text-blue-700
+hover:translate-x-1
                     transition-all
                     duration-200
                   "
@@ -488,9 +309,9 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     rounded-xl
     text-sm
     font-medium
-    text-slate-200
-    hover:bg-cyan-400/10
-    hover:text-cyan-300
+    text-black-200
+    hover:bg-blue-200
+    hover:text-blue-700
     hover:translate-x-1
     transition-all
     duration-200
@@ -514,9 +335,9 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                       rounded-xl
                       text-sm
                       font-medium
-                      text-slate-200
-                      hover:bg-cyan-400/10
-                      hover:text-cyan-300
+                      text-black-200
+                      hover:bg-blue-200
+    hover:text-blue-700
                       hover:translate-x-1
                       transition-all
                       duration-200
@@ -540,9 +361,9 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                       rounded-xl
                       text-sm
                       font-medium
-                      text-slate-200
-                      hover:bg-cyan-400/10
-                      hover:text-cyan-300
+                      text-black-200
+                      hover:bg-blue-200
+    hover:text-blue-700
                       hover:translate-x-1
                       transition-all
                       duration-200
@@ -566,9 +387,9 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                       rounded-xl
                       text-sm
                       font-medium
-                      text-slate-200
-                      hover:bg-cyan-400/10
-                      hover:text-cyan-300
+                      text-black-200
+                      hover:bg-blue-200
+    hover:text-blue-700
                       hover:translate-x-1
                       transition-all
                       duration-200
@@ -592,9 +413,9 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                       rounded-xl
                       text-sm
                       font-medium
-                      text-slate-200
-                      hover:bg-cyan-400/10
-                      hover:text-cyan-300
+                      text-black-200
+                      hover:bg-blue-200
+    hover:text-blue-700
                       hover:translate-x-1
                       transition-all
                       duration-200
@@ -618,9 +439,9 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                       rounded-xl
                       text-sm
                       font-medium
-                      text-slate-200
-                      hover:bg-cyan-400/10
-                      hover:text-cyan-300
+                      text-black-200
+                      hover:bg-blue-200
+    hover:text-blue-700
                       hover:translate-x-1
                       transition-all
                       duration-200
@@ -644,9 +465,9 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                       rounded-xl
                       text-sm
                       font-medium
-                      text-slate-200
-                      hover:bg-cyan-400/10
-                      hover:text-cyan-300
+                      text-black-200
+                      hover:bg-blue-200
+    hover:text-blue-700
                       hover:translate-x-1
                       transition-all
                       duration-200
@@ -670,9 +491,9 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                       rounded-xl
                       text-sm
                       font-medium
-                      text-slate-200
-                      hover:bg-cyan-400/10
-                      hover:text-cyan-300
+                      text-black-200
+                      hover:bg-blue-200
+    hover:text-blue-700
                       hover:translate-x-1
                       transition-all
                       duration-200
@@ -696,9 +517,9 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                       rounded-xl
                       text-sm
                       font-medium
-                      text-slate-200
-                      hover:bg-cyan-400/10
-                      hover:text-cyan-300
+                      text-black-200
+                      hover:bg-blue-200
+    hover:text-blue-700
                       hover:translate-x-1
                       transition-all
                       duration-200
@@ -722,9 +543,9 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                       rounded-xl
                       text-sm
                       font-medium
-                      text-slate-200
-                      hover:bg-cyan-400/10
-                      hover:text-cyan-300
+                      text-black-200
+                      hover:bg-blue-200
+    hover:text-blue-700
                       hover:translate-x-1
                       transition-all
                       duration-200
@@ -748,8 +569,8 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                   relative
                   p-4
                   border-t
-                  border-white/10
-                  bg-white/[0.02]
+border-cyan-500
+bg-white-100
                 "
               >
 
@@ -759,7 +580,7 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                     <p
                       className="
                         font-bold
-                        text-white
+                        text-red-600
                         flex
                         items-center
                         gap-2
@@ -771,7 +592,7 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                     <p
                       className="
                         text-sm
-                        text-slate-400
+                        text-black-400
                         mt-1
                       "
                     >
@@ -785,20 +606,17 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
                 <button
                   onClick={handleLogout}
                   className="
-                    w-full
-                    bg-gradient-to-r
-                    from-red-500/80
-                    to-fuchsia-600/80
-                    hover:from-red-500
-                    hover:to-fuchsia-500
-                    text-white
-                    py-2
-                    rounded-xl
-                    font-semibold
-                    shadow-[0_0_15px_rgba(217,70,239,0.2)]
-                    hover:shadow-[0_0_25px_rgba(217,70,239,0.4)]
-                    transition-all
-                  "
+  w-full
+  bg-red-50
+  hover:bg-red-100
+  text-red-600
+  border
+  border-red-200
+  py-2
+  rounded-xl
+  font-semibold
+  transition
+"
                 >
                   🚪 Logout
                 </button>

@@ -80,6 +80,66 @@ export default function MasterInventory() {
 
   }, [items]);
 
+  function formatInventoryUnit(unit) {
+  const normalized = String(unit || "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    normalized === "ft" ||
+    normalized === "feet" ||
+    normalized === "foot"
+  ) {
+    return "Ft";
+  }
+
+  if (
+    normalized === "mtr" ||
+    normalized === "meter" ||
+    normalized === "metre" ||
+    normalized === "meters" ||
+    normalized === "metres"
+  ) {
+    return "Mtr";
+  }
+
+  if (
+    normalized === "nos" ||
+    normalized === "no" ||
+    normalized === "pcs" ||
+    normalized === "pc" ||
+    normalized === "piece" ||
+    normalized === "pieces"
+  ) {
+    return "Nos";
+  }
+
+  if (normalized === "kg" || normalized === "kgs") {
+    return "Kg";
+  }
+
+  if (normalized === "pair" || normalized === "pairs") {
+    return "Pair";
+  }
+
+  if (normalized === "set" || normalized === "sets") {
+    return "Set";
+  }
+
+  if (normalized === "pack" || normalized === "packs") {
+    return "Pack";
+  }
+
+  if (normalized === "roll" || normalized === "rolls") {
+    return "Roll";
+  }
+
+  if (normalized === "box" || normalized === "boxes") {
+    return "Box";
+  }
+
+  return unit || "";
+}
 
   // ======================================
   // FILTER + SEARCH
@@ -87,13 +147,88 @@ export default function MasterInventory() {
 
   const filteredItems = useMemo(() => {
 
-    const key =
-      search.toLowerCase().trim();
+  const key =
+    search.toLowerCase().trim();
 
 
-    return [...items]
+  return [...items]
 
-      .filter((item) => {
+    .map((item) => {
+
+      const isCChannel =
+  [
+    "c channel 140x50x2 mm 9ft",
+    "c channel 140x50x2 mm 21ft",
+  ].includes(
+    String(item.product_name || "")
+      .trim()
+      .toLowerCase()
+  );    
+
+
+   if (isCChannel) {
+  const quantity =
+    Number(item.total_quantity || 0);
+
+  const lengthFt =
+    Number(item.length_ft || 0);
+
+  const usedQuantity =
+    Number(item.used_quantity || 0);
+
+  const totalFeet =
+    quantity * lengthFt;
+
+  const usedFeet =
+    usedQuantity;
+
+  const remainingFeet =
+    Math.max(
+      0,
+      totalFeet - usedFeet
+    );
+
+  return {
+    ...item,
+    total_quantity: totalFeet,
+    used_quantity: usedFeet,
+    remaining: remainingFeet,
+    stock_status:
+      remainingFeet <= 0
+        ? "Out of Stock"
+        : "In Stock",
+    unit: "Ft",
+  };
+}
+
+
+      return item;
+
+    })
+
+  .map((item) => {
+    
+    const isCChannel =
+  [
+    "c channel 140x50x2 mm 9ft",
+    "c channel 140x50x2 mm 21ft",
+  ].includes(
+    String(item.product_name || "")
+      .trim()
+      .toLowerCase()
+  );
+
+    if (isCChannel) {
+      return {
+        ...item,
+        unit: "ft",
+      };
+    }
+
+    return item;
+  })
+
+  .filter((item) => {
 
         const matchesSearch =
 
@@ -202,6 +337,53 @@ export default function MasterInventory() {
 
   }
 
+    // ======================================
+  // DISPLAY PRODUCT NAME
+  // ======================================
+
+  function getDisplayProductName(item) {
+
+    const category =
+      String(item.category || "")
+        .trim()
+        .toLowerCase();
+
+    const company =
+      String(item.company || "")
+        .trim();
+
+    const specification =
+      String(item.specification || "")
+        .trim();
+
+    // PANEL
+    if (category === "panel") {
+
+      return [
+        company,
+        specification
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+    }
+
+    // INVERTER
+    if (category === "inverter") {
+
+      return [
+        company,
+        specification
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+    }
+
+    // ALL OTHER PRODUCTS
+    return item.product_name || "";
+
+  }
 
   return (
 
@@ -579,7 +761,7 @@ export default function MasterInventory() {
               border-collapse
               border-2
               border-black
-              text-xs
+              text-base
             ">
 
 
@@ -596,7 +778,7 @@ export default function MasterInventory() {
                     px-2
                     py-2
                     text-center
-                    text-sm
+                    text-lg
                     font-semibold
                   ">
                     Product
@@ -609,7 +791,7 @@ export default function MasterInventory() {
                     px-2
                     py-2
                     text-center
-                    text-sm
+                    text-lg
                     font-semibold
                   ">
                     Category
@@ -622,7 +804,7 @@ export default function MasterInventory() {
                     px-2
                     py-2
                     text-center
-                    text-sm
+                    text-lg
                     font-semibold
                   ">
                     Total Quantity
@@ -635,7 +817,7 @@ export default function MasterInventory() {
                     px-2
                     py-2
                     text-center
-                    text-sm
+                    text-lg
                     font-semibold
                   ">
                     Used Quantity
@@ -648,7 +830,7 @@ export default function MasterInventory() {
                     px-2
                     py-2
                     text-center
-                    text-sm
+                    text-lg
                     font-semibold
                   ">
                     Remaining
@@ -661,7 +843,7 @@ export default function MasterInventory() {
                     px-2
                     py-2
                     text-center
-                    text-sm
+                    text-lg
                     font-semibold
                   ">
                     Status
@@ -703,6 +885,7 @@ export default function MasterInventory() {
                         item.stock_status
                       );
 
+                      
 
                     return (
 
@@ -723,7 +906,7 @@ export default function MasterInventory() {
                       >
 
 
-                        {/* PRODUCT */}
+                                                {/* PRODUCT */}
 
                         <td className="
                           border-2
@@ -733,7 +916,7 @@ export default function MasterInventory() {
                           text-center
                           font-medium
                         ">
-                          {item.display_name}
+                          {getDisplayProductName(item)}
                         </td>
 
 
@@ -750,68 +933,59 @@ export default function MasterInventory() {
                         </td>
 
 
-                        {/* TOTAL */}
+                      {/* TOTAL */}
 
-                        <td className="
-                          border-2
-                          border-black
-                          px-2
-                          py-2
-                          text-center
-                        ">
+<td className="
+  border-2
+  border-black
+  px-2
+  py-2
+  text-center
+">
 
-                          {item.total_quantity}
+  {item.total_quantity}{" "}
+  {formatInventoryUnit(item.unit)}
 
-                          {" "}
-
-                          {item.unit}
-
-                        </td>
+</td>
 
 
-                        {/* USED */}
+{/* USED */}
 
-                        <td className="
-                          border-2
-                          border-black
-                          px-2
-                          py-2
-                          text-center
-                        ">
+<td className="
+  border-2
+  border-black
+  px-2
+  py-2
+  text-center
+">
 
-                          {item.used_quantity}
+  {item.used_quantity}{" "}
+  {formatInventoryUnit(item.unit)}
 
-                          {" "}
-
-                          {item.unit}
-
-                        </td>
+</td>
 
 
-                        {/* REMAINING */}
+{/* REMAINING */}
 
-                        <td className="
-                          border-2
-                          border-black
-                          px-2
-                          py-2
-                          text-center
-                        ">
+<td className="
+  border-2
+  border-black
+  px-2
+  py-2
+  text-center
+">
 
-                          <span className="
-                            font-bold
-                            text-green-700
-                          ">
+  <span className="
+    font-bold
+    text-green-700
+  ">
 
-                            {item.remaining}
+    {item.remaining}{" "}
+    {formatInventoryUnit(item.unit)}
 
-                            {" "}
+  </span>
 
-                            {item.unit}
-
-                          </span>
-
-                        </td>
+</td>
 
 
                         {/* STATUS */}

@@ -242,7 +242,6 @@ export default function Dashboard() {
             p.status === "Pending"
         ).length;
 
-
       /* =================================================
          FINANCE DATA
       ================================================== */
@@ -252,7 +251,6 @@ export default function Dashboard() {
 
       const paymentList =
         paymentResult.data || [];
-
 
       /* =================================================
          HELPERS
@@ -266,16 +264,14 @@ export default function Dashboard() {
           0
         );
 
-
       const normalize = (value) =>
         String(value || "")
           .trim()
           .toLowerCase();
 
-
       /* =================================================
          INVESTOR CHECK
-      ================================================= */
+      ================================================== */
 
       const investorNames = [
         "shubhendu",
@@ -296,7 +292,6 @@ export default function Dashboard() {
 
       };
 
-
       /* =================================================
          TRANSACTION TYPE
       ================================================== */
@@ -315,7 +310,6 @@ export default function Dashboard() {
         );
 
       };
-
 
       /* =================================================
          CUSTOMER PAYMENT
@@ -359,7 +353,6 @@ export default function Dashboard() {
         }
       );
 
-
       /* =================================================
          FINANCE CLASSIFICATION
       ================================================== */
@@ -367,7 +360,6 @@ export default function Dashboard() {
       let totalDealerPayment = 0;
       let totalNormalExpense = 0;
       let totalInvestment = 0;
-
 
       billingList.forEach(
         (item) => {
@@ -403,14 +395,12 @@ export default function Dashboard() {
               item?.party_name
             );
 
-
           const amount =
             amountOf(item);
 
-
           /* =============================================
              CUSTOMER PAYMENT
-          ============================================= */
+          ============================================== */
 
           if (
             type ===
@@ -430,10 +420,9 @@ export default function Dashboard() {
             return;
           }
 
-
           /* =============================================
              INVESTMENT
-          ============================================= */
+          ============================================== */
 
           if (
             type === "investment" ||
@@ -447,10 +436,9 @@ export default function Dashboard() {
             return;
           }
 
-
           /* =============================================
              DEALER PAYMENT
-          ============================================= */
+          ============================================== */
 
           const isDealerPayment =
             type ===
@@ -462,7 +450,6 @@ export default function Dashboard() {
             remarks.includes(
               "dealer payment"
             );
-
 
           if (
             isDealerPayment
@@ -497,10 +484,9 @@ export default function Dashboard() {
             return;
           }
 
-
           /* =============================================
              NORMAL EXPENSE
-          ============================================= */
+          ============================================== */
 
           const isExpense =
             type === "expense" ||
@@ -513,7 +499,6 @@ export default function Dashboard() {
             type === "je charge" ||
             type === "je_charge";
 
-
           if (
             isExpense
           ) {
@@ -523,7 +508,6 @@ export default function Dashboard() {
 
             return;
           }
-
 
           /*
            * Some existing billing rows may
@@ -548,7 +532,6 @@ export default function Dashboard() {
         }
       );
 
-
       /* =================================================
          PLANT COST
       ================================================== */
@@ -567,7 +550,6 @@ export default function Dashboard() {
           0
         );
 
-
       /* =================================================
          FINANCE TOTALS
       ================================================== */
@@ -583,7 +565,6 @@ export default function Dashboard() {
       const netBalance =
         totalIncome -
         totalExpenses;
-
 
       /* =================================================
          TOTAL PROJECT PROFIT
@@ -631,7 +612,6 @@ export default function Dashboard() {
           },
           0
         );
-
 
       /* =================================================
          UPDATE STATS
@@ -691,7 +671,6 @@ export default function Dashboard() {
 
       });
 
-
       /* =================================================
          RECENT CUSTOMERS
       ================================================== */
@@ -699,7 +678,6 @@ export default function Dashboard() {
       setRecentCustomers(
         recentCustomerResult.data || []
       );
-
 
       /* =================================================
          RECENT PROJECTS
@@ -719,7 +697,6 @@ export default function Dashboard() {
     }
 
   }
-
 
   /* =====================================================
      RECENT PROJECTS
@@ -753,7 +730,6 @@ export default function Dashboard() {
 
       }
 
-
       const { data: customers } =
         await supabase
           .from("customers")
@@ -761,9 +737,7 @@ export default function Dashboard() {
             "id, customer_name"
           );
 
-
       const customerMap = {};
-
 
       (customers || []).forEach(
         (c) => {
@@ -773,7 +747,6 @@ export default function Dashboard() {
 
         }
       );
-
 
       const formatted =
         projects
@@ -800,7 +773,6 @@ export default function Dashboard() {
             })
           );
 
-
       setRecentProjects(
         formatted
       );
@@ -812,7 +784,6 @@ export default function Dashboard() {
     }
 
   }
-
 
   /* =====================================================
      FORMAT MONEY
@@ -826,91 +797,13 @@ export default function Dashboard() {
         "en-IN"
       );
 
-
   /* =====================================================
      RETURN
   ====================================================== */
 
   return (
 
-    <div
-      className="
-        relative
-        min-h-screen
-        overflow-hidden
-        bg-[#050816]
-        p-3
-        sm:p-4
-        lg:p-6
-        text-white
-      "
-    >
-
-      {/* =================================================
-          NEON AMBIENT BACKGROUND
-      ================================================== */}
-
-      <div
-        className="
-          pointer-events-none
-          fixed
-          inset-0
-          overflow-hidden
-        "
-      >
-
-        <div
-          className="
-            absolute
-            -left-40
-            -top-40
-            h-[500px]
-            w-[500px]
-            rounded-full
-            bg-cyan-500/20
-            blur-[140px]
-          "
-        />
-
-        <div
-          className="
-            absolute
-            right-[-180px]
-            top-[10%]
-            h-[550px]
-            w-[550px]
-            rounded-full
-            bg-purple-600/25
-            blur-[150px]
-          "
-        />
-
-        <div
-          className="
-            absolute
-            bottom-[-200px]
-            left-[30%]
-            h-[500px]
-            w-[500px]
-            rounded-full
-            bg-fuchsia-500/15
-            blur-[150px]
-          "
-        />
-
-        <div
-          className="
-            absolute
-            inset-0
-            bg-gradient-to-br
-            from-cyan-500/5
-            via-purple-600/10
-            to-fuchsia-500/5
-          "
-        />
-
-      </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-6 text-slate-800">
 
       {/* =================================================
           CONTENT
@@ -919,10 +812,8 @@ export default function Dashboard() {
       <div
         className="
           relative
-          z-10
         "
       >
-
 
         {/* =================================================
             HEADER
@@ -930,26 +821,24 @@ export default function Dashboard() {
 
         <div
           className="
-            mb-4
-            sm:mb-6
-            rounded-3xl
-            border
-            border-cyan-400/30
-            bg-slate-950/60
-            px-3
-            sm:px-5
-            py-3
-            sm:py-4
-            shadow-[0_0_35px_rgba(34,211,238,0.12)]
-            backdrop-blur-2xl
-            flex
-            flex-col
-            lg:flex-row
-            lg:justify-between
-            lg:items-center
-            gap-4
-            sm:gap-5
-          "
+  mb-6
+  rounded-2xl
+  border
+  border-blue-700
+  bg-gradient-to-r
+  from-blue-400
+  via-white
+  to-purple-400
+  px-5
+  py-4
+  shadow-md
+  flex
+  flex-col
+  lg:flex-row
+  lg:justify-between
+  lg:items-center
+  gap-5
+"
         >
 
           <div>
@@ -958,66 +847,47 @@ export default function Dashboard() {
               className="
                 flex
                 items-center
-                gap-3
-                sm:gap-5
+                gap-5
               "
             >
 
               <div
                 className="
-                  relative
-                  h-14
-                  w-14
-                  sm:h-16
-                  sm:w-16
-                  shrink-0
+                  h-16
+                  w-16
                   rounded-2xl
                   border
-                  border-cyan-300/50
-                  bg-slate-900/80
+                  border-blue-200
+                  bg-gradient-to-br
+                  from-blue-50
+                  to-cyan-50
                   flex
                   items-center
                   justify-center
-                  shadow-[0_0_25px_rgba(34,211,238,0.35)]
+                  shadow-sm
                 "
               >
-
-                <div
-                  className="
-                    absolute
-                    inset-0
-                    rounded-2xl
-                    bg-cyan-400/10
-                    blur-md
-                  "
-                />
 
                 <img
                   src="/logo.png"
                   alt="Shiv Shakti Solar"
                   className="
-                    relative
-                    h-12
-                    w-12
-                    sm:h-14
-                    sm:w-14
+                    h-14
+                    w-14
                     object-contain
                   "
                 />
 
               </div>
 
-
-              <div className="min-w-0">
+              <div>
 
                 <h1
                   className="
-                    text-xl
-                    sm:text-3xl
+                    text-3xl
                     font-black
                     tracking-tight
-                    text-white
-                    drop-shadow-[0_0_12px_rgba(34,211,238,0.35)]
+                    text-slate-800
                   "
                 >
                   Shiv Shakti Solar
@@ -1026,10 +896,9 @@ export default function Dashboard() {
                 <p
                   className="
                     mt-1
-                    text-xs
-                    sm:text-sm
+                    text-sm
                     font-medium
-                    text-cyan-100/70
+                    text-red-500
                   "
                 >
                   Smart Renewable Energy Management System
@@ -1039,25 +908,18 @@ export default function Dashboard() {
 
             </div>
 
-
             <div
               className="
-                mt-4
-                sm:mt-5
+                mt-5
                 inline-flex
-                max-w-full
                 items-center
-                gap-2
-                sm:gap-3
+                gap-3
                 rounded-full
                 border
-                border-emerald-400/30
-                bg-emerald-400/10
-                px-3
-                sm:px-4
+                border-emerald-200
+                bg-emerald-50
+                px-4
                 py-1.5
-                shadow-[0_0_18px_rgba(16,185,129,0.15)]
-                backdrop-blur-md
               "
             >
 
@@ -1065,20 +927,17 @@ export default function Dashboard() {
                 className="
                   h-2.5
                   w-2.5
-                  shrink-0
                   rounded-full
-                  bg-emerald-400
+                  bg-emerald-500
                   animate-pulse
-                  shadow-[0_0_12px_rgba(52,211,153,1)]
                 "
               />
 
               <span
                 className="
-                  text-xs
-                  sm:text-sm
+                  text-sm
                   font-bold
-                  text-emerald-300
+                  text-emerald-700
                 "
               >
                 System Online
@@ -1086,9 +945,8 @@ export default function Dashboard() {
 
               <span
                 className="
-                  text-xs
-                  sm:text-sm
-                  text-emerald-200/50
+                  text-sm
+                  text-slate-300
                 "
               >
                 •
@@ -1096,10 +954,8 @@ export default function Dashboard() {
 
               <span
                 className="
-                  text-xs
-                  sm:text-sm
-                  text-cyan-100/60
-                  truncate
+                  text-sm
+                  text-slate-500
                 "
               >
                 Dashboard Overview
@@ -1109,35 +965,30 @@ export default function Dashboard() {
 
           </div>
 
-
           {/* DATE / TIME */}
 
           <div
             className="
-              w-full
-              min-w-0
+              min-w-[300px]
               rounded-2xl
               border
-              border-purple-400/30
-              bg-slate-900/70
-              px-4
-              sm:px-5
-              py-3
-              sm:py-4
-              shadow-[0_0_30px_rgba(168,85,247,0.15)]
-              backdrop-blur-xl
+              border-blue-200
+              bg-gradient-to-br
+                  from-blue-50
+                  to-cyan-50
+              bg-slate-50
+              px-5
+              py-4
+              shadow-sm
             "
           >
 
             <div
               className="
                 flex
-                flex-col
-                sm:flex-row
-                sm:items-center
-                sm:justify-between
-                gap-3
-                sm:gap-8
+                items-center
+                justify-between
+                gap-8
               "
             >
 
@@ -1149,7 +1000,7 @@ export default function Dashboard() {
                     uppercase
                     tracking-[0.25em]
                     font-bold
-                    text-cyan-300/60
+                    text-blue-600
                   "
                 >
                   Today
@@ -1160,7 +1011,7 @@ export default function Dashboard() {
                     mt-1
                     text-sm
                     font-bold
-                    text-white
+                    text-slate-800
                   "
                 >
                   {currentDate}
@@ -1168,9 +1019,8 @@ export default function Dashboard() {
 
               </div>
 
-
               <div
-                className="text-left sm:text-right"
+                className="text-right"
               >
 
                 <p
@@ -1179,7 +1029,7 @@ export default function Dashboard() {
                     uppercase
                     tracking-[0.25em]
                     font-bold
-                    text-purple-300/60
+                    text-purple-600
                   "
                 >
                   Current Time
@@ -1187,11 +1037,9 @@ export default function Dashboard() {
 
                 <h2
                   className="
-                    text-2xl
-                    sm:text-3xl
+                    text-3xl
                     font-black
-                    text-cyan-300
-                    drop-shadow-[0_0_12px_rgba(34,211,238,0.7)]
+                    text-blue-600
                   "
                 >
                   {currentTime}
@@ -1201,26 +1049,22 @@ export default function Dashboard() {
 
             </div>
 
-
             <div
               className="
-                mt-3
-                sm:mt-4
+                mt-4
                 border-t
-                border-white/10
+                border-slate-200
                 pt-3
                 flex
-                flex-wrap
                 items-center
                 gap-2
-                text-xs
-                sm:text-sm
-                text-slate-300
+                text-sm
+                text-slate-500
               "
             >
 
               <span
-                className="text-cyan-300"
+                className="text-blue-600"
               >
                 👤
               </span>
@@ -1232,7 +1076,7 @@ export default function Dashboard() {
               <span
                 className="
                   font-bold
-                  text-white
+                  text-slate-800
                 "
               >
                 Admin
@@ -1244,7 +1088,6 @@ export default function Dashboard() {
 
         </div>
 
-
         {/* =================================================
             MAIN KPI CARDS
         ================================================== */}
@@ -1253,16 +1096,13 @@ export default function Dashboard() {
           className="
             grid
             grid-cols-1
-            min-[420px]:grid-cols-2
             md:grid-cols-2
             xl:grid-cols-4
-            gap-3
-            sm:gap-5
+            gap-5
           "
         >
 
-          <div className="neon-kpi">
-
+          <div>
             <KpiCard
               title="Total Customers"
               value={stats.customers}
@@ -1275,12 +1115,9 @@ export default function Dashboard() {
               subtitle="Registered Customers"
               color="purple"
             />
-
           </div>
 
-
-          <div className="neon-kpi">
-
+          <div>
             <KpiCard
               title="Total Projects"
               value={stats.projects}
@@ -1293,12 +1130,9 @@ export default function Dashboard() {
               subtitle="Solar Installations"
               color="blue"
             />
-
           </div>
 
-
-          <div className="neon-kpi">
-
+          <div>
             <KpiCard
               title="Completed"
               value={stats.completed}
@@ -1311,12 +1145,9 @@ export default function Dashboard() {
               subtitle="Completed Projects"
               color="green"
             />
-
           </div>
 
-
-          <div className="neon-kpi">
-
+          <div>
             <KpiCard
               title="Pending"
               value={stats.pendingProjects}
@@ -1329,12 +1160,9 @@ export default function Dashboard() {
               subtitle="Pending Projects"
               color="orange"
             />
-
           </div>
 
-
-          <div className="neon-kpi">
-
+          <div>
             <KpiCard
               title="Project Value"
               value={
@@ -1351,12 +1179,9 @@ export default function Dashboard() {
               subtitle="Total Project Value"
               color="purple"
             />
-
           </div>
 
-
-          <div className="neon-kpi">
-
+          <div>
             <KpiCard
               title="Received"
               value={
@@ -1373,12 +1198,9 @@ export default function Dashboard() {
               subtitle="Payments Received"
               color="green"
             />
-
           </div>
 
-
-          <div className="neon-kpi">
-
+          <div>
             <KpiCard
               title="Pending Amount"
               value={
@@ -1396,12 +1218,9 @@ export default function Dashboard() {
               color="red"
               trend="down"
             />
-
           </div>
 
-
-          <div className="neon-kpi">
-
+          <div>
             <KpiCard
               title="Profit"
               value={
@@ -1418,11 +1237,9 @@ export default function Dashboard() {
               subtitle="Overall Business Profit"
               color="green"
             />
-
           </div>
 
         </div>
-
 
         {/* =================================================
             FINANCE SUMMARY
@@ -1430,16 +1247,17 @@ export default function Dashboard() {
 
         <div
           className="
-            mt-4
-            sm:mt-6
-            rounded-3xl
+            mt-6
+            rounded-2xl
             border
-            border-cyan-400/20
-            bg-slate-950/60
-            p-3
-            sm:p-6
-            shadow-[0_0_35px_rgba(34,211,238,0.10)]
-            backdrop-blur-2xl
+            border-blue-100
+                  bg-gradient-to-br
+                  from-purple-100
+                  to-cyan-100
+                  
+            bg-white
+            p-6
+            shadow-md
           "
         >
 
@@ -1448,13 +1266,9 @@ export default function Dashboard() {
           <div
             className="
               flex
-              flex-col
-              sm:flex-row
-              sm:items-center
-              sm:justify-between
-              gap-2
-              mb-4
-              sm:mb-6
+              items-center
+              justify-between
+              mb-6
             "
           >
 
@@ -1462,11 +1276,9 @@ export default function Dashboard() {
 
               <h2
                 className="
-                  text-lg
-                  sm:text-xl
+                  text-xl
                   font-black
-                  text-white
-                  drop-shadow-[0_0_8px_rgba(34,211,238,0.25)]
+                  text-slate-800
                 "
               >
                 Finance Summary
@@ -1475,10 +1287,13 @@ export default function Dashboard() {
               <div
                 className="
                   mt-1
-                  h-0.5
+                  h-1
                   w-20
-                  bg-cyan-400
-                  shadow-[0_0_10px_rgba(34,211,238,0.8)]
+                  rounded-full
+                  bg-gradient-to-r
+                  from-blue-500
+                  via-purple-500
+                  to-pink-500
                 "
               />
 
@@ -1486,16 +1301,14 @@ export default function Dashboard() {
 
             <span
               className="
-                text-xs
-                sm:text-sm
-                text-cyan-100/40
+                text-sm
+                text-slate-400
               "
             >
               Overall Financial Overview
             </span>
 
           </div>
-
 
           {/* =================================================
               5 FINANCE CARDS
@@ -1519,99 +1332,70 @@ export default function Dashboard() {
             <div
               className="
                 group
-                relative
-                overflow-hidden
                 rounded-2xl
                 border
-                border-emerald-400/30
-                bg-gradient-to-br
-                from-emerald-500/10
-                via-slate-950/70
-                to-cyan-500/10
-                p-3
-                shadow-[0_0_18px_rgba(16,185,129,0.10)]
-                backdrop-blur-xl
+                border-emerald-200
+                bg-emerald-50
+                p-4
+                shadow-sm
                 transition-all
                 duration-300
                 hover:-translate-y-1
-                hover:border-emerald-300/60
-                hover:shadow-[0_0_30px_rgba(16,185,129,0.25)]
+                hover:shadow-md
               "
             >
 
               <div
                 className="
-                  absolute
-                  -right-8
-                  -top-8
-                  h-20
-                  w-20
-                  rounded-full
-                  bg-emerald-400/10
-                  blur-2xl
+                  mb-2
+                  flex
+                  h-9
+                  w-9
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-emerald-100
+                  text-emerald-600
                 "
-              />
-
-              <div className="relative">
-
-                <div
-                  className="
-                    mb-2
-                    flex
-                    h-9
-                    w-9
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-emerald-400/30
-                    bg-emerald-400/10
-                    text-emerald-300
-                    shadow-[0_0_14px_rgba(16,185,129,0.20)]
-                  "
-                >
-                  <IndianRupee size={18} />
-                </div>
-
-                <p
-                  className="
-                    text-xs
-                    font-bold
-                    text-emerald-300
-                    truncate
-                  "
-                >
-                  Customer Payment
-                </p>
-
-                <p
-                  className="
-                    mt-0.5
-                    text-[10px]
-                    text-slate-500
-                    truncate
-                  "
-                >
-                  All customer payments
-                </p>
-
-                <h3
-                  className="
-                    mt-2
-                    text-lg
-                    font-black
-                    text-emerald-300
-                    drop-shadow-[0_0_8px_rgba(52,211,153,0.55)]
-                    truncate
-                  "
-                >
-                  ₹ {formatIndianAmount(stats.customerPayment)}
-                </h3>
-
+              >
+                <IndianRupee size={18} />
               </div>
 
-            </div>
+              <p
+                className="
+                  text-xs
+                  font-bold
+                  text-emerald-700
+                  truncate
+                "
+              >
+                Customer Payment
+              </p>
 
+              <p
+                className="
+                  mt-0.5
+                  text-[10px]
+                  text-slate-500
+                  truncate
+                "
+              >
+                All customer payments
+              </p>
+
+              <h3
+                className="
+                  mt-2
+                  text-lg
+                  font-black
+                  text-emerald-700
+                  truncate
+                "
+              >
+                ₹ {formatIndianAmount(stats.customerPayment)}
+              </h3>
+
+            </div>
 
             {/* =================================================
                 PLANT COST
@@ -1620,99 +1404,70 @@ export default function Dashboard() {
             <div
               className="
                 group
-                relative
-                overflow-hidden
                 rounded-2xl
                 border
-                border-cyan-400/30
-                bg-gradient-to-br
-                from-cyan-500/10
-                via-slate-950/70
-                to-blue-600/10
-                p-3
-                shadow-[0_0_18px_rgba(34,211,238,0.10)]
-                backdrop-blur-xl
+                border-cyan-200
+                bg-cyan-50
+                p-4
+                shadow-sm
                 transition-all
                 duration-300
                 hover:-translate-y-1
-                hover:border-cyan-300/60
-                hover:shadow-[0_0_30px_rgba(34,211,238,0.25)]
+                hover:shadow-md
               "
             >
 
               <div
                 className="
-                  absolute
-                  -right-8
-                  -top-8
-                  h-20
-                  w-20
-                  rounded-full
-                  bg-cyan-400/10
-                  blur-2xl
+                  mb-2
+                  flex
+                  h-9
+                  w-9
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-cyan-100
+                  text-cyan-600
                 "
-              />
-
-              <div className="relative">
-
-                <div
-                  className="
-                    mb-2
-                    flex
-                    h-9
-                    w-9
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-cyan-400/30
-                    bg-cyan-400/10
-                    text-cyan-300
-                    shadow-[0_0_14px_rgba(34,211,238,0.20)]
-                  "
-                >
-                  <IndianRupee size={18} />
-                </div>
-
-                <p
-                  className="
-                    text-xs
-                    font-bold
-                    text-cyan-300
-                    truncate
-                  "
-                >
-                  Plant Cost
-                </p>
-
-                <p
-                  className="
-                    mt-0.5
-                    text-[10px]
-                    text-slate-500
-                    truncate
-                  "
-                >
-                  Total plant expenses
-                </p>
-
-                <h3
-                  className="
-                    mt-2
-                    text-lg
-                    font-black
-                    text-red-500
-                    drop-shadow-[0_0_8px_rgba(34,211,238,0.55)]
-                    truncate
-                  "
-                >
-                  ₹ {formatIndianAmount(stats.plantCost)}
-                </h3>
-
+              >
+                <IndianRupee size={18} />
               </div>
 
-            </div>
+              <p
+                className="
+                  text-xs
+                  font-bold
+                  text-cyan-700
+                  truncate
+                "
+              >
+                Plant Cost
+              </p>
 
+              <p
+                className="
+                  mt-0.5
+                  text-[10px]
+                  text-slate-500
+                  truncate
+                "
+              >
+                Total plant expenses
+              </p>
+
+              <h3
+                className="
+                  mt-2
+                  text-lg
+                  font-black
+                  text-cyan-700
+                  truncate
+                "
+              >
+                ₹ {formatIndianAmount(stats.plantCost)}
+              </h3>
+
+            </div>
 
             {/* =================================================
                 DEALER PAYMENT
@@ -1721,99 +1476,70 @@ export default function Dashboard() {
             <div
               className="
                 group
-                relative
-                overflow-hidden
                 rounded-2xl
                 border
-                border-rose-400/30
-                bg-gradient-to-br
-                from-rose-500/10
-                via-slate-950/70
-                to-red-500/10
-                p-3
-                shadow-[0_0_18px_rgba(244,63,94,0.10)]
-                backdrop-blur-xl
+                border-rose-200
+                bg-rose-50
+                p-4
+                shadow-sm
                 transition-all
                 duration-300
                 hover:-translate-y-1
-                hover:border-rose-300/60
-                hover:shadow-[0_0_30px_rgba(244,63,94,0.25)]
+                hover:shadow-md
               "
             >
 
               <div
                 className="
-                  absolute
-                  -right-8
-                  -top-8
-                  h-20
-                  w-20
-                  rounded-full
-                  bg-rose-400/10
-                  blur-2xl
+                  mb-2
+                  flex
+                  h-9
+                  w-9
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-rose-100
+                  text-rose-600
                 "
-              />
-
-              <div className="relative">
-
-                <div
-                  className="
-                    mb-2
-                    flex
-                    h-9
-                    w-9
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-rose-400/30
-                    bg-rose-400/10
-                    text-rose-300
-                    shadow-[0_0_14px_rgba(244,63,94,0.20)]
-                  "
-                >
-                  <Wallet size={18} />
-                </div>
-
-                <p
-                  className="
-                    text-xs
-                    font-bold
-                    text-rose-300
-                    truncate
-                  "
-                >
-                  Dealer Payment
-                </p>
-
-                <p
-                  className="
-                    mt-0.5
-                    text-[10px]
-                    text-slate-500
-                    truncate
-                  "
-                >
-                  Payments made by Shiv Shakti Solar
-                </p>
-
-                <h3
-                  className="
-                    mt-2
-                    text-lg
-                    font-black
-                    text-rose-300
-                    drop-shadow-[0_0_8px_rgba(251,113,133,0.55)]
-                    truncate
-                  "
-                >
-                  ₹ {formatIndianAmount(stats.dealerPayment)}
-                </h3>
-
+              >
+                <Wallet size={18} />
               </div>
 
-            </div>
+              <p
+                className="
+                  text-xs
+                  font-bold
+                  text-rose-700
+                  truncate
+                "
+              >
+                Dealer Payment
+              </p>
 
+              <p
+                className="
+                  mt-0.5
+                  text-[10px]
+                  text-slate-500
+                  truncate
+                "
+              >
+                Payments made by Shiv Shakti Solar
+              </p>
+
+              <h3
+                className="
+                  mt-2
+                  text-lg
+                  font-black
+                  text-rose-700
+                  truncate
+                "
+              >
+                ₹ {formatIndianAmount(stats.dealerPayment)}
+              </h3>
+
+            </div>
 
             {/* =================================================
                 EXPENSE
@@ -1822,99 +1548,70 @@ export default function Dashboard() {
             <div
               className="
                 group
-                relative
-                overflow-hidden
                 rounded-2xl
                 border
-                border-orange-400/30
-                bg-gradient-to-br
-                from-orange-500/10
-                via-slate-950/70
-                to-amber-500/10
-                p-3
-                shadow-[0_0_18px_rgba(249,115,22,0.10)]
-                backdrop-blur-xl
+                border-orange-200
+                bg-orange-50
+                p-4
+                shadow-sm
                 transition-all
                 duration-300
                 hover:-translate-y-1
-                hover:border-orange-300/60
-                hover:shadow-[0_0_30px_rgba(249,115,22,0.25)]
+                hover:shadow-md
               "
             >
 
               <div
                 className="
-                  absolute
-                  -right-8
-                  -top-8
-                  h-20
-                  w-20
-                  rounded-full
-                  bg-orange-400/10
-                  blur-2xl
+                  mb-2
+                  flex
+                  h-9
+                  w-9
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-orange-100
+                  text-orange-600
                 "
-              />
-
-              <div className="relative">
-
-                <div
-                  className="
-                    mb-2
-                    flex
-                    h-9
-                    w-9
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-orange-400/30
-                    bg-orange-400/10
-                    text-orange-300
-                    shadow-[0_0_14px_rgba(249,115,22,0.20)]
-                  "
-                >
-                  <TrendingUp size={18} />
-                </div>
-
-                <p
-                  className="
-                    text-xs
-                    font-bold
-                    text-orange-300
-                    truncate
-                  "
-                >
-                  Expense
-                </p>
-
-                <p
-                  className="
-                    mt-0.5
-                    text-[10px]
-                    text-slate-500
-                    truncate
-                  "
-                >
-                  Normal expenses and vendor payments
-                </p>
-
-                <h3
-                  className="
-                    mt-2
-                    text-lg
-                    font-black
-                    text-orange-300
-                    drop-shadow-[0_0_8px_rgba(249,115,22,0.55)]
-                    truncate
-                  "
-                >
-                  ₹ {formatIndianAmount(stats.expense)}
-                </h3>
-
+              >
+                <TrendingUp size={18} />
               </div>
 
-            </div>
+              <p
+                className="
+                  text-xs
+                  font-bold
+                  text-orange-700
+                  truncate
+                "
+              >
+                Expense
+              </p>
 
+              <p
+                className="
+                  mt-0.5
+                  text-[10px]
+                  text-slate-500
+                  truncate
+                "
+              >
+                Normal expenses and vendor payments
+              </p>
+
+              <h3
+                className="
+                  mt-2
+                  text-lg
+                  font-black
+                  text-orange-700
+                  truncate
+                "
+              >
+                ₹ {formatIndianAmount(stats.expense)}
+              </h3>
+
+            </div>
 
             {/* =================================================
                 INVESTMENT
@@ -1923,103 +1620,74 @@ export default function Dashboard() {
             <div
               className="
                 group
-                relative
-                overflow-hidden
                 rounded-2xl
                 border
-                border-purple-400/30
-                bg-gradient-to-br
-                from-purple-500/10
-                via-slate-950/70
-                to-indigo-500/10
-                p-3
-                shadow-[0_0_18px_rgba(168,85,247,0.10)]
-                backdrop-blur-xl
+                border-purple-200
+                bg-purple-50
+                p-4
+                shadow-sm
                 transition-all
                 duration-300
                 hover:-translate-y-1
-                hover:border-purple-300/60
-                hover:shadow-[0_0_30px_rgba(168,85,247,0.25)]
+                hover:shadow-md
               "
             >
 
               <div
                 className="
-                  absolute
-                  -right-8
-                  -top-8
-                  h-20
-                  w-20
-                  rounded-full
-                  bg-purple-400/10
-                  blur-2xl
+                  mb-2
+                  flex
+                  h-9
+                  w-9
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-purple-100
+                  text-purple-600
                 "
-              />
-
-              <div className="relative">
-
-                <div
-                  className="
-                    mb-2
-                    flex
-                    h-9
-                    w-9
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-purple-400/30
-                    bg-purple-400/10
-                    text-purple-300
-                    shadow-[0_0_14px_rgba(168,85,247,0.20)]
-                  "
-                >
-                  <IndianRupee size={18} />
-                </div>
-
-                <p
-                  className="
-                    text-xs
-                    font-bold
-                    text-purple-300
-                    truncate
-                  "
-                >
-                  Investment
-                </p>
-
-                <p
-                  className="
-                    mt-0.5
-                    text-[10px]
-                    text-slate-500
-                    truncate
-                  "
-                >
-                  Investments and investor payments
-                </p>
-
-                <h3
-                  className="
-                    mt-2
-                    text-lg
-                    font-black
-                    text-green-400
-                    drop-shadow-[0_0_8px_rgba(192,132,252,0.55)]
-                    truncate
-                  "
-                >
-                  ₹ {formatIndianAmount(stats.investment)}
-                </h3>
-
+              >
+                <IndianRupee size={18} />
               </div>
+
+              <p
+                className="
+                  text-xs
+                  font-bold
+                  text-purple-700
+                  truncate
+                "
+              >
+                Investment
+              </p>
+
+              <p
+                className="
+                  mt-0.5
+                  text-[10px]
+                  text-slate-500
+                  truncate
+                "
+              >
+                Investments and investor payments
+              </p>
+
+              <h3
+                className="
+                  mt-2
+                  text-lg
+                  font-black
+                  text-purple-700
+                  truncate
+                "
+              >
+                ₹ {formatIndianAmount(stats.investment)}
+              </h3>
 
             </div>
 
           </div>
 
         </div>
-
 
         {/* =================================================
             RECENT CUSTOMERS + PROJECTS
@@ -2030,10 +1698,8 @@ export default function Dashboard() {
             grid
             grid-cols-1
             xl:grid-cols-2
-            gap-4
-            sm:gap-6
-            mt-4
-            sm:mt-6
+            gap-6
+            mt-6
           "
         >
 
@@ -2043,31 +1709,25 @@ export default function Dashboard() {
 
           <div
             className="
-              rounded-3xl
+              rounded-2xl
               border
-              border-cyan-400/25
-              bg-slate-950/60
-              p-3
-              sm:p-6
-              shadow-[0_0_35px_rgba(34,211,238,0.10)]
-              backdrop-blur-2xl
+              border-blue-200
+              bg-white
+              p-6
+              shadow-md
               transition-all
               duration-300
-              hover:border-cyan-400/40
-              hover:shadow-[0_0_45px_rgba(34,211,238,0.16)]
+              hover:-translate-y-1
+              hover:shadow-lg
             "
           >
 
             <div
               className="
                 flex
-                flex-col
-                sm:flex-row
-                sm:items-center
-                sm:justify-between
-                gap-2
-                mb-4
-                sm:mb-5
+                items-center
+                justify-between
+                mb-5
               "
             >
 
@@ -2083,19 +1743,16 @@ export default function Dashboard() {
                   className="
                     h-9
                     w-1
-                    shrink-0
                     rounded-full
-                    bg-cyan-400
-                    shadow-[0_0_12px_rgba(34,211,238,1)]
+                    bg-blue-500
                   "
                 />
 
                 <h2
                   className="
-                    text-lg
-                    sm:text-xl
+                    text-xl
                     font-black
-                    text-white
+                    text-slate-800
                   "
                 >
                   Recent Customers
@@ -2107,7 +1764,7 @@ export default function Dashboard() {
                 className="
                   text-xs
                   font-semibold
-                  text-cyan-200/40
+                  text-blue-500
                 "
               >
                 Last 5 Customers
@@ -2115,33 +1772,29 @@ export default function Dashboard() {
 
             </div>
 
-
             <div
               className="
                 overflow-x-auto
                 rounded-2xl
                 border
-                border-white/5
+                border-slate-200
               "
             >
 
               <table
-                className="
-                  w-full
-                  min-w-[520px]
-                "
+                className="w-full"
               >
 
                 <thead
                   className="
-                    bg-cyan-400/5
+                    bg-blue-50
                   "
                 >
 
                   <tr
                     className="
                       border-b
-                      border-cyan-400/10
+                      border-blue-100
                     "
                   >
 
@@ -2154,7 +1807,7 @@ export default function Dashboard() {
                         font-bold
                         uppercase
                         tracking-wider
-                        text-cyan-200/60
+                        text-blue-600
                       "
                     >
                       Customer
@@ -2169,7 +1822,7 @@ export default function Dashboard() {
                         font-bold
                         uppercase
                         tracking-wider
-                        text-cyan-200/60
+                        text-blue-600
                       "
                     >
                       Location
@@ -2184,7 +1837,7 @@ export default function Dashboard() {
                         font-bold
                         uppercase
                         tracking-wider
-                        text-cyan-200/60
+                        text-blue-600
                       "
                     >
                       Plant Size
@@ -2193,7 +1846,6 @@ export default function Dashboard() {
                   </tr>
 
                 </thead>
-
 
                 <tbody>
 
@@ -2210,11 +1862,10 @@ export default function Dashboard() {
                           key={index}
                           className="
                             border-b
-                            border-white/5
+                            border-slate-100
                             transition-all
                             duration-200
-                            hover:bg-cyan-400/5
-                            hover:shadow-[inset_0_0_20px_rgba(34,211,238,0.05)]
+                            hover:bg-blue-50
                           "
                         >
 
@@ -2223,7 +1874,7 @@ export default function Dashboard() {
                               px-4
                               py-3
                               font-semibold
-                              text-white
+                              text-slate-800
                             "
                           >
                             {
@@ -2236,7 +1887,7 @@ export default function Dashboard() {
                               px-4
                               py-3
                               text-sm
-                              text-slate-300
+                              text-slate-600
                             "
                           >
                             {
@@ -2251,7 +1902,7 @@ export default function Dashboard() {
                               py-3
                               text-sm
                               font-semibold
-                              text-cyan-300
+                              text-blue-600
                             "
                           >
                             {
@@ -2293,38 +1944,31 @@ export default function Dashboard() {
 
           </div>
 
-
           {/* =================================================
               RECENT PROJECTS
           ================================================== */}
 
           <div
             className="
-              rounded-3xl
+              rounded-2xl
               border
-              border-purple-400/25
-              bg-slate-950/60
-              p-3
-              sm:p-6
-              shadow-[0_0_35px_rgba(168,85,247,0.10)]
-              backdrop-blur-2xl
+              border-purple-200
+              bg-white
+              p-6
+              shadow-md
               transition-all
               duration-300
-              hover:border-purple-400/40
-              hover:shadow-[0_0_45px_rgba(168,85,247,0.18)]
+              hover:-translate-y-1
+              hover:shadow-lg
             "
           >
 
             <div
               className="
                 flex
-                flex-col
-                sm:flex-row
-                sm:items-center
-                sm:justify-between
-                gap-2
-                mb-4
-                sm:mb-5
+                items-center
+                justify-between
+                mb-5
               "
             >
 
@@ -2340,19 +1984,16 @@ export default function Dashboard() {
                   className="
                     h-9
                     w-1
-                    shrink-0
                     rounded-full
-                    bg-purple-400
-                    shadow-[0_0_12px_rgba(168,85,247,1)]
+                    bg-purple-500
                   "
                 />
 
                 <h2
                   className="
-                    text-lg
-                    sm:text-xl
+                    text-xl
                     font-black
-                    text-white
+                    text-slate-800
                   "
                 >
                   Recent Projects
@@ -2364,7 +2005,7 @@ export default function Dashboard() {
                 className="
                   text-xs
                   font-semibold
-                  text-purple-200/40
+                  text-purple-500
                 "
               >
                 Last 5 Projects
@@ -2372,33 +2013,29 @@ export default function Dashboard() {
 
             </div>
 
-
             <div
               className="
                 overflow-x-auto
                 rounded-2xl
                 border
-                border-white/5
+                border-slate-200
               "
             >
 
               <table
-                className="
-                  w-full
-                  min-w-[650px]
-                "
+                className="w-full"
               >
 
                 <thead
                   className="
-                    bg-purple-400/5
+                    bg-purple-50
                   "
                 >
 
                   <tr
                     className="
                       border-b
-                      border-purple-400/10
+                      border-purple-100
                     "
                   >
 
@@ -2411,7 +2048,7 @@ export default function Dashboard() {
                         font-bold
                         uppercase
                         tracking-wider
-                        text-purple-200/60
+                        text-purple-600
                       "
                     >
                       Project No
@@ -2426,7 +2063,7 @@ export default function Dashboard() {
                         font-bold
                         uppercase
                         tracking-wider
-                        text-purple-200/60
+                        text-purple-600
                       "
                     >
                       Customer
@@ -2441,7 +2078,7 @@ export default function Dashboard() {
                         font-bold
                         uppercase
                         tracking-wider
-                        text-purple-200/60
+                        text-purple-600
                       "
                     >
                       Project Size
@@ -2456,7 +2093,7 @@ export default function Dashboard() {
                         font-bold
                         uppercase
                         tracking-wider
-                        text-purple-200/60
+                        text-purple-600
                       "
                     >
                       Status
@@ -2465,7 +2102,6 @@ export default function Dashboard() {
                   </tr>
 
                 </thead>
-
 
                 <tbody>
 
@@ -2481,11 +2117,10 @@ export default function Dashboard() {
                           }
                           className="
                             border-b
-                            border-white/5
+                            border-slate-100
                             transition-all
                             duration-200
-                            hover:bg-purple-400/5
-                            hover:shadow-[inset_0_0_20px_rgba(168,85,247,0.05)]
+                            hover:bg-purple-50
                           "
                         >
 
@@ -2494,7 +2129,7 @@ export default function Dashboard() {
                               px-4
                               py-3
                               font-semibold
-                              text-white
+                              text-slate-800
                             "
                           >
                             {
@@ -2507,7 +2142,7 @@ export default function Dashboard() {
                               px-4
                               py-3
                               text-sm
-                              text-slate-300
+                              text-slate-600
                             "
                           >
                             {
@@ -2521,7 +2156,7 @@ export default function Dashboard() {
                               py-3
                               text-sm
                               font-semibold
-                              text-purple-300
+                              text-purple-600
                             "
                           >
                             {
@@ -2550,23 +2185,21 @@ export default function Dashboard() {
                                   project.status ===
                                   "Completed"
                                     ? `
-                                      border-emerald-400/40
-                                      bg-emerald-400/10
-                                      text-emerald-300
-                                      shadow-[0_0_12px_rgba(16,185,129,0.2)]
+                                      border-emerald-200
+                                      bg-emerald-50
+                                      text-emerald-700
                                     `
                                     : project.status ===
                                       "Pending"
                                     ? `
-                                      border-orange-400/40
-                                      bg-orange-400/10
-                                      text-orange-300
-                                      shadow-[0_0_12px_rgba(249,115,22,0.2)]
+                                      border-orange-200
+                                      bg-orange-50
+                                      text-orange-700
                                     `
                                     : `
-                                      border-blue-400/40
-                                      bg-blue-400/10
-                                      text-blue-300
+                                      border-blue-200
+                                      bg-blue-50
+                                      text-blue-700
                                     `
                                 }
                               `}
@@ -2581,11 +2214,11 @@ export default function Dashboard() {
                                   ${
                                     project.status ===
                                     "Completed"
-                                      ? "bg-emerald-400 shadow-[0_0_7px_rgba(52,211,153,1)]"
+                                      ? "bg-emerald-500"
                                       : project.status ===
                                         "Pending"
-                                      ? "bg-orange-400 shadow-[0_0_7px_rgba(251,146,60,1)]"
-                                      : "bg-blue-400 shadow-[0_0_7px_rgba(96,165,250,1)]"
+                                      ? "bg-orange-500"
+                                      : "bg-blue-500"
                                   }
                                 `}
                               />

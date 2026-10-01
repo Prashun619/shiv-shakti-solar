@@ -2,6 +2,13 @@ import { supabase } from "../services/supabase";
 import { useEffect, useState } from "react";
 
 import {
+  IndianRupee,
+  Wallet,
+  Clock3,
+  TrendingUp,
+} from "lucide-react";
+
+import {
   getCustomers,
   getCustomerWithProject,
   deleteCustomer,
@@ -35,10 +42,12 @@ const [paymentAmount, setPaymentAmount] = useState("");
 const [paymentMode, setPaymentMode] = useState("");
 const [paymentReference, setPaymentReference] = useState("");
 const today = new Date().toISOString().split("T")[0];
+
 const formatAmount = (value) =>
   `₹ ${Number(value || 0).toLocaleString("en-IN", {
     maximumFractionDigits: 0,
   })}`;
+
 const totalCustomers = customers.length;
 
 const cashCustomers = customers.filter(
@@ -51,9 +60,36 @@ const financeCustomers = customers.filter(
 
 const newCustomers = customers.filter((customer) => {
   if (!customer.created_at) return false;
-
   return customer.created_at.startsWith(today);
 }).length;
+
+/* =====================================================
+   CUSTOMER FINANCIAL KPI CALCULATIONS
+===================================================== */
+
+const customerProjectValue = customers.reduce(
+  (sum, customer) =>
+    sum + Number(customer.project?.total_amount || 0),
+  0
+);
+
+const customerReceived = customers.reduce(
+  (sum, customer) =>
+    sum + Number(customer.project?.received || 0),
+  0
+);
+
+const customerPending = customers.reduce(
+  (sum, customer) =>
+    sum + Number(customer.project?.remaining || 0),
+  0
+);
+
+const customerProfit = customers.reduce(
+  (sum, customer) =>
+    sum + Number(customer.project?.profit || 0),
+  0
+);
 
   useEffect(() => {
     loadCustomers();
@@ -85,34 +121,114 @@ const newCustomers = customers.filter((customer) => {
 
     const projectList = projects || [];
 
+    /* =====================================================
+   FETCH PLANT COSTS
+===================================================== */
+
+const projectNumbers = (projects || [])
+  .map((project) => project.project_no)
+  .filter(Boolean);
+
+let usedInventoryList = [];
+
+if (projectNumbers.length > 0) {
+  const { data: usedInventory, error: usedInventoryError } =
+    await supabase
+      .from("used_inventory")
+      .select("project_no,total_plant_cost")
+      .in("project_no", projectNumbers);
+
+  if (usedInventoryError) {
+    console.error(
+      "Used Inventory Error:",
+      usedInventoryError
+    );
+  }
+
+  usedInventoryList = usedInventory || [];
+}
+
     // Create customer -> project lookup
     const projectMap = new Map();
 
-    projectList.forEach((project) => {
-      if (!projectMap.has(project.customer_id)) {
-        projectMap.set(project.customer_id, project);
+projectList.forEach((project) => {
+  const existingProject =
+    projectMap.get(project.customer_id);
+
+  if (!existingProject) {
+    projectMap.set(
+      project.customer_id,
+      project
+    );
+    return;
+  }
+
+  const existingNo =
+    String(
+      existingProject.project_no || ""
+    );
+
+  const currentNo =
+    String(
+      project.project_no || ""
+    );
+
+  if (
+    currentNo.localeCompare(
+      existingNo,
+      undefined,
+      {
+        numeric: true,
+        sensitivity: "base",
       }
-    });
+    ) > 0
+  ) {
+    projectMap.set(
+      project.customer_id,
+      project
+    );
+  }
+});
 
     // Attach project to each customer
+    
     const customersWithProjects = data.map((customer) => {
-      const project = projectMap.get(customer.id) || null;
+  const project = projectMap.get(customer.id) || null;
 
-      return {
-        ...customer,
+  const plantCost =
+    usedInventoryList.find(
+      (item) =>
+        item.project_no === project?.project_no
+    )?.total_plant_cost || 0;
 
-        project,
+  const projectValue =
+    Number(project?.total_amount || 0);
 
-        project_id: project?.id || null,
-        project_no: project?.project_no || "",
+  const profit =
+    Number(plantCost) > 0
+      ? projectValue - Number(plantCost)
+      : 0;
 
-        total_amount: project?.total_amount || 0,
-        received: project?.received || 0,
-        remaining: project?.remaining || 0,
+  return {
+    ...customer,
 
-        status: project?.status || "Pending",
-      };
-    });
+    project: project
+      ? {
+          ...project,
+          profit,
+        }
+      : null,
+
+    project_id: project?.id || null,
+    project_no: project?.project_no || "",
+
+    total_amount: project?.total_amount || 0,
+    received: project?.received || 0,
+    remaining: project?.remaining || 0,
+
+    status: project?.status || "Pending",
+  };
+});
 
     // Keep existing project-number sorting
     customersWithProjects.sort((a, b) => {
@@ -160,34 +276,113 @@ const newCustomers = customers.filter((customer) => {
 
     const projectList = projects || [];
 
+    /* =====================================================
+   FETCH PLANT COSTS
+===================================================== */
+
+const projectNumbers = (projects || [])
+  .map((project) => project.project_no)
+  .filter(Boolean);
+
+let usedInventoryList = [];
+
+if (projectNumbers.length > 0) {
+  const { data: usedInventory, error: usedInventoryError } =
+    await supabase
+      .from("used_inventory")
+      .select("project_no,total_plant_cost")
+      .in("project_no", projectNumbers);
+
+  if (usedInventoryError) {
+    console.error(
+      "Used Inventory Error:",
+      usedInventoryError
+    );
+  }
+
+  usedInventoryList = usedInventory || [];
+}
+
     // Create customer -> project lookup
     const projectMap = new Map();
 
-    projectList.forEach((project) => {
-      if (!projectMap.has(project.customer_id)) {
-        projectMap.set(project.customer_id, project);
+projectList.forEach((project) => {
+  const existingProject =
+    projectMap.get(project.customer_id);
+
+  if (!existingProject) {
+    projectMap.set(
+      project.customer_id,
+      project
+    );
+    return;
+  }
+
+  const existingNo =
+    String(
+      existingProject.project_no || ""
+    );
+
+  const currentNo =
+    String(
+      project.project_no || ""
+    );
+
+  if (
+    currentNo.localeCompare(
+      existingNo,
+      undefined,
+      {
+        numeric: true,
+        sensitivity: "base",
       }
-    });
+    ) > 0
+  ) {
+    projectMap.set(
+      project.customer_id,
+      project
+    );
+  }
+});
 
     // Attach project to each customer
-    const customersWithProjects = data.map((customer) => {
-      const project = projectMap.get(customer.id) || null;
+   const customersWithProjects = data.map((customer) => {
+  const project = projectMap.get(customer.id) || null;
 
-      return {
-        ...customer,
+  const plantCost =
+    usedInventoryList.find(
+      (item) =>
+        item.project_no === project?.project_no
+    )?.total_plant_cost || 0;
 
-        project,
+  const projectValue =
+    Number(project?.total_amount || 0);
 
-        project_id: project?.id || null,
-        project_no: project?.project_no || "",
+  const profit =
+    Number(plantCost) > 0
+      ? projectValue - Number(plantCost)
+      : 0;
 
-        total_amount: project?.total_amount || 0,
-        received: project?.received || 0,
-        remaining: project?.remaining || 0,
+  return {
+    ...customer,
 
-        status: project?.status || "Pending",
-      };
-    });
+    project: project
+      ? {
+          ...project,
+          profit,
+        }
+      : null,
+
+    project_id: project?.id || null,
+    project_no: project?.project_no || "",
+
+    total_amount: project?.total_amount || 0,
+    received: project?.received || 0,
+    remaining: project?.remaining || 0,
+
+    status: project?.status || "Pending",
+  };
+});
 
     // Keep existing project-number sorting
     customersWithProjects.sort((a, b) => {
@@ -362,16 +557,16 @@ loadCustomers();
 }
 
   return (
-    <div className="p-4 bg-[#f4f6fb] min-h-screen w-full">
+    <div className="p-2 sm:p-4 bg-[#f4f6fb] min-h-screen w-full min-w-0">
 
      {/* Header */}
 
-<div className="bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-700 rounded-2xl shadow-xl px-6 py-5 mb-6">
+<div className="bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-700 rounded-2xl shadow-xl px-4 sm:px-6 py-4 sm:py-5 mb-4 sm:mb-6">
 
   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
 
     <div>
-      <h1 className="text-3xl font-bold text-white">
+      <h1 className="text-2xl sm:text-3xl font-bold text-white">
         Customers
       </h1>
 
@@ -380,18 +575,18 @@ loadCustomers();
       </p>
     </div>
 
-   <div className="flex flex-wrap gap-3">
+   <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
 
   <button
     onClick={() => setOpenPaymentModal(true)}
-    className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+    className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-4 sm:px-6 py-3 rounded-xl shadow-lg transition-all duration-200 hover:-translate-y-0.5"
   >
     + Add Payment
   </button>
 
   <button
     onClick={handleAddCustomer}
-    className="bg-white text-indigo-700 border border-indigo-200 font-semibold px-6 py-3 rounded-xl shadow-lg hover:bg-indigo-50 transition-all duration-200 hover:-translate-y-0.5"
+    className="w-full sm:w-auto bg-white text-indigo-700 border border-indigo-200 font-semibold px-4 sm:px-6 py-3 rounded-xl shadow-lg hover:bg-indigo-50 transition-all duration-200 hover:-translate-y-0.5"
   >
     + Add Customer
   </button>
@@ -405,7 +600,7 @@ loadCustomers();
 
       {/* Search */}
 
-<div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-5 mb-6">
+<div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-3 sm:p-5 mb-4 sm:mb-6">
 
   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
@@ -445,9 +640,13 @@ loadCustomers();
 </div>
 
 
-      {/* KPI Cards */}
+    {/* =====================================================
+   CUSTOMER KPI CARDS
+===================================================== */}
 
-<div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+{/* EXISTING CUSTOMER KPIs */}
+
+<div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
 
   <KpiCard
     title="Total Customers"
@@ -476,12 +675,72 @@ loadCustomers();
 </div>
 
 
+{/* NEW FINANCIAL KPIs */}
+
+<div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+
+  <KpiCard
+    title="Project Value"
+    value={formatAmount(customerProjectValue)}
+    icon={
+      <IndianRupee
+        size={26}
+        strokeWidth={2.2}
+      />
+    }
+    subtitle="Total Project Value"
+    color="blue"
+  />
+
+  <KpiCard
+    title="Received"
+    value={formatAmount(customerReceived)}
+    icon={
+      <Wallet
+        size={26}
+        strokeWidth={2.2}
+      />
+    }
+    subtitle="Payments Received"
+    color="green"
+  />
+
+  <KpiCard
+    title="Pending Amount"
+    value={formatAmount(customerPending)}
+    icon={
+      <Clock3
+        size={26}
+        strokeWidth={2.2}
+      />
+    }
+    subtitle="Outstanding Payments"
+    color="red"
+    trend="down"
+  />
+
+  <KpiCard
+    title="Profit"
+    value={formatAmount(customerProfit)}
+    icon={
+      <TrendingUp
+        size={26}
+        strokeWidth={2.2}
+      />
+    }
+    subtitle="Project Profit"
+    color="green"
+  />
+
+</div>
+
+
       {/* Table */}
 
-     <div className="overflow-hidden rounded-2xl bg-white shadow-xl border border-slate-200">
+     <div className="overflow-hidden rounded-2xl bg-white shadow-xl border border-slate-200 min-w-0">
   <div className="overflow-x-auto rounded-2xl">
 
-       <table className="w-full text-xs border border-black border-collapse">
+       <table className="w-full min-w-[1050px] text-xs border border-black border-collapse">
 
            <thead className="bg-slate-900 text-white border border-black">
 
@@ -538,7 +797,7 @@ Payment Type
               <tr>
 
                 <td
-  colSpan="5"
+  colSpan="10"
   className="py-16 text-center text-slate-400 text-lg"
 >
                   Loading...
@@ -551,7 +810,7 @@ Payment Type
               <tr>
 
                 <td
-  colSpan="5"
+  colSpan="10"
   className="py-16 text-center"
 >
                   <div className="flex flex-col items-center">
@@ -709,9 +968,9 @@ customer.payment_type === "Finance"
 {deleteModal && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
 
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
 
         <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mx-auto mb-5">
 
@@ -753,7 +1012,7 @@ customer.payment_type === "Finance"
           This action cannot be undone.
         </p>
 
-        <div className="flex justify-center gap-3 mt-8">
+        <div className="flex flex-col-reverse sm:flex-row justify-center gap-2 sm:gap-3 mt-8">
 
           <button
             onClick={() => {
@@ -761,7 +1020,7 @@ customer.payment_type === "Finance"
               setSelectedCustomer(null);
             }}
             disabled={deleting}
-            className="px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-100"
+            className="w-full sm:w-auto px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-100"
           >
             Cancel
           </button>
@@ -769,7 +1028,7 @@ customer.payment_type === "Finance"
           <button
             onClick={confirmDelete}
             disabled={deleting}
-            className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg"
+            className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg"
           >
             {deleting ? "Deleting..." : "Delete"}
           </button>
@@ -785,15 +1044,15 @@ customer.payment_type === "Finance"
 {/* View Customer Modal */}
 
 {viewCustomer && (
-  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+ <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 sm:p-4">
 
-    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl max-h-[92vh] overflow-y-auto">
+    <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-7xl max-h-[96vh] sm:max-h-[92vh] overflow-y-auto">
 
       {/* Header */}
 
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-700 px-8 py-6 flex items-center justify-between sticky top-0 z-10">
+     <div className="bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-700 px-4 sm:px-8 py-4 sm:py-6 flex items-center justify-between sticky top-0 z-10">
 
-        <h2 className="text-2xl font-bold text-white">
+        <h2 className="text-xl sm:text-2xl font-bold text-white">
           Customer Details
         </h2>
 
@@ -808,7 +1067,7 @@ customer.payment_type === "Finance"
 
    {/* Body */}
 
-<div className="p-6">
+<div className="p-4 sm:p-6">
 
   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
@@ -846,7 +1105,7 @@ customer.payment_type === "Finance"
 
       {/* CUSTOMER INFORMATION ROW */}
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
 
 
         <div className="bg-slate-50 rounded-xl border p-4">
@@ -963,7 +1222,7 @@ customer.payment_type === "Finance"
 
 
 
-      <div className="grid grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
 
 
 
@@ -1082,7 +1341,7 @@ Payment History
 <div className="overflow-x-auto border border-black rounded-lg">
 
 
-<table className="w-full text-xs border-collapse border border-black">
+<table className="w-full min-w-[650px] text-xs border-collapse border border-black">
 
 
 <thead className="bg-slate-100">
@@ -1168,7 +1427,7 @@ viewCustomer.payments.map((payment)=>(
 
 <tr>
 
-<td colSpan="5" className="text-center py-8 text-gray-400">
+<td colSpan="10" className="text-center py-8 text-gray-400">
 
 No Payments
 
@@ -1203,7 +1462,7 @@ No Payments
 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
 
 
-<div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+<div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-4 sm:p-6">
 
 
 <h2 className="text-xl font-bold mb-5">
@@ -1309,14 +1568,14 @@ className="border p-2 w-full rounded-lg"
 
 
 
-<div className="flex justify-end gap-3 mt-6">
+<div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-6">
 
 
 <button
 
 onClick={()=>setEditPayment(null)}
 
-className="px-5 py-2 border rounded-lg"
+className="w-full sm:w-auto px-5 py-2 bg-red-600 text-white rounded-lg"
 
 >
 Cancel
@@ -1328,7 +1587,7 @@ Cancel
 
 onClick={saveEditedPayment}
 
-className="px-5 py-2 bg-green-600 text-white rounded-lg"
+className="w-full sm:w-auto px-5 py-2 bg-green-600 text-white rounded-lg"
 
 >
 Update Payment
@@ -1353,7 +1612,7 @@ Update Payment
 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 
 
-<div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+<div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-4 sm:p-6">
 
 
 <div className="flex justify-center mb-4">
@@ -1392,7 +1651,7 @@ payment?
 
 
 
-<div className="flex justify-center gap-3 mt-6">
+<div className="flex flex-col-reverse sm:flex-row justify-center gap-2 sm:gap-3 mt-6">
 
 
 <button
@@ -1440,11 +1699,11 @@ Delete
 
       {/* Footer */}
 
-      <div className="sticky bottom-0 border-t bg-white px-8 py-4 flex justify-end shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+     <div className="sticky bottom-0 border-t bg-white px-4 sm:px-8 py-3 sm:py-4 flex justify-end shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
 
         <button
           onClick={() => setViewCustomer(null)}
-          className="px-6 py-2 rounded-lg border hover:bg-gray-100"
+          className="w-full sm:w-auto px-6 py-2 rounded-lg border hover:bg-gray-100"
         >
           Close
         </button>

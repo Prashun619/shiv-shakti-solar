@@ -43,7 +43,7 @@ const INVESTOR_NAMES = [
 
 const EXPENSE_INVESTOR_NAMES = [
   "prashun dixit",
-  "shaubhendu dixit",
+  "shubhendu dixit",
   "vipin saxena",
 ];
 
@@ -3226,8 +3226,8 @@ async function handleBulkDelete() {
                     Prashun Dixit
                   </option>
 
-                  <option value="Shaubhendu Dixit">
-                    Shaubhendu Dixit
+                  <option value="Shubhendu Dixit">
+                    Shubhendu Dixit
                   </option>
 
                   <option value="Vipin Saxena">

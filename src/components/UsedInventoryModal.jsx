@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 
 import { getCustomers } from "../services/customersService";
 import { getProjects } from "../services/projectsService";
@@ -575,13 +575,13 @@ export default function UsedInventoryModal({
         );
 
       const panelChanged =
-        panelUpdated.length !==
-          panelExisting.length ||
-        panelUpdated.some(
-          (value, index) =>
-            value !==
-            panelExisting[index]
-        );
+  panelUpdated.length !==
+    panelExisting.length ||
+  panelUpdated.some(
+    (value, index) =>
+      value !==
+      panelExisting[index]
+  );
 
       const inverterChanged =
         inverterUpdated.length !==
@@ -661,6 +661,16 @@ export default function UsedInventoryModal({
           getInventory(),
           getMasterInventory(),
         ]);
+
+        console.log(
+  "MASTER C CHANNEL:",
+  masterInventoryData.filter(
+    (item) =>
+      String(item.product_name || "")
+        .toLowerCase()
+        .includes("c channel")
+  )
+);
 
         // ======================================================
         // PROJECTS
@@ -1125,9 +1135,70 @@ export default function UsedInventoryModal({
                 `${company} ${specification}`.trim();
 
               const stock =
-                getMasterLiveStock(
-                  masterItem
-                );
+  getMasterLiveStock(
+    masterItem
+  );
+
+// ======================================================
+// EDIT MODE
+// ======================================================
+// When editing an existing consumption, the currently
+// consumed Panel quantity is already deducted from live
+// stock. Add that saved quantity back temporarily so the
+// same Panel variant remains available for editing.
+//
+// New consumption:
+//   normal live-stock filtering remains unchanged.
+//
+// Existing consumption:
+//   current saved Panel is allowed even when live stock = 0.
+// ======================================================
+
+let editableStock =
+  Number(stock || 0);
+
+if (
+  item &&
+  Array.isArray(item.products)
+) {
+  const savedPanel =
+    item.products.find(
+      (product) =>
+        normalizeName(
+          product?.category
+        ) === "panel" &&
+        normalizeName(
+          product?.company
+        ) ===
+          normalizeName(
+            company
+          ) &&
+        normalizeName(
+          product?.specification
+        ) ===
+          normalizeName(
+            specification
+          )
+    );
+
+  if (savedPanel) {
+    editableStock +=
+      Number(
+        savedPanel.quantity ??
+          savedPanel.qty ??
+          0
+      );
+  }
+}
+
+// Do not show out-of-stock panel variants
+// unless this is the Panel currently used
+// by the consumption being edited.
+if (
+  editableStock <= 0
+) {
+  return null;
+}
 
               const matchingInventory =
                 inventory.filter(
@@ -1201,24 +1272,30 @@ const unitPrice =
                 }
               );
 
-              return {
-                master_id:
-                  masterItem.id,
+            return {
+  master_id:
+    masterItem.id,
 
-                product_name:
-                  displayName,
+  product_name:
+    displayName,
 
-                company,
+  company,
 
-                specification,
+  specification,
 
-                stock:
-                  Number(stock),
+  stock:
+    Number(stock),
 
-                unit_price:
-                  Number(unitPrice),
-              };
+  unit:
+    masterItem.unit ||
+    inventoryItem?.unit ||
+    "Nos",
+
+  unit_price:
+    Number(unitPrice),
+};
             })
+            .filter(Boolean)
             .sort(
               (a, b) =>
                 a.product_name.localeCompare(
@@ -1272,9 +1349,14 @@ const unitPrice =
                 `${company} ${formattedSpecification}`.trim();
 
               const stock =
-                getMasterLiveStock(
-                  masterItem
-                );
+  getMasterLiveStock(
+    masterItem
+  );
+
+// Do not show out-of-stock inverter variants
+if (Number(stock) <= 0) {
+  return null;
+}
 
               const matchingInventory =
                 inventory.filter(
@@ -1349,24 +1431,30 @@ const unitPrice =
                 }
               );
 
-              return {
-                master_id:
-                  masterItem.id,
+             return {
+  master_id:
+    masterItem.id,
 
-                product_name:
-                  displayName,
+  product_name:
+    displayName,
 
-                company,
+  company,
 
-                specification,
+  specification,
 
-                stock:
-                  Number(stock),
+  stock:
+    Number(stock),
 
-                unit_price:
-                  Number(unitPrice),
-              };
+  unit:
+    masterItem.unit ||
+    inventoryItem?.unit ||
+    "Nos",
+
+  unit_price:
+    Number(unitPrice),
+};
             })
+            .filter(Boolean)
             .sort(
               (a, b) =>
                 a.product_name.localeCompare(
@@ -1499,11 +1587,42 @@ const unitPrice =
                   ""
               ).trim();
 
-            const stock =
-              getMasterLiveStock(
-                masterItem
-              );
+          const productNameLower =
+  String(
+    masterItem.product_name || ""
+  )
+    .trim()
+    .toLowerCase();
 
+const is9ftCChannel =
+  productNameLower ===
+  "c channel 140x50x2 mm 9ft";
+
+const is21ftCChannel =
+  productNameLower ===
+  "c channel 140x50x2 mm 21ft";
+
+const isCChannel =
+  is9ftCChannel ||
+  is21ftCChannel;
+
+const stock =
+  isCChannel
+    ? Math.max(
+        0,
+        Number(
+          masterItem.purchased_quantity || 0
+        ) *
+          Number(
+            masterItem.length_ft || 0
+          ) -
+          Number(
+            masterItem.used_quantity || 0
+          )
+      )
+    : getMasterLiveStock(
+        masterItem
+      );
             const matchingInventory =
               inventory.filter(
                 (inventoryItem) => {
@@ -1572,13 +1691,42 @@ const inventoryItem =
       )[0]
     : null;
 
-const unitPrice =
+    console.log(
+  "NORMAL PRODUCT UNIT DEBUG:",
+  {
+    productName,
+    masterUnit: masterItem?.unit,
+    inventoryUnit: inventoryItem?.unit,
+    inventoryItem,
+    masterItem,
+  }
+);
+
+let unitPrice =
   calculateInventoryUnitCost(
     inventoryItem
   );
 
+// ======================================================
+// C CHANNEL COST PER FOOT
+// ======================================================
+//
+// Inventory unit_cost = cost per complete piece.
+// Material Consumption quantity = feet.
+//
+// Example:
+// 9ft channel  = â‚¹1203.60 / 9  = â‚¹133.7333 per ft
+// 21ft channel = â‚¹2607.80 / 21 = â‚¹124.1810 per ft
+//
+// ======================================================
+
+if (isCChannel) {
+  unitPrice =
+    Number(unitPrice || 0);
+}
+
             console.log(
-              "FIFO NORMAL PRODUCT INVENTORY COST:",
+              "C CHANNEL / NORMAL PRODUCT INVENTORY COST:",
               {
                 productName,
                 company:
@@ -1593,47 +1741,77 @@ const unitPrice =
               }
             );
 
+            // Do not show products with zero stock
+if (Number(stock) <= 0) {
+  return;
+}
+
             normalMaterials.push({
-              id:
-                masterItem.id ||
-                `${productName}-${masterItem.company || ""}-${masterItem.specification || ""}`,
+  id:
+    masterItem.id ||
+    `${productName}-${masterItem.company || ""}-${masterItem.specification || ""}`,
 
-              product_name:
-                productName,
+  product_name:
+    productName,
 
-              category:
-                category,
+  category:
+    category,
 
-              company:
-                String(
-                  masterItem.company ||
-                    ""
-                ).trim(),
+  company:
+    String(
+      masterItem.company ||
+        ""
+    ).trim(),
 
-              specification:
-                String(
-                  masterItem.specification ||
-                    ""
-                ).trim(),
+  specification:
+    String(
+      masterItem.specification ||
+        ""
+    ).trim(),
 
-              is_variant: false,
+  // C Channel source length
+  length_ft:
+    isCChannel
+      ? Number(
+          masterItem.length_ft || 0
+        )
+      : null,
 
-              variants: [],
+  source_length_ft:
+    isCChannel
+      ? Number(
+          masterItem.length_ft || 0
+        )
+      : null,
 
-              selected_variant:
-                "",
+  is_variant: false,
 
-              selected_master_id:
-                "",
+  variants: [],
 
-              stock:
-                Number(stock),
+  selected_variant:
+    "",
 
-              unit_price:
-                Number(unitPrice),
+  selected_master_id:
+    "",
 
-              qty: 0,
-            });
+        // Do not add out-of-stock products
+    ...(Number(stock) > 0
+      ? {
+          stock:
+            Number(stock),
+
+          unit:
+            masterItem.unit ||
+            inventoryItem?.unit ||
+            "Nos",
+        }
+      : null),
+
+  unit_price:
+    Number(unitPrice),
+
+  qty: 0,
+});
           });
 
         // ======================================================
@@ -1832,27 +2010,34 @@ const unitPrice =
                     existingIndex
                   ];
 
-                restoredMaterials[
-                  existingIndex
-                ] = {
-                  ...material,
+                
 
-                  stock:
-                    Number(
-                      material.stock ||
-                        0
-                    ) +
-                    savedQty,
+                    restoredMaterials[
+  existingIndex
+] = {
+  ...material,
 
-                  qty:
-                    savedQty,
+  stock:
+    Number(
+      material.stock ||
+        0
+    ) +
+    savedQty,
 
-                  unit_price:
-                    savedUnitPrice ||
-                    Number(
-                      material.unit_price ||
-                        0
-                    ),
+  qty:
+    savedQty,
+
+  unit_price:
+    savedUnitPrice ||
+    Number(
+      material.unit_price ||
+        0
+    ),
+
+ unit:
+  material.unit ||
+  savedProduct.unit ||
+  "Nos",
 
                   company:
                     savedProduct.company ??
@@ -1884,6 +2069,10 @@ const unitPrice =
                 category:
                   savedProduct.category ||
                   "",
+
+                    unit:
+    savedProduct.unit ||
+    "Nos",
 
                 company:
                   savedProduct.company ||
@@ -2132,18 +2321,22 @@ const unitPrice =
             "",
 
           stock:
-            Number(
-              selectedVariant.stock ||
-                0
-            ),
+  Number(
+    selectedVariant.stock ||
+      0
+  ),
 
-          unit_price:
-            Number(
-              selectedVariant.unit_price ||
-                0
-            ),
+unit:
+  selectedVariant.unit ||
+  "Nos",
 
-          qty: 0,
+unit_price:
+  Number(
+    selectedVariant.unit_price ||
+      0
+  ),
+
+qty: 0,
         };
       })
     );
@@ -2248,29 +2441,55 @@ const unitPrice =
           return material;
         }
 
-        const availableStock =
-          Number(
-            material.stock || 0
-          );
+       const availableStock =
+  Number(
+    material.stock || 0
+  );
 
-        if (
-          qty >
-          availableStock
-        ) {
-          alert(
-            `Only ${availableStock} ${
-              material.selected_variant ||
-              material.product_name
-            } available in Master Inventory.`
-          );
+const productName =
+  normalizeName(
+    material.product_name
+  );
 
-          return {
-            ...material,
+const isCChannel =
+  productName ===
+    "c channel 140x50x2 mm 9ft" ||
+  productName ===
+    "c channel 140x50x2 mm 21ft";
 
-            qty:
-              availableStock,
-          };
-        }
+if (isCChannel) {
+  // C Channel Qty is entered in FEET.
+  //
+  // material.stock is also maintained as TOTAL FEET.
+  //
+  // Therefore validation is:
+  // entered feet <= available feet.
+
+ if (qty > availableStock) {
+  alert(
+    `Only ${availableStock} ${formatMaterialUnit(material)} of ${material.product_name} available in Master Inventory.`
+  );
+
+  return {
+    ...material,
+    qty: availableStock,
+  };
+}
+} else {
+  if (qty > availableStock) {
+    alert(
+      `Only ${availableStock} ${
+        material.selected_variant ||
+        material.product_name
+      } available in Master Inventory.`
+    );
+
+    return {
+      ...material,
+      qty: availableStock,
+    };
+  }
+}
 
         return {
           ...material,
@@ -2679,44 +2898,83 @@ const unitPrice =
               : [];
         }
 
+        const cChannelLengthFt =
+  Number(
+    material.length_ft ||
+    material.source_length_ft ||
+    material.used_length_ft ||
+    0
+  );
+
+console.log("FINAL MATERIAL SAVE DEBUG:", {
+  productName,
+  quantity: qty,
+  materialUnit: material.unit,
+  masterId,
+  masterUnit: material?.unit,
+});
+
         // ==================================================
         // SAVE MATERIAL
         // ==================================================
 
-        productsToSave.push({
-          product_name:
-            productName,
+     productsToSave.push({
+  product_name:
+    productName,
 
-          category:
-            material.category ||
-            "",
+  category:
+    material.category ||
+    "",
 
-          company:
-            company,
+  company:
+    company,
 
-          specification:
-            specification,
+  specification:
+    specification,
 
-          master_id:
-            masterId,
+  master_id:
+    masterId,
 
-          quantity:
-            qty,
+  quantity:
+    qty,
 
-          unit_price:
-            unitPrice,
+  unit:
+    String(
+      material.unit ||
+      (
+        String(productName || "")
+          .trim()
+          .toLowerCase()
+          .includes("c channel")
+          ? "Ft"
+          : "Nos"
+      )
+    ),
 
-          total:
-            qty * unitPrice,
+  unit_price:
+    unitPrice,
 
-          // Panel / Inverter serial numbers
-          serial_numbers:
-            productSerialNumbers,
+  total:
+    qty * unitPrice,
 
-          // Manual inverter models
-          inverter_models:
-            productInverterModels,
-        });
+  // ==================================================
+  // C CHANNEL LENGTH
+  // ==================================================
+
+  length_ft:
+    cChannelLengthFt,
+
+  source_length_ft:
+    cChannelLengthFt,
+
+  // Panel / Inverter serial numbers
+  serial_numbers:
+    productSerialNumbers,
+
+  // Manual inverter models
+  inverter_models:
+    productInverterModels,
+});
       });
 
     // --------------------------------------------------------
@@ -2917,6 +3175,46 @@ const unitPrice =
       payload
     );
 
+const cChannelProduct =
+  payload.products?.find(
+    (product) =>
+      String(product?.product_name || "")
+        .toLowerCase()
+        .includes("c channel")
+  );
+
+const cChannelLength =
+  Number(
+    cChannelProduct?.length_ft ||
+    cChannelProduct?.source_length_ft ||
+    String(cChannelProduct?.product_name || "")
+      .match(/(\d+(?:\.\d+)?)\s*ft\b/i)?.[1] ||
+    0
+  );
+
+console.log(
+  "C CHANNEL EXACT FIELDS:",
+  {
+    product_name:
+      cChannelProduct?.product_name,
+
+    quantity:
+      cChannelProduct?.quantity,
+
+    length_ft:
+      cChannelLength,
+
+    source_length_ft:
+      cChannelLength,
+
+    master_id:
+      cChannelProduct?.master_id,
+
+    unit:
+      cChannelProduct?.unit,
+  }
+);
+
     // ======================================================
     // SAVE
     // ======================================================
@@ -2924,12 +3222,110 @@ const unitPrice =
     try {
       setLoading(true);
 
+console.log(
+  "========== SERIAL SAVE DEBUG =========="
+);
+
+console.log(
+  "SERIAL STATE:",
+  JSON.stringify(
+    serialNumbers,
+    null,
+    2
+  )
+);
+
+console.log(
+  "PRODUCTS TO SAVE:",
+  JSON.stringify(
+    productsToSave,
+    null,
+    2
+  )
+);
+
+console.log(
+  "PANEL PRODUCTS:",
+  JSON.stringify(
+    productsToSave.filter(
+      (product) =>
+        normalizeName(
+          product.category
+        ) === "panel"
+    ),
+    null,
+    2
+  )
+);
+
+console.log(
+  "======================================="
+);
+
       if (item?.id) {
         await updateUsedInventory(
           item.id,
           payload
         );
       } else {
+
+        console.log("========== C CHANNEL DEBUG ==========");
+console.log("FULL PAYLOAD:", payload);
+console.log("PAYLOAD PRODUCTS:", payload?.products);
+
+const cChannelProducts = (payload?.products || []).filter(
+  (product) =>
+    String(product?.product_name || "")
+      .toLowerCase()
+      .includes("c channel")
+);
+
+console.log(
+  "C CHANNEL PRODUCTS:",
+  JSON.stringify(cChannelProducts, null, 2)
+);
+
+console.log("========== END C CHANNEL DEBUG ==========");
+
+if (Array.isArray(payload.products)) {
+  payload.products = payload.products.map((product) => {
+    const isCChannel = String(
+      product?.product_name || ""
+    )
+      .toLowerCase()
+      .includes("c channel");
+
+    if (!isCChannel) {
+      return product;
+    }
+
+    const channelLength =
+      Number(
+        product?.length_ft ||
+        product?.source_length_ft ||
+        String(product?.product_name || "")
+          .match(/(\d+(?:\.\d+)?)\s*ft\b/i)?.[1] ||
+        0
+      );
+
+    console.log(
+      "C CHANNEL LENGTH BEING SENT TO SAVE:",
+      {
+        product_name: product?.product_name,
+        length_ft: channelLength,
+        source_length_ft: channelLength,
+      }
+    );
+
+    return {
+      ...product,
+      length_ft: channelLength,
+      source_length_ft: channelLength,
+    };
+  });
+}
+
+
         await addUsedInventory(
           payload
         );
@@ -3069,6 +3465,8 @@ const unitPrice =
       inverterMaterial?.qty || 0
     );
 
+   
+
   const serialRowCount =
     Math.max(
       panelQty,
@@ -3115,7 +3513,7 @@ const unitPrice =
               </h2>
 
               <p className="text-indigo-500 font-medium mt-1">
-                Material Consumption • Inventory Usage
+                Material Consumption â€¢ Inventory Usage
               </p>
             </div>
 
@@ -3126,6 +3524,9 @@ const unitPrice =
             >
               Close
             </button>
+
+
+
           </div>
 
           {/* ==================================================
@@ -3251,7 +3652,7 @@ const unitPrice =
 
                 <input
                   type="text"
-                  value={`₹ ${liveTotalPlantCost.toFixed(
+                  value={` ${liveTotalPlantCost.toFixed(
                     2
                   )}`}
                   readOnly
@@ -3303,8 +3704,8 @@ const unitPrice =
                       </th>
 
                       <th className="text-right p-3 font-bold whitespace-nowrap">
-                        Qty
-                      </th>
+  Qty Used
+</th> 
 
                       <th className="text-right p-3 font-bold whitespace-nowrap">
                         Unit Price
@@ -3409,21 +3810,78 @@ const unitPrice =
                                 "-"}
                             </td>
 
-                            {/* STOCK */}
+{/* STOCK */}
 
-                            <td className="p-3 text-right font-semibold">
-                              {Math.max(
-                                0,
-                                Number(
-                                  material.stock ||
-                                    0
-                                ) -
-                                  Number(
-                                    material.qty ||
-                                      0
-                                  )
-                              )}
-                            </td>
+<td className="p-3 text-right font-semibold">
+  {(() => {
+    const productName =
+      String(
+        material.product_name || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    const isCChannel =
+      productName.includes("c channel");
+
+    const enteredQty =
+      Number(
+        material.qty || 0
+      );
+
+    const liveStock =
+      Math.max(
+        0,
+        Number(
+          material.stock || 0
+        ) - enteredQty
+      );
+
+    const unit =
+      String(
+        material.unit || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    let displayUnit = "Nos";
+
+    if (isCChannel) {
+      displayUnit = "Ft";
+    } else if (
+      unit === "ft" ||
+      unit === "feet" ||
+      unit === "foot"
+    ) {
+      displayUnit = "Ft";
+    } else if (
+      unit === "mtr" ||
+      unit === "meter" ||
+      unit === "metre" ||
+      unit === "meters" ||
+      unit === "metres"
+    ) {
+      displayUnit = "Mtr";
+    } else if (
+      unit === "nos" ||
+      unit === "no" ||
+      unit === "pcs" ||
+      unit === "pc" ||
+      unit === "piece" ||
+      unit === "pieces"
+    ) {
+      displayUnit = "Nos";
+    } else if (
+      unit === "kg" ||
+      unit === "kgs"
+    ) {
+      displayUnit = "Kg";
+    }
+
+    return `${liveStock} ${displayUnit}`;
+  })()}
+</td>
+
 
                             {/* QTY */}
 
@@ -3433,7 +3891,7 @@ const unitPrice =
   type="number"
   min="0"
   max={material.stock}
-  step="1"
+  step="0.01"
   disabled={
     material.is_variant &&
     !material.selected_variant
@@ -3476,7 +3934,7 @@ const unitPrice =
                             {/* UNIT PRICE */}
 
                             <td className="p-3 text-right font-semibold whitespace-nowrap">
-                              ₹{" "}
+                              {"₹"}{" "}
                               {unitPrice.toFixed(
                                 2
                               )}
@@ -3485,7 +3943,7 @@ const unitPrice =
                             {/* TOTAL */}
 
                             <td className="p-3 text-right font-bold text-green-700 whitespace-nowrap">
-                              ₹{" "}
+                              {"₹"}{" "}
                               {total.toFixed(
                                 2
                               )}
@@ -3506,6 +3964,8 @@ const unitPrice =
                               >
                                 Delete
                               </button>
+
+
 
                             </td>
 
@@ -3559,7 +4019,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3587,7 +4047,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3616,7 +4076,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3645,7 +4105,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3674,7 +4134,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3703,7 +4163,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3732,7 +4192,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3761,7 +4221,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3790,7 +4250,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3819,7 +4279,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3848,7 +4308,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -3877,7 +4337,7 @@ const unitPrice =
                         ) || 0,
                     }))
                   }
-                  placeholder="₹ 0"
+                  placeholder="0"
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
@@ -4134,7 +4594,7 @@ const unitPrice =
                       </td>
 
                       <td className="px-4 py-2.5 text-right text-sm font-bold text-blue-700">
-                        ₹{" "}
+                        {"₹"}{" "}
                         {liveMaterialCost.toFixed(
                           2
                         )}
@@ -4151,7 +4611,7 @@ const unitPrice =
                       </td>
 
                       <td className="px-4 py-2.5 text-right text-sm font-bold text-orange-600">
-                        ₹{" "}
+                       {"₹"}{" "}
                         {liveAdditionalCharges.toFixed(
                           2
                         )}
@@ -4168,7 +4628,7 @@ const unitPrice =
                       </td>
 
                       <td className="px-4 py-3 text-right text-lg font-extrabold text-green-700">
-                        ₹{" "}
+                        {"₹"}{" "}
                         {liveTotalPlantCost.toFixed(
                           2
                         )}

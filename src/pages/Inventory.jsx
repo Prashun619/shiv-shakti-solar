@@ -453,17 +453,12 @@ export default function Inventory() {
                   Product
                 </th>
 
-                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-                  Company
-                </th>
+                
 
                 <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-                  Specification
-                </th>
+  Quantity
+</th>
 
-                <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
-                  Quantity
-                </th>
 
                 <th className="border border-black px-5 py-4 text-center text-sm font-semibold whitespace-nowrap">
                   Unit Cost
@@ -492,7 +487,7 @@ export default function Inventory() {
                 <tr>
 
                   <td
-                    colSpan="9"
+                    colSpan="7"
                     className="text-center py-10 text-gray-500 text-sm"
                   >
                     No purchases found.
@@ -556,49 +551,196 @@ export default function Inventory() {
                       ================================================= */}
 
                       <td className="border border-black w-24 h-1 px-3 py-2 text-center font-bold text-slate-900 whitespace-nowrap">
-                        {item.product_name ||
-                          "-"}
-                      </td>
+  {(() => {
+    const productName = String(
+      item.product_name || ""
+    ).trim();
+
+    const company = String(
+      item.company || ""
+    ).trim();
+
+    const specification = String(
+      item.specification || ""
+    ).trim();
+
+    const lowerProduct =
+      productName.toLowerCase();
+
+    if (lowerProduct === "panel") {
+      return [
+        company,
+        "Panel",
+        specification,
+      ]
+        .filter(Boolean)
+        .join(" ");
+    }
+
+    if (lowerProduct === "inverter") {
+      return [
+        company,
+        "Inverter",
+        specification,
+      ]
+        .filter(Boolean)
+        .join(" ");
+    }
+
+    return productName || "-";
+  })()}
+</td>
+
+                      
+
+                      
+
+                     {/* =================================================
+    QUANTITY
+================================================= */}
+
+<td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
+  {(() => {
+    const isCChannel =
+      String(item.product_name || "")
+        .trim()
+        .toLowerCase()
+        .includes("c channel");
+
+    if (isCChannel) {
+      const quantity =
+        Number(
+          item.purchased_quantity ??
+            item.quantity ??
+            0
+        );
+
+      const lengthFt =
+        Number(
+          item.length_ft ??
+            item.length ??
+            0
+        );
+
+      const totalFeet =
+        quantity * lengthFt;
+
+      return `${totalFeet} Ft`;
+    }
+
+    const quantity =
+      item.purchased_quantity ??
+      item.quantity ??
+      0;
+
+    const unit = String(
+      item.unit || ""
+    )
+      .trim()
+      .toLowerCase();
+
+    let displayUnit = "";
+
+    if (
+      unit === "ft" ||
+      unit === "feet"
+    ) {
+      displayUnit = "Ft";
+    } else if (
+      unit === "mtr" ||
+      unit === "meter" ||
+      unit === "metre" ||
+      unit === "meters" ||
+      unit === "metres"
+    ) {
+      displayUnit = "Mtr";
+    } else if (
+      unit === "nos" ||
+      unit === "no" ||
+      unit === "pcs" ||
+      unit === "piece" ||
+      unit === "pieces"
+    ) {
+      displayUnit = "Nos";
+    } else {
+      displayUnit = item.unit || "";
+    }
+
+    return `${quantity} ${displayUnit}`;
+  })()}
+</td>
+                      
 
                       {/* =================================================
-                          COMPANY
-                      ================================================= */}
+    UNIT COST
+================================================= */}
 
-                      <td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
-                        {item.company ||
-                          "-"}
-                      </td>
+<td className="border border-black w-24 h-1 px-3 py-2 text-center font-semibold whitespace-nowrap">
+  ₹{" "}
+  {(() => {
+    const isCChannel =
+      String(item.product_name || "")
+        .trim()
+        .toLowerCase()
+        .includes("c channel");
 
-                      {/* =================================================
-                          SPECIFICATION
-                      ================================================= */}
+    if (isCChannel) {
+      const quantity = Number(
+        item.purchased_quantity ??
+          item.quantity ??
+          0
+      );
 
-                      <td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
-                        {item.specification ||
-                          "-"}
-                      </td>
+      const lengthFt = Number(
+        item.length_ft ??
+          item.length ??
+          0
+      );
 
-                      {/* =================================================
-                          QUANTITY
-                      ================================================= */}
+      const totalWeight = Number(
+        item.total_weight || 0
+      );
 
-                      <td className="border border-black w-24 h-1 px-3 py-2 text-center whitespace-nowrap">
-                        {item.purchased_quantity ??
-                          item.quantity ??
-                          "-"}
-                      </td>
+      const pricePerKg = Number(
+        item.price || 0
+      );
 
-                      {/* =================================================
-                          UNIT COST
-                      ================================================= */}
+      const gst = Number(
+        item.gst || 0
+      );
 
-                      <td className="border border-black w-24 h-1 px-3 py-2 text-center font-semibold whitespace-nowrap">
-                        ₹{" "}
-                        {Number(
-                          item.unit_cost ||
-                            0
-                        ).toFixed(2)}
-                      </td>
+      const transportation = Number(
+        item.transportation || 0
+      );
+
+      const totalFeet =
+        quantity * lengthFt;
+
+      const materialCost =
+        totalWeight * pricePerKg;
+
+      const gstAmount =
+        materialCost * gst / 100;
+
+      const totalCost =
+        materialCost +
+        gstAmount +
+        transportation;
+
+      const pricePerFt =
+        totalFeet > 0
+          ? totalCost / totalFeet
+          : 0;
+
+      return pricePerFt.toFixed(2);
+    }
+
+    return Number(
+      item.unit_cost || 0
+    ).toFixed(2);
+  })()}
+  
+</td>
 
                       {/* =================================================
                           TOTAL AMOUNT

@@ -1,20 +1,29 @@
 import jsPDF from "jspdf";
 
+// ==========================================================
+// CREATE REPORT PDF
+// ==========================================================
 
-export function createReportPDF(title) {
-
+export async function createReportPDF(title) {
   const doc = new jsPDF({
     orientation: "landscape",
     unit: "mm",
     format: "a4",
   });
 
+  const pageWidth =
+    doc.internal.pageSize.getWidth();
 
-  const pageWidth = doc.internal.pageSize.getWidth();
+  // ==========================================================
+  // HEADER BACKGROUND
+  // ==========================================================
 
+  doc.setFillColor(
+    15,
+    23,
+    42
+  );
 
-  // Header background
-  doc.setFillColor(15, 23, 42);
   doc.rect(
     0,
     0,
@@ -23,40 +32,95 @@ export function createReportPDF(title) {
     "F"
   );
 
+  // ==========================================================
+  // LOAD LOGO BEFORE ADDING IT
+  // ==========================================================
 
-  // Logo
-const logo = "/logo.png";
+  try {
+    const logoData =
+      await new Promise(
+        (resolve, reject) => {
+          const img =
+            new Image();
 
-const img = new Image();
+          img.onload = () => {
+            const canvas =
+              document.createElement(
+                "canvas"
+              );
 
-img.src = logo;
+            canvas.width =
+              img.naturalWidth ||
+              img.width;
 
-doc.addImage(
-  img,
-  "PNG",
-  12,
-  5,
-  22,
-  22
-);
+            canvas.height =
+              img.naturalHeight ||
+              img.height;
 
+            const ctx =
+              canvas.getContext(
+                "2d"
+              );
 
+            ctx.drawImage(
+              img,
+              0,
+              0
+            );
 
-  // Company Name
+            resolve(
+              canvas.toDataURL(
+                "image/png"
+              )
+            );
+          };
+
+          img.onerror = () => {
+            reject(
+              new Error(
+                "Unable to load company logo."
+              )
+            );
+          };
+
+          img.src =
+            "/logo.png";
+        }
+      );
+
+    doc.addImage(
+      logoData,
+      "PNG",
+      12,
+      5,
+      22,
+      22
+    );
+  } catch (error) {
+    console.error(
+      "PDF LOGO ERROR:",
+      error
+    );
+  }
+
+  // ==========================================================
+  // COMPANY NAME
+  // ==========================================================
 
   doc.setFont(
     "helvetica",
     "bold"
   );
 
-  doc.setFontSize(21);
+  doc.setFontSize(
+    21
+  );
 
   doc.setTextColor(
     255,
     255,
     255
   );
-
 
   doc.text(
     "Shiv Shakti Solar Energy",
@@ -67,17 +131,18 @@ doc.addImage(
     }
   );
 
+  // ==========================================================
+  // REPORT TITLE
+  // ==========================================================
 
-
-  // Report Title
-
-  doc.setFontSize(13);
+  doc.setFontSize(
+    13
+  );
 
   doc.setFont(
     "helvetica",
     "normal"
   );
-
 
   doc.text(
     title,
@@ -88,9 +153,9 @@ doc.addImage(
     }
   );
 
-
-
-  // Date
+  // ==========================================================
+  // DATE
+  // ==========================================================
 
   doc.setTextColor(
     0,
@@ -98,14 +163,14 @@ doc.addImage(
     0
   );
 
-
   doc.setFont(
     "helvetica",
     "normal"
   );
 
-  doc.setFontSize(9);
-
+  doc.setFontSize(
+    9
+  );
 
   const today =
     new Date().toLocaleDateString(
@@ -117,7 +182,6 @@ doc.addImage(
       }
     );
 
-
   const time =
     new Date().toLocaleTimeString(
       "en-GB",
@@ -127,20 +191,20 @@ doc.addImage(
       }
     );
 
-
   doc.text(
     `Generated : ${today}   ${time}`,
     14,
     42
   );
 
-
+  // ==========================================================
+  // CONFIDENTIAL TEXT
+  // ==========================================================
 
   doc.setFont(
     "helvetica",
     "bold"
   );
-
 
   doc.text(
     "Confidential Business Report",
@@ -151,198 +215,362 @@ doc.addImage(
     }
   );
 
-
   return doc;
 }
+
+// ==========================================================
+// DRAW TABLE
+// ==========================================================
 
 export function drawTable(
   doc,
   columns,
   rows,
-  startY = 48,
-  rowHeight = 8
+  startYOrOptions = 48,
+  rowHeight = 4.5
 ) {
+  let startY = 48;
 
-  const pageHeight = doc.internal.pageSize.getHeight();
+  let headerFillColor = [
+    14,
+    116,
+    144,
+  ];
 
-  const margin = 10;
+  let headerTextColor = [
+    255,
+    255,
+    255,
+  ];
+
+  let marginLeft = 10;
+
+
+  // =====================================================
+  // OPTIONS
+  // =====================================================
+
+  if (
+    typeof startYOrOptions === "object" &&
+    startYOrOptions !== null
+  ) {
+    startY =
+      startYOrOptions.startY ?? 48;
+
+    rowHeight =
+      startYOrOptions.rowHeight ?? 4.5;
+
+    headerFillColor =
+      startYOrOptions.headerFillColor ??
+      [14, 116, 144];
+
+    headerTextColor =
+      startYOrOptions.headerTextColor ??
+      [255, 255, 255];
+
+    marginLeft =
+      startYOrOptions.marginLeft ?? 10;
+  } else {
+    startY =
+      startYOrOptions ?? 48;
+  }
+
+
+  const pageHeight =
+    doc.internal.pageSize.getHeight();
+
+  const margin =
+    marginLeft;
 
   let y = startY;
 
 
-  // ===============================
-  // Header
-  // ===============================
+  // =====================================================
+  // DRAW HEADER
+  // =====================================================
 
   let x = margin;
 
+  columns.forEach(
+    (column) => {
+      doc.setFillColor(
+        ...headerFillColor
+      );
 
-  columns.forEach((column)=>{
+      doc.setDrawColor(
+        0,
+        0,
+        0
+      );
 
-
-    doc.setFillColor(14,116,144);
-
-doc.setDrawColor(0,0,0);
-doc.setLineWidth(0.3);
-
-doc.rect(
-  x,
-  y,
-  column.width,
-  rowHeight,
-  "FD"
-);
-
-    doc.setTextColor(255);
-
-    doc.setFont(
-      "helvetica",
-      "bold"
-    );
-
-    doc.setFontSize(9);
-
-
-    doc.text(
-      column.title,
-      x + column.width / 2,
-      y + rowHeight / 2 + 1,
-      {
-        align:"center",
-        baseline:"middle",
-      }
-    );
-
-
-    x += column.width;
-
-
-  });
-
-
-  y += rowHeight;
-
-
-
-  // ===============================
-  // Rows
-  // ===============================
-
-
-  rows.forEach((row)=>{
-
-
-    if(y > pageHeight - 18){
-
-      doc.addPage();
-
-      y = 20;
-
-    }
-
-
-    x = margin;
-
-
-
-    row.forEach((value,index)=>{
-
-
-      doc.setDrawColor(0,0,0);
-
-      doc.setLineWidth(0.2);
-
-
-
-      // Cell Border
+      doc.setLineWidth(
+        0.25
+      );
 
       doc.rect(
         x,
         y,
-        columns[index].width,
-        rowHeight
+        column.width,
+        rowHeight,
+        "FD"
       );
 
+      doc.setTextColor(
+        ...headerTextColor
+      );
 
+      doc.setFont(
+        "helvetica",
+        "bold"
+      );
 
-      // Summary row
-      if(columns.length === 2){
-
-        doc.setFont(
-          "helvetica",
-          "bold"
-        );
-
-      }
-      else{
-
-        doc.setFont(
-          "helvetica",
-          "normal"
-        );
-
-      }
-
-
-
-      doc.setTextColor(0);
-
-      doc.setFontSize(9);
-
-
+      doc.setFontSize(7);
 
       doc.text(
-  String(value ?? ""),
+        String(
+          column.title ?? ""
+        ),
+        x + column.width / 2,
+        y + rowHeight / 2,
+        {
+          align: "center",
+          baseline: "middle",
+        }
+      );
 
-  x + columns[index].width / 2,
+      x += column.width;
+    }
+  );
 
-  y + rowHeight / 2 + 1,
-
-  {
-    align:"center",
-  }
-
-);
-
-
-
-      x += columns[index].width;
-
-
-    });
+  y += rowHeight;
 
 
-    y += rowHeight;
+  // =====================================================
+  // DATA ROWS
+  // =====================================================
+
+  rows.forEach(
+    (row) => {
+
+      // -------------------------------------------------
+      // PAGE BREAK
+      // -------------------------------------------------
+
+      if (
+        y >
+        pageHeight - 16
+      ) {
+        doc.addPage();
+
+        y = 15;
 
 
-  });
+        // -----------------------------------------------
+        // REPEAT HEADER
+        // -----------------------------------------------
 
+        let headerX =
+          margin;
+
+        columns.forEach(
+          (column) => {
+            doc.setFillColor(
+              ...headerFillColor
+            );
+
+            doc.setDrawColor(
+              0,
+              0,
+              0
+            );
+
+            doc.setLineWidth(
+              0.25
+            );
+
+            doc.rect(
+              headerX,
+              y,
+              column.width,
+              rowHeight,
+              "FD"
+            );
+
+            doc.setTextColor(
+              ...headerTextColor
+            );
+
+            doc.setFont(
+              "helvetica",
+              "bold"
+            );
+
+            doc.setFontSize(7);
+
+            doc.text(
+              String(
+                column.title ?? ""
+              ),
+              headerX +
+                column.width / 2,
+              y +
+                rowHeight / 2,
+              {
+                align: "center",
+                baseline: "middle",
+              }
+            );
+
+            headerX +=
+              column.width;
+          }
+        );
+
+        y += rowHeight;
+      }
+
+
+      // -------------------------------------------------
+      // DATA CELLS
+      // -------------------------------------------------
+
+      x = margin;
+
+      row.forEach(
+        (value, index) => {
+          const column =
+            columns[index];
+
+          if (!column) {
+            return;
+          }
+
+
+          doc.setDrawColor(
+            0,
+            0,
+            0
+          );
+
+          doc.setLineWidth(
+            0.15
+          );
+
+          doc.rect(
+            x,
+            y,
+            column.width,
+            rowHeight
+          );
+
+
+          doc.setFont(
+            "helvetica",
+            "normal"
+          );
+
+          doc.setTextColor(
+            0,
+            0,
+            0
+          );
+
+          doc.setFontSize(7);
+
+
+          // ---------------------------------------------
+          // HORIZONTAL + VERTICAL CENTER
+          // ---------------------------------------------
+
+          doc.text(
+            String(
+              value ?? ""
+            ),
+            x +
+              column.width / 2,
+            y +
+              rowHeight / 2,
+            {
+              align: "center",
+              baseline: "middle",
+              maxWidth:
+                Math.max(
+                  column.width - 2,
+                  2
+                ),
+            }
+          );
+
+          x +=
+            column.width;
+        }
+      );
+
+      y += rowHeight;
+    }
+  );
 
 
   return y;
+}
 
-}  
+
+// ==========================================================
+// FOOTER
+// ==========================================================
 
 export function addFooter(doc) {
+  const pageCount =
+    doc.getNumberOfPages();
 
-  const pageCount = doc.getNumberOfPages();
-
-  for (let i = 1; i <= pageCount; i++) {
-
+  for (
+    let i = 1;
+    i <= pageCount;
+    i++
+  ) {
     doc.setPage(i);
 
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth =
+      doc.internal.pageSize.getWidth();
 
+    const pageHeight =
+      doc.internal.pageSize.getHeight();
+
+    // ======================================================
     // Footer line
-    doc.setDrawColor(180);
-    doc.setLineWidth(0.2);
-    doc.line(10, pageHeight - 12, pageWidth - 10, pageHeight - 12);
+    // ======================================================
 
+    doc.setDrawColor(
+      180
+    );
+
+    doc.setLineWidth(
+      0.2
+    );
+
+    doc.line(
+      10,
+      pageHeight - 12,
+      pageWidth - 10,
+      pageHeight - 12
+    );
+
+    // ======================================================
     // Left Footer
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(100);
+    // ======================================================
+
+    doc.setFont(
+      "helvetica",
+      "normal"
+    );
+
+    doc.setFontSize(
+      8
+    );
+
+    doc.setTextColor(
+      100
+    );
 
     doc.text(
       "Shiv Shakti Solar Energy ERP",
@@ -350,7 +578,10 @@ export function addFooter(doc) {
       pageHeight - 6
     );
 
+    // ======================================================
     // Right Footer
+    // ======================================================
+
     doc.text(
       `Page ${i} of ${pageCount}`,
       pageWidth - 10,
@@ -359,7 +590,5 @@ export function addFooter(doc) {
         align: "right",
       }
     );
-
   }
-
 }

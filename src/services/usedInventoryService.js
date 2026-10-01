@@ -13,23 +13,144 @@ function cleanText(value) {
   return value == null ? "" : String(value).trim();
 }
 
+function normalize(value) {
+  return cleanText(value).toLowerCase();
+}
+
+// =====================================================
+// C CHANNEL
+// =====================================================
+
+const C_CHANNEL_NAMES = [
+  "C Channel 140x50x2 mm 9ft",
+  "C Channel 140x50x2 mm 21ft",
+];
+
+function isCChannel(product) {
+  const productName =
+    normalize(product?.product_name);
+
+  return C_CHANNEL_NAMES.some(
+    (name) =>
+      productName === normalize(name)
+  );
+}
+
+function getCChannelLength(product) {
+  if (!isCChannel(product)) {
+    return 0;
+  }
+
+  return num(
+    product?.length_ft ??
+      product?.length ??
+      product?.source_length_ft ??
+      product?.channel_length_ft
+  );
+}
+
+function getCChannelTotalWeight(product) {
+  if (!isCChannel(product)) {
+    return 0;
+  }
+
+  return num(
+    product?.total_weight ??
+      product?.weight ??
+      product?.weight_per_piece
+  );
+}
+
+function getCChannelUsedLength(product) {
+  if (!isCChannel(product)) {
+    return 0;
+  }
+
+  /*
+   * C Channel Qty Used is already entered
+   * directly in FEET.
+   *
+   * Therefore quantity is the authoritative
+   * consumed length.
+   */
+  return num(
+    product?.quantity
+  );
+}
+
+/*
+ * IMPORTANT
+ *
+ * For C Channel:
+ *
+ * quantity = TOTAL FEET USED
+ *
+ * Example:
+ *
+ * User enters Qty Used = 20
+ *
+ * That means:
+ *
+ * 20 ft consumed.
+ *
+ * It does NOT mean 20 pieces.
+ */
+function getCChannelUsedQuantity(product) {
+  if (!isCChannel(product)) {
+    return 0;
+  }
+
+  return num(
+    product?.quantity
+  );
+}
+
+/*
+ * C Channel consumed length is already stored
+ * in quantity because Qty Used is entered in feet.
+ */
+function getCChannelConsumedLength(product) {
+  if (!isCChannel(product)) {
+    return 0;
+  }
+
+  return getCChannelUsedQuantity(
+    product
+  );
+}
+
 // =====================================================
 // GET PRODUCT UNIT
 // =====================================================
 
 function getProductUnit(product) {
-  const name = cleanText(
-    product?.product_name
-  ).toLowerCase();
+  const name =
+    cleanText(
+      product?.product_name
+    ).toLowerCase();
 
-  // Leg 10ft is always Nos
+  /*
+   * C Channel consumption quantity is FEET.
+   */
+  if (
+    C_CHANNEL_NAMES.some(
+      (channelName) =>
+        name ===
+        channelName.toLowerCase()
+    )
+  ) {
+    return "ft";
+  }
+
+  // Leg 10ft is always Nos.
   if (name === "leg 10ft") {
     return "Nos";
   }
 
-  const unit = cleanText(
-    product?.unit
-  ).toLowerCase();
+  const unit =
+    cleanText(
+      product?.unit
+    ).toLowerCase();
 
   if (
     unit === "kg" ||
@@ -46,9 +167,10 @@ function getProductUnit(product) {
 // =====================================================
 
 function getProductKey(product) {
-  const category = cleanText(
-    product?.category
-  ).toLowerCase();
+  const category =
+    cleanText(
+      product?.category
+    ).toLowerCase();
 
   // ---------------------------------------------------
   // PANEL / INVERTER
@@ -68,13 +190,46 @@ function getProductKey(product) {
   }
 
   // ---------------------------------------------------
-  // NORMAL PRODUCTS / KIT
+  // C CHANNEL
+  //
+  // IMPORTANT:
+  //
+  // Source length is part of the product key.
+  //
+  // 9ft and 21ft remain separate FIFO pools.
+  // ---------------------------------------------------
+
+  if (isCChannel(product)) {
+    return [
+      cleanText(
+        product?.product_name
+      ),
+      cleanText(
+        product?.company
+      ),
+      cleanText(
+        product?.specification
+      ),
+      getCChannelLength(product),
+    ]
+      .join("|")
+      .toLowerCase();
+  }
+
+  // ---------------------------------------------------
+  // NORMAL PRODUCTS
   // ---------------------------------------------------
 
   return [
-    cleanText(product?.product_name),
-    cleanText(product?.company),
-    cleanText(product?.specification),
+    cleanText(
+      product?.product_name
+    ),
+    cleanText(
+      product?.company
+    ),
+    cleanText(
+      product?.specification
+    ),
   ]
     .join("|")
     .toLowerCase();
@@ -85,13 +240,48 @@ function getProductKey(product) {
 // =====================================================
 
 function getConsumptionQuantity(product) {
+  const name = cleanText(
+    product?.product_name
+  ).toLowerCase();
+
+  // =====================================================
+  // C CHANNEL
+  // =====================================================
+  // C Channel consumption is ALWAYS measured in FEET.
+  //
+  // Example:
+  // Stock = 126 ft
+  // Qty Used = 10 ft
+  // Remaining = 116 ft
+  //
+  // IMPORTANT:
+  // Do NOT multiply quantity by length_ft here.
+  // quantity itself is already the number of FEET used.
+  // =====================================================
+
+  if (name.includes("c channel")) {
+    return num(
+      product?.quantity ??
+      product?.consumed_length_ft ??
+      product?.length_ft
+    );
+  }
+
+  // =====================================================
+  // KG PRODUCTS
+  // =====================================================
+
   const unit = getProductUnit(product);
 
   if (unit === "Kg") {
-    return num(product?.total_weight);
+    return num(product.total_weight);
   }
 
-  return num(product?.quantity);
+  // =====================================================
+  // NORMAL PRODUCTS
+  // =====================================================
+
+  return num(product.quantity);
 }
 
 // =====================================================
@@ -121,6 +311,39 @@ function isKitReplacementInverter(product) {
 // =====================================================
 
 function getPurchasedQuantity(row) {
+  const name = cleanText(
+    row?.product_name
+  ).toLowerCase();
+
+  // =====================================================
+  // C CHANNEL
+  // =====================================================
+  // Inventory quantity is pieces, but Material Consumption
+  // stock is displayed/consumed in FEET.
+  //
+  // Example:
+  // 14 pieces × 9 ft = 126 ft
+  // 6 pieces × 21 ft = 126 ft
+  // =====================================================
+
+  if (name.includes("c channel")) {
+    const pieces = num(
+      row?.purchased_quantity ??
+      row?.quantity
+    );
+
+    const lengthFt = num(
+      row?.length_ft ??
+      row?.length
+    );
+
+    return pieces * lengthFt;
+  }
+
+  // =====================================================
+  // NORMAL PRODUCTS
+  // =====================================================
+
   const purchased = num(
     row?.purchased_quantity
   );
@@ -132,61 +355,124 @@ function getPurchasedQuantity(row) {
   return num(row?.quantity);
 }
 
+// =====================================================
+// INVENTORY UNIT COST
+// =====================================================
+
 function getInventoryUnitCost(row) {
   if (!row) {
     return 0;
   }
 
   /*
-   * ===================================================
-   * IMPORTANT
-   * ===================================================
+   * inventory.unit_cost =
+   * complete purchase cost of one inventory unit.
    *
-   * Inventory View displays:
+   * For C Channel:
    *
-   *   item.unit_cost
-   *
-   * Therefore Material Consumption MUST use the exact
-   * same value stored in inventory.unit_cost.
-   *
-   * DO NOT recalculate:
-   *
-   * price + GST + transportation
-   *
-   * here.
-   *
-   * Example:
-   *
-   * Inventory Row 1
-   * Qty        = 10
-   * Unit Cost  = ₹1
-   *
-   * Inventory Row 2
-   * Qty        = 10
-   * Unit Cost  = ₹2
-   *
-   * Customer consumes 12:
-   *
-   * 10 × ₹1 = ₹10
-   *  2 × ₹2 = ₹4
-   *
-   * Total = ₹14
+   * one inventory unit = one complete channel.
    */
 
-  return num(row.unit_cost);
+  return num(
+    row.unit_cost
+  );
 }
 
+// =====================================================
+// INVENTORY COST PER CONSUMPTION UNIT
+// =====================================================
+
+function getInventoryCostPerUnit(row) {
+  if (!row) {
+    return 0;
+  }
+
+  const productName =
+    cleanText(
+      row.product_name
+    ).toLowerCase();
+
+ // ---------------------------------------------------
+// C CHANNEL
+//
+// inventory.unit_cost is ALREADY the landed cost
+// per FOOT.
+//
+// Example:
+//
+// 9ft  = ₹135.21 / ft
+// 21ft = ₹125.55 / ft
+//
+// DO NOT divide by length_ft again.
+// ---------------------------------------------------
+
+if (
+  C_CHANNEL_NAMES.some(
+    (channelName) =>
+      productName ===
+      channelName.toLowerCase()
+  )
+) {
+  return num(
+    row.unit_cost
+  );
+}
+  // ---------------------------------------------------
+  // LEG 10FT
+  // ---------------------------------------------------
+
+  if (
+    productName ===
+    "leg 10ft"
+  ) {
+    const purchasedQuantity =
+      getPurchasedQuantity(
+        row
+      );
+
+    const totalWeight =
+      num(
+        row.total_weight
+      );
+
+    const pricePerKg =
+      num(
+        row.price ||
+        row.unit_cost
+      );
+
+    const weightPerPiece =
+      purchasedQuantity > 0
+        ? totalWeight /
+          purchasedQuantity
+        : 0;
+
+    return (
+      weightPerPiece *
+      pricePerKg
+    );
+  }
+
+  // ---------------------------------------------------
+  // NORMAL PRODUCTS
+  // ---------------------------------------------------
+
+  const unitCost =
+    num(
+      row.unit_cost
+    );
+
+  if (unitCost > 0) {
+    return unitCost;
+  }
+
+  return num(
+    row.price
+  );
+}
 
 // =====================================================
 // RESOLVE MATERIAL CONSUMPTION UNIT COSTS
-//
-// IMPORTANT:
-// - Inventory.unit_cost is the source of truth.
-// - Existing fifo_allocations are respected.
-// - Older records without fifo_allocations are
-//   reconstructed in FIFO order.
-// - Saved product.unit_price is only used as the
-//   final fallback when no inventory row exists.
 // =====================================================
 
 function enrichConsumptionRowsWithInventoryCost(
@@ -204,32 +490,36 @@ function enrichConsumptionRowsWithInventoryCost(
   // INVENTORY LOOKUP
   // ---------------------------------------------------
 
-  const inventoryById = new Map();
+  const inventoryById =
+    new Map();
 
-  inventoryRows.forEach((row) => {
-    if (row?.id != null) {
-      inventoryById.set(
-        String(row.id),
-        row
-      );
+  inventoryRows.forEach(
+    (row) => {
+      if (row?.id != null) {
+        inventoryById.set(
+          String(row.id),
+          row
+        );
+      }
     }
-  });
+  );
 
   // ---------------------------------------------------
-  // INVENTORY IS ALREADY FIFO ORDERED
-  // oldest date -> newest date
+  // INVENTORY FIFO ORDER
   // ---------------------------------------------------
 
   const sortedInventory = [
     ...inventoryRows,
   ].sort((a, b) => {
-    const dateA = new Date(
-      a?.date || 0
-    ).getTime();
+    const dateA =
+      new Date(
+        a?.date || 0
+      ).getTime();
 
-    const dateB = new Date(
-      b?.date || 0
-    ).getTime();
+    const dateB =
+      new Date(
+        b?.date || 0
+      ).getTime();
 
     if (dateA !== dateB) {
       return dateA - dateB;
@@ -243,24 +533,24 @@ function enrichConsumptionRowsWithInventoryCost(
 
   // ---------------------------------------------------
   // MATERIAL CONSUMPTION ORDER
-  //
-  // Oldest consumption first.
   // ---------------------------------------------------
 
   const sortedRows = [
     ...rows,
   ].sort((a, b) => {
-    const dateA = new Date(
-      a?.created_at ||
-        a?.date ||
-        0
-    ).getTime();
+    const dateA =
+      new Date(
+        a?.created_at ||
+          a?.date ||
+          0
+      ).getTime();
 
-    const dateB = new Date(
-      b?.created_at ||
-        b?.date ||
-        0
-    ).getTime();
+    const dateB =
+      new Date(
+        b?.created_at ||
+          b?.date ||
+          0
+      ).getTime();
 
     if (dateA !== dateB) {
       return dateA - dateB;
@@ -273,8 +563,7 @@ function enrichConsumptionRowsWithInventoryCost(
   });
 
   // ---------------------------------------------------
-  // HOW MUCH OF EACH INVENTORY BATCH HAS ALREADY
-  // BEEN CONSUMED
+  // USED INVENTORY MAP
   // ---------------------------------------------------
 
   const usedInventoryMap =
@@ -285,7 +574,9 @@ function enrichConsumptionRowsWithInventoryCost(
   ) {
     return Number(
       usedInventoryMap.get(
-        String(inventoryId)
+        String(
+          inventoryId
+        )
       ) || 0
     );
   }
@@ -294,96 +585,24 @@ function enrichConsumptionRowsWithInventoryCost(
     inventoryId,
     quantity
   ) {
-    const key = String(
-      inventoryId
-    );
+    const key =
+      String(
+        inventoryId
+      );
 
     usedInventoryMap.set(
       key,
       getUsedQuantity(
         inventoryId
-      ) + Number(quantity || 0)
+      ) +
+        Number(
+          quantity || 0
+        )
     );
   }
 
   // ---------------------------------------------------
-  // CALCULATE COST FOR ONE INVENTORY ROW
-  // ---------------------------------------------------
-
-  function getInventoryCostPerUnit(
-    row
-  ) {
-    if (!row) {
-      return 0;
-    }
-
-    const productName =
-      cleanText(
-        row.product_name
-      ).toLowerCase();
-
-    // -------------------------------------------------
-    // LEG 10FT
-    //
-    // Existing FIFO logic treats this as Nos while
-    // inventory price is based on Kg.
-    // -------------------------------------------------
-
-    if (
-      productName ===
-      "leg 10ft"
-    ) {
-      const purchasedQuantity =
-        getPurchasedQuantity(
-          row
-        );
-
-      const totalWeight =
-        num(
-          row.total_weight
-        );
-
-      const pricePerKg =
-        num(
-          row.price ||
-            row.unit_cost
-        );
-
-      const weightPerPiece =
-        purchasedQuantity > 0
-          ? totalWeight /
-            purchasedQuantity
-          : 0;
-
-      return (
-        weightPerPiece *
-        pricePerKg
-      );
-    }
-
-    // -------------------------------------------------
-    // NORMAL PRODUCTS
-    //
-    // INVENTORY VIEW UNIT COST
-    // -------------------------------------------------
-
-    const unitCost =
-      num(
-        row.unit_cost
-      );
-
-    if (unitCost > 0) {
-      return unitCost;
-    }
-
-    // Very old inventory fallback
-    return num(
-      row.price
-    );
-  }
-
-  // ---------------------------------------------------
-  // PROCESS EACH CONSUMPTION RECORD
+  // PROCESS CONSUMPTION RECORDS
   // ---------------------------------------------------
 
   return sortedRows.map(
@@ -406,16 +625,18 @@ function enrichConsumptionRowsWithInventoryCost(
                 : [];
 
             // =========================================
-            // CASE 1:
-            // FIFO ALLOCATIONS ALREADY EXIST
+            // EXISTING FIFO ALLOCATIONS
             // =========================================
 
             if (
               existingAllocations.length >
               0
             ) {
-              let weightedTotal = 0;
-              let weightedQuantity = 0;
+              let weightedTotal =
+                0;
+
+              let weightedQuantity =
+                0;
 
               existingAllocations.forEach(
                 (allocation) => {
@@ -444,7 +665,7 @@ function enrichConsumptionRowsWithInventoryCost(
                         )
                       : num(
                           allocation.unit_cost ||
-                            allocation.unit_price
+                          allocation.unit_price
                         );
 
                   weightedTotal +=
@@ -454,8 +675,6 @@ function enrichConsumptionRowsWithInventoryCost(
                   weightedQuantity +=
                     quantity;
 
-                  // Keep FIFO consumption map
-                  // synchronized.
                   if (
                     inventoryRow?.id !=
                     null
@@ -479,16 +698,17 @@ function enrichConsumptionRowsWithInventoryCost(
 
               return {
                 ...product,
+
                 unit_price:
+                  resolvedUnitPrice,
+
+                unit_cost:
                   resolvedUnitPrice,
               };
             }
 
             // =========================================
-            // CASE 2:
             // OLD RECORD WITHOUT FIFO ALLOCATIONS
-            //
-            // Reconstruct FIFO from Inventory.
             // =========================================
 
             const requiredQuantity =
@@ -502,6 +722,7 @@ function enrichConsumptionRowsWithInventoryCost(
             ) {
               return {
                 ...product,
+
                 unit_price:
                   num(
                     product.unit_price
@@ -524,7 +745,8 @@ function enrichConsumptionRowsWithInventoryCost(
               0;
 
             for (
-              const inventoryRow of sortedInventory
+              const inventoryRow of
+                sortedInventory
             ) {
               if (
                 remaining <=
@@ -542,10 +764,39 @@ function enrichConsumptionRowsWithInventoryCost(
                 continue;
               }
 
-              const purchasedQuantity =
-                getPurchasedQuantity(
-                  inventoryRow
-                );
+              /*
+               * FIFO inventory quantity is:
+               *
+               * C Channel = FEET
+               * Normal products = normal quantity
+               */
+
+              let purchasedQuantity;
+
+if (
+  isCChannel(
+    inventoryRow
+  )
+) {
+  /*
+   * getPurchasedQuantity()
+   * already returns TOTAL FEET
+   *
+   * Example:
+   * 14 pieces × 9ft = 126ft
+   *
+   * Do NOT multiply by length again.
+   */
+  purchasedQuantity =
+    getPurchasedQuantity(
+      inventoryRow
+    );
+} else {
+  purchasedQuantity =
+    getPurchasedQuantity(
+      inventoryRow
+    );
+}
 
               const alreadyUsed =
                 getUsedQuantity(
@@ -577,6 +828,12 @@ function enrichConsumptionRowsWithInventoryCost(
                   inventoryRow
                 );
 
+              /*
+               * For C Channel:
+               *
+               * unitCost here is cost per foot.
+               */
+
               weightedTotal +=
                 allocate *
                 unitCost;
@@ -593,28 +850,28 @@ function enrichConsumptionRowsWithInventoryCost(
                 allocate;
             }
 
-            // =========================================
-            // RESOLVED INVENTORY COST
-            // =========================================
-
             if (
               weightedQuantity >
               0
             ) {
+              const resolvedUnitPrice =
+                weightedTotal /
+                weightedQuantity;
+
               return {
                 ...product,
+
                 unit_price:
-                  weightedTotal /
-                  weightedQuantity,
+                  resolvedUnitPrice,
+
+                unit_cost:
+                  resolvedUnitPrice,
               };
             }
 
-            // =========================================
-            // FINAL FALLBACK
-            // =========================================
-
             return {
               ...product,
+
               unit_price:
                 num(
                   product.unit_price
@@ -625,6 +882,7 @@ function enrichConsumptionRowsWithInventoryCost(
 
       return {
         ...record,
+
         products:
           enrichedProducts,
       };
@@ -632,13 +890,15 @@ function enrichConsumptionRowsWithInventoryCost(
   );
 }
 
-
 // =====================================================
 // GET USED INVENTORY
 // =====================================================
 
 export async function getUsedInventory() {
-  const { data, error } =
+  const {
+    data,
+    error,
+  } =
     await supabase
       .from("used_inventory")
       .select(`
@@ -656,28 +916,14 @@ export async function getUsedInventory() {
   const rows =
     data || [];
 
-  // ---------------------------------------------------
-  // LOAD INVENTORY UNIT COSTS
-  // ---------------------------------------------------
-
   const inventoryRows =
     await getInventoryRows();
-
-  // ---------------------------------------------------
-  // IMPORTANT:
-  // Replace old saved product.unit_price values with
-  // the actual Inventory.unit_cost / FIFO cost.
-  // ---------------------------------------------------
 
   const enrichedRows =
     enrichConsumptionRowsWithInventoryCost(
       rows,
       inventoryRows
     );
-
-  // ---------------------------------------------------
-  // KEEP EXISTING CUSTOMER ORDER
-  // ---------------------------------------------------
 
   return enrichedRows.sort(
     (a, b) =>
@@ -689,7 +935,6 @@ export async function getUsedInventory() {
       )
   );
 }
-
 
 // =====================================================
 // GET SINGLE USED INVENTORY
@@ -704,19 +949,13 @@ export async function getUsedInventoryById(
     );
   }
 
-  // ---------------------------------------------------
-  // GET ALL CONSUMPTION RECORDS
-  //
-  // We need the complete history so old records
-  // without fifo_allocations can be reconstructed.
-  // ---------------------------------------------------
-
   const {
     data: consumptionRows,
     error: consumptionError,
-  } = await supabase
-    .from("used_inventory")
-    .select("*");
+  } =
+    await supabase
+      .from("used_inventory")
+      .select("*");
 
   if (consumptionError) {
     throw consumptionError;
@@ -752,7 +991,10 @@ export async function getUsedInventoryById(
 // =====================================================
 
 async function getInventoryRows() {
-  const { data, error } =
+  const {
+    data,
+    error,
+  } =
     await supabase
       .from("inventory")
       .select(`
@@ -765,6 +1007,7 @@ async function getInventoryRows() {
         purchased_quantity,
         used_quantity,
         unit,
+        length_ft,
         total_weight,
         price,
         unit_cost,
@@ -794,7 +1037,10 @@ async function getInventoryRows() {
 // =====================================================
 
 async function getConsumptionRows() {
-  const { data, error } =
+  const {
+    data,
+    error,
+  } =
     await supabase
       .from("used_inventory")
       .select(`
@@ -817,9 +1063,13 @@ function buildFIFOUsedMap(
   records,
   excludeId = null
 ) {
-  const usedMap = new Map();
+  const usedMap =
+    new Map();
 
-  for (const record of records || []) {
+  for (
+    const record of
+      records || []
+  ) {
     if (
       excludeId &&
       String(record.id) ===
@@ -829,11 +1079,16 @@ function buildFIFOUsedMap(
     }
 
     const products =
-      Array.isArray(record.products)
+      Array.isArray(
+        record.products
+      )
         ? record.products
         : [];
 
-    for (const product of products) {
+    for (
+      const product of
+        products
+    ) {
       const allocations =
         Array.isArray(
           product?.fifo_allocations
@@ -841,7 +1096,10 @@ function buildFIFOUsedMap(
           ? product.fifo_allocations
           : [];
 
-      for (const allocation of allocations) {
+      for (
+        const allocation of
+          allocations
+      ) {
         const inventoryId =
           allocation?.inventory_id;
 
@@ -849,6 +1107,21 @@ function buildFIFOUsedMap(
           num(
             allocation?.quantity
           );
+
+          console.log(
+  "FIFO ALLOCATION DEBUG:",
+  {
+    inventoryId,
+    quantity,
+    allocation,
+    product_name:
+      product?.product_name,
+    product_quantity:
+      product?.quantity,
+    product_length_ft:
+      product?.length_ft,
+  }
+);
 
         if (
           !inventoryId ||
@@ -858,66 +1131,24 @@ function buildFIFOUsedMap(
         }
 
         const key =
-          String(inventoryId);
+          String(
+            inventoryId
+          );
 
         usedMap.set(
           key,
           num(
-            usedMap.get(key)
-          ) + quantity
+            usedMap.get(
+              key
+            )
+          ) +
+            quantity
         );
       }
     }
   }
 
   return usedMap;
-}
-
-// =====================================================
-// BUILD CONSUMED PRODUCT MAP
-// =====================================================
-
-function buildConsumedMap(
-  records,
-  excludeId = null
-) {
-  const map = new Map();
-
-  for (const record of records || []) {
-    if (
-      excludeId &&
-      String(record.id) ===
-        String(excludeId)
-    ) {
-      continue;
-    }
-
-    const products =
-      Array.isArray(record.products)
-        ? record.products
-        : [];
-
-    for (const product of products) {
-      const key =
-        getProductKey(product);
-
-      const qty =
-        getConsumptionQuantity(
-          product
-        );
-
-      if (!key || qty <= 0) {
-        continue;
-      }
-
-      map.set(
-        key,
-        num(map.get(key)) + qty
-      );
-    }
-  }
-
-  return map;
 }
 
 // =====================================================
@@ -931,17 +1162,120 @@ function prepareInventoryRows(
   return inventoryRows.map(
     (row) => {
       const purchased =
-        getPurchasedQuantity(row);
+        getPurchasedQuantity(
+          row
+        );
 
       const used =
         num(
           usedMap.get(
-            String(row.id)
+            String(
+              row.id
+            )
           )
         );
 
       const rowUnitCost =
-        getInventoryUnitCost(row);
+        getInventoryUnitCost(
+          row
+        );
+
+      // -------------------------------------------------
+      // C CHANNEL
+      //
+      // Physical purchase:
+      //
+      // Qty = pieces
+      // Length = ft per piece
+      //
+      // FIFO stock = FEET
+      //
+      // Example:
+      //
+      // Purchase:
+      // 14 pieces × 9ft
+      //
+      // Total stock:
+      // 126ft
+      //
+      // If 20ft is used:
+      //
+      // Remaining:
+      // 106ft
+      // -------------------------------------------------
+
+      if (
+        isCChannel(row)
+      ) {
+        const lengthFt =
+          getCChannelLength(
+            row
+          );
+
+        const purchasedFeet =
+  purchased;
+
+        /*
+         * FIFO used quantity for C Channel
+         * is FEET.
+         */
+        const usedFeet =
+          Math.max(
+            used,
+            0
+          );
+
+        const remainingFeet =
+          Math.max(
+            purchasedFeet -
+              usedFeet,
+            0
+          );
+
+        return {
+          ...row,
+
+          /*
+           * Original purchase quantity
+           * remains PIECES.
+           */
+          purchased_quantity_live:
+            purchased,
+
+          /*
+           * Used quantity is FEET.
+           */
+          used_quantity_live:
+            usedFeet,
+
+          /*
+           * FIFO quantity is FEET.
+           */
+          remaining_quantity:
+            remainingFeet,
+
+          unit:
+            "Ft",
+
+          length_ft:
+            lengthFt,
+
+          total_weight:
+            getCChannelTotalWeight(
+              row
+            ),
+
+          fifo_unit_cost:
+            rowUnitCost,
+
+          latest_unit_cost:
+            rowUnitCost,
+        };
+      }
+
+      // -------------------------------------------------
+      // NORMAL PRODUCTS
+      // -------------------------------------------------
 
       return {
         ...row,
@@ -954,20 +1288,24 @@ function prepareInventoryRows(
 
         remaining_quantity:
           Math.max(
-            purchased - used,
+            purchased -
+              used,
             0
           ),
 
         unit:
-          getProductUnit(row),
+          getProductUnit(
+            row
+          ),
 
-        /*
-         * IMPORTANT:
-         *
-         * This is THIS FIFO ROW'S price.
-         *
-         * It is NOT the latest purchase price.
-         */
+        length_ft:
+          null,
+
+        total_weight:
+          num(
+            row.total_weight
+          ),
+
         fifo_unit_cost:
           rowUnitCost,
 
@@ -983,11 +1321,21 @@ function prepareInventoryRows(
 // =====================================================
 
 function getCostPerUnit(row) {
-  return getInventoryUnitCost(row);
+  if (
+    isCChannel(row)
+  ) {
+    return getInventoryCostPerUnit(
+      row
+    );
+  }
+
+  return getInventoryUnitCost(
+    row
+  );
 }
 
 // =====================================================
-// LIVE STOCK
+// LIVE INVENTORY STOCK
 // =====================================================
 
 export async function getLiveInventoryStock(
@@ -1011,120 +1359,227 @@ export async function getLiveInventoryStock(
       actualUsedMap
     );
 
-  const grouped = new Map();
+  const grouped =
+    new Map();
 
-  for (const row of rows) {
+  for (
+    const row of rows
+  ) {
     const key =
-      getProductKey(row);
+      getProductKey(
+        row
+      );
 
     if (!key) {
       continue;
     }
 
-    const unit =
-      getProductUnit(row);
+    const cChannel =
+      isCChannel(row);
+
+    /*
+     * IMPORTANT
+     *
+     * C Channel:
+     *
+     * Original inventory quantity
+     * = pieces
+     *
+     * Live stock
+     * = FEET
+     *
+     * Example:
+     *
+     * 14 pieces × 9 ft
+     * = 126 ft
+     *
+     * Therefore we MUST NOT use
+     * purchased_quantity_live here
+     * as the live stock quantity.
+     */
 
     const purchasedQuantity =
-      getPurchasedQuantity(row);
+  num(
+    row.purchased_quantity_live
+  );
 
     const usedQuantity =
-      num(
-        actualUsedMap.get(
-          String(row.id)
-        )
-      );
+      cChannel
+        ? num(
+            row.used_quantity_live
+          )
+        : num(
+            row.used_quantity_live
+          );
+
+    const remainingQuantity =
+  Math.max(
+    0,
+    purchasedQuantity -
+      usedQuantity
+  );
+
+    const unit =
+      cChannel
+        ? "ft"
+        : getProductUnit(
+            row
+          );
 
     const existing =
-      grouped.get(key);
+      grouped.get(
+        key
+      );
 
     if (existing) {
+      /*
+       * -------------------------------------------------
+       * GROUPED C CHANNEL STOCK
+       *
+       * Add FEET, never pieces.
+       * -------------------------------------------------
+       */
+
       existing.purchased_quantity +=
         purchasedQuantity;
 
       existing.used_quantity +=
         usedQuantity;
 
+      existing.remaining_quantity +=
+        remainingQuantity;
+
       existing.total_weight +=
-        num(row.total_weight);
-
-      /*
-       * Keep the latest row cost only for the
-       * stock display.
-       *
-       * FIFO costing itself does NOT use this value.
-       */
-      existing.unit_cost =
-        getInventoryUnitCost(row);
-
-      existing.latest_unit_cost =
-        getInventoryUnitCost(row);
+        num(
+          row.total_weight
+        );
 
       existing.inventory_rows.push(
         row
       );
     } else {
-      grouped.set(key, {
+      grouped.set(
         key,
+        {
+          key,
 
-        product_name:
-          cleanText(
-            row.product_name
-          ),
+          product_name:
+            cleanText(
+              row.product_name
+            ),
 
-        company:
-          cleanText(
-            row.company
-          ),
+          company:
+            cleanText(
+              row.company
+            ),
 
-        specification:
-          cleanText(
-            row.specification
-          ),
+          specification:
+            cleanText(
+              row.specification
+            ),
 
-        category:
-          cleanText(
-            row.category
-          ),
+          category:
+            cleanText(
+              row.category
+            ),
 
-        unit,
+          /*
+           * C Channel = ft
+           */
+          unit,
 
-        purchased_quantity:
-          purchasedQuantity,
+          length_ft:
+            cChannel
+              ? getCChannelLength(
+                  row
+                )
+              : null,
 
-        used_quantity:
-          usedQuantity,
+          /*
+           * IMPORTANT:
+           *
+           * For C Channel these are FEET.
+           *
+           * Example:
+           * purchased_quantity = 126
+           * used_quantity      = 0
+           * remaining          = 126
+           */
+          purchased_quantity:
+            purchasedQuantity,
 
-        total_weight:
-          num(
-            row.total_weight
-          ),
+          used_quantity:
+            usedQuantity,
 
-        unit_cost:
-          getInventoryUnitCost(row),
+          remaining_quantity:
+            remainingQuantity,
 
-        latest_unit_cost:
-          getInventoryUnitCost(row),
+          total_weight:
+            num(
+              row.total_weight
+            ),
 
-        inventory_rows: [
-          row,
-        ],
-      });
+          unit_cost:
+            getInventoryUnitCost(
+              row
+            ),
+
+          latest_unit_cost:
+            getInventoryUnitCost(
+              row
+            ),
+
+          inventory_rows: [
+            row,
+          ],
+        }
+      );
     }
   }
 
   const result = [];
 
-  for (const item of grouped.values()) {
+  for (
+    const item of
+      grouped.values()
+  ) {
+    /*
+     * -------------------------------------------------
+     * AVAILABLE STOCK
+     * -------------------------------------------------
+     *
+     * C Channel:
+     *
+     * purchased_quantity = feet
+     * used_quantity      = feet
+     *
+     * Example:
+     *
+     * Purchased = 126 ft
+     * Used      = 15 ft
+     * Available = 111 ft
+     *
+     * NEVER use the original piece
+     * quantity here.
+     */
+
     const availableQuantity =
       Math.max(
         0,
-        item.purchased_quantity -
-          item.used_quantity
+        num(
+          item.remaining_quantity
+        )
       );
 
     result.push({
       ...item,
 
+      /*
+       * Keep consumed quantity in the
+       * same unit as available quantity.
+       *
+       * C Channel = feet
+       */
       consumed_quantity:
         item.used_quantity,
 
@@ -1145,7 +1600,10 @@ export async function getLiveInventoryStock(
         b.product_name,
         undefined,
         {
-          sensitivity: "base",
+          sensitivity:
+            "base",
+          numeric:
+            true,
         }
       )
   );
@@ -1165,7 +1623,9 @@ export async function getLiveStockForProduct(
     );
 
   const key =
-    getProductKey(product);
+    getProductKey(
+      product
+    );
 
   return (
     stock.find(
@@ -1175,19 +1635,34 @@ export async function getLiveStockForProduct(
       key,
 
       product_name:
-        product?.product_name || "",
+        product?.product_name ||
+        "",
 
       company:
-        product?.company || "",
+        product?.company ||
+        "",
 
       specification:
-        product?.specification || "",
+        product?.specification ||
+        "",
 
       category:
-        product?.category || "",
+        product?.category ||
+        "",
 
       unit:
-        getProductUnit(product),
+        isCChannel(product)
+          ? "ft"
+          : getProductUnit(
+              product
+            ),
+
+      length_ft:
+        isCChannel(product)
+          ? getCChannelLength(
+              product
+            )
+          : null,
 
       purchased_quantity:
         0,
@@ -1200,6 +1675,13 @@ export async function getLiveStockForProduct(
 
       available_stock:
         0,
+
+      total_weight:
+        isCChannel(product)
+          ? getCChannelTotalWeight(
+              product
+            )
+          : 0,
 
       unit_cost:
         0,
@@ -1229,12 +1711,128 @@ function validateProduct(product) {
   }
 
   const unit =
-    getProductUnit(product);
+    getProductUnit(
+      product
+    );
 
   const qty =
     getConsumptionQuantity(
       product
     );
+
+ // ---------------------------------------------------
+// C CHANNEL
+// ---------------------------------------------------
+
+if (
+  isCChannel(product)
+) {
+  const lengthFt =
+    getCChannelLength(
+      product
+    );
+
+  /*
+   * IMPORTANT:
+   *
+   * Qty Used entered by the user
+   * is DIRECTLY in FEET.
+   *
+   * Example:
+   *
+   * Stock = 126 ft
+   * User enters = 15
+   *
+   * Consumption = 15 ft
+   *
+   * NOT 15 pieces.
+   */
+
+  const usedFeet =
+    num(
+      product?.quantity
+    );
+
+  if (
+    lengthFt <= 0
+  ) {
+    throw new Error(
+      "C Channel inventory length is required."
+    );
+  }
+
+  if (
+    usedFeet <= 0
+  ) {
+    throw new Error(
+      "C Channel Qty Used must be greater than 0 ft."
+    );
+  }
+
+  return {
+    ...product,
+
+    product_name:
+      name,
+
+    /*
+     * C Channel consumption
+     * unit is FEET.
+     */
+    unit:
+      "Ft",
+
+    /*
+     * IMPORTANT:
+     *
+     * quantity = consumed FEET.
+     */
+    quantity:
+      usedFeet,
+
+    /*
+     * Source channel length.
+     *
+     * Example:
+     * 9ft channel = 9
+     */
+    length_ft:
+      lengthFt,
+
+    source_length_ft:
+      lengthFt,
+
+    /*
+     * Keep this for compatibility
+     * with existing saved records.
+     *
+     * It represents the actual
+     * consumed length in feet.
+     */
+    used_length_ft:
+      usedFeet,
+
+    total_weight:
+      getCChannelTotalWeight(
+        product
+      ),
+
+    /*
+     * No piece-based restriction.
+     */
+    cutting_pieces:
+      0,
+
+    /*
+     * Actual consumed length.
+     */
+    consumed_length_ft:
+      usedFeet,
+  };
+}
+  // ---------------------------------------------------
+  // NORMAL PRODUCT
+  // ---------------------------------------------------
 
   return {
     ...product,
@@ -1246,12 +1844,18 @@ function validateProduct(product) {
 
     quantity:
       unit === "Nos"
-        ? Math.max(qty, 0)
+        ? Math.max(
+            qty,
+            0
+          )
         : 0,
 
     total_weight:
       unit === "Kg"
-        ? Math.max(qty, 0)
+        ? Math.max(
+            qty,
+            0
+          )
         : num(
             product?.total_weight
           ),
@@ -1287,7 +1891,10 @@ async function validateLiveStock(
   const requestedMap =
     new Map();
 
-  for (const product of products || []) {
+  for (
+    const product of
+      products || []
+  ) {
     const validated =
       validateProduct(
         product
@@ -1302,7 +1909,9 @@ async function validateLiveStock(
         validated
       );
 
-    if (required <= 0) {
+    if (
+      required <= 0
+    ) {
       continue;
     }
 
@@ -1314,20 +1923,53 @@ async function validateLiveStock(
     requestedMap.set(
       key,
       num(
-        requestedMap.get(key)
-      ) + required
+        requestedMap.get(
+          key
+        )
+      ) +
+        required
     );
   }
 
-  for (
+   for (
     const [
       key,
       required,
     ] of requestedMap.entries()
   ) {
     const stockItem =
-      stockMap.get(key);
+      stockMap.get(
+        key
+      );
 
+    const product =
+      validatedProducts.find(
+        (item) =>
+          getProductKey(
+            item
+          ) === key
+      );
+
+    /*
+     * IMPORTANT
+     *
+     * C Channel stock is ALREADY stored
+     * and calculated in FEET.
+     *
+     * Example:
+     *
+     * 14 pieces × 9 ft = 126 ft
+     *
+     * available_quantity = 126
+     *
+     * If user requests 20 ft:
+     *
+     * required = 20
+     * available = 126
+     *
+     * DO NOT multiply available by
+     * channel length again.
+     */
     const available =
       num(
         stockItem?.available_quantity
@@ -1337,18 +1979,20 @@ async function validateLiveStock(
       required >
       available
     ) {
-      const product =
-        validatedProducts.find(
-          (item) =>
-            getProductKey(item) ===
-            key
-        );
-
       const unit =
-        getProductUnit(product);
+        isCChannel(product)
+          ? "ft"
+          : getProductUnit(
+              product
+            );
+
+      const lengthText =
+        isCChannel(product)
+          ? ` (${getCChannelLength(product)} ft channel)`
+          : "";
 
       throw new Error(
-        `${product.product_name} has only ${available} ${unit} available. You are trying to use ${required} ${unit}.`
+        `${product.product_name}${lengthText} has only ${available} ${unit} available. You are trying to use ${required} ${unit}.`
       );
     }
   }
@@ -1365,11 +2009,15 @@ function getMatchingFIFORows(
   product
 ) {
   const key =
-    getProductKey(product);
+    getProductKey(
+      product
+    );
 
   return rows.filter(
     (row) =>
-      getProductKey(row) === key &&
+      getProductKey(
+        row
+      ) === key &&
       num(
         row.remaining_quantity
       ) > 0
@@ -1390,13 +2038,19 @@ function allocateFIFO(
 
   let total = 0;
 
-  const allocations = [];
+  const allocations =
+    [];
 
-  if (remaining <= 0) {
+  if (
+    remaining <= 0
+  ) {
     return {
       total: 0,
+
       allocations: [],
+
       unit_price: 0,
+
       unit_cost: 0,
     };
   }
@@ -1407,41 +2061,291 @@ function allocateFIFO(
       product
     );
 
-  /*
-   * ===================================================
-   * FIFO PRICING
-   * ===================================================
-   *
-   * FIFO determines:
-   *
-   * 1. Which inventory row is consumed
-   * 2. The price applicable to that quantity
-   *
-   * Example:
-   *
-   * Entry 1:
-   * Qty = 10
-   * Unit Cost = ₹1
-   *
-   * Entry 2:
-   * Qty = 10
-   * Unit Cost = ₹2
-   *
-   * Consumption = 12
-   *
-   * Entry 1:
-   * 10 × ₹1 = ₹10
-   *
-   * Entry 2:
-   * 2 × ₹2 = ₹4
-   *
-   * TOTAL = ₹14
-   */
+  let weightedQuantity =
+    0;
 
-  let weightedQuantity = 0;
+  // ===================================================
+  // C CHANNEL
+  // ===================================================
 
-  for (const row of matchingRows) {
-    if (remaining <= 0) {
+  if (
+    isCChannel(product)
+  ) {
+    /*
+     * =================================================
+     * C CHANNEL FIFO IS IN FEET
+     * =================================================
+     *
+     * Qty Used entered by user:
+     *
+     * 20 ft
+     *
+     * Therefore:
+     *
+     * required = 20 ft
+     *
+     * FIFO deducts feet directly.
+     *
+     * Example:
+     *
+     * Oldest purchase:
+     * 14 × 9ft = 126ft
+     *
+     * Already used:
+     * 108ft
+     *
+     * Remaining:
+     * 18ft
+     *
+     * User requests:
+     * 20ft
+     *
+     * FIFO:
+     *
+     * 18ft from oldest
+     * 2ft from next purchase
+     *
+     * No conversion to pieces.
+     */
+
+    let feetRemaining =
+      Math.max(
+        0,
+        num(required)
+      );
+
+    if (
+      feetRemaining <= 0
+    ) {
+      return {
+        total: 0,
+
+        allocations: [],
+
+        unit_price: 0,
+
+        unit_cost: 0,
+      };
+    }
+
+    for (
+      const row of
+        matchingRows
+    ) {
+      if (
+        feetRemaining <=
+        0
+      ) {
+        break;
+      }
+
+      const sourceLength =
+        getCChannelLength(
+          row
+        );
+
+      if (
+        sourceLength <= 0
+      ) {
+        continue;
+      }
+
+      // -----------------------------------------------
+      // AVAILABLE FIFO STOCK
+      //
+      // This is already FEET.
+      // -----------------------------------------------
+
+      const availableFeet =
+        Math.max(
+          num(
+            row.remaining_quantity
+          ),
+          0
+        );
+
+      if (
+        availableFeet <= 0
+      ) {
+        continue;
+      }
+
+      // -----------------------------------------------
+      // FEET TAKEN FROM THIS PURCHASE
+      // -----------------------------------------------
+
+      const feetFromRow =
+        Math.min(
+          availableFeet,
+          feetRemaining
+        );
+
+     // -----------------------------------------------
+// COST PER FOOT
+// -----------------------------------------------
+//
+// inventory.unit_cost is already ₹ / ft.
+// Do NOT divide by sourceLength again.
+// -----------------------------------------------
+
+const costPerFoot =
+  getInventoryUnitCost(
+    row
+  );
+
+const allocationTotal =
+  feetFromRow *
+  costPerFoot;
+
+      // -----------------------------------------------
+      // WEIGHT
+      // -----------------------------------------------
+
+      const sourceWeight =
+        getCChannelTotalWeight(
+          row
+        );
+
+      const sourcePurchasedQuantity =
+  getPurchasedQuantity(row);
+
+const totalSourceFeet =
+  sourcePurchasedQuantity;
+
+const weightPerFoot =
+  totalSourceFeet > 0
+    ? sourceWeight / totalSourceFeet
+    : 0;
+
+      const consumedWeight =
+        feetFromRow *
+        weightPerFoot;
+
+      // -----------------------------------------------
+      // FIFO ALLOCATION
+      // -----------------------------------------------
+
+      const allocation = {
+        inventory_id:
+          row.id,
+
+        /*
+         * IMPORTANT:
+         *
+         * C Channel allocation quantity
+         * is FEET.
+         */
+        quantity:
+          feetFromRow,
+
+        unit:
+          "Ft",
+
+        unit_cost:
+          costPerFoot,
+
+        unit_price:
+          costPerFoot,
+
+        total:
+          allocationTotal,
+
+        /*
+         * Original source channel length.
+         */
+        length_ft:
+          sourceLength,
+
+        total_weight:
+          sourceWeight,
+
+        /*
+         * Actual consumed feet.
+         */
+        consumed_length_ft:
+          feetFromRow,
+
+        consumed_weight:
+          consumedWeight,
+
+        /*
+         * Informational only.
+         *
+         * This is NOT used for FIFO.
+         */
+        
+      };
+
+      allocations.push(
+        allocation
+      );
+
+      total +=
+        allocationTotal;
+
+      /*
+       * Weighted quantity is FEET.
+       */
+      weightedQuantity +=
+        feetFromRow;
+
+      // -----------------------------------------------
+      // DEDUCT FIFO STOCK AS FEET
+      // -----------------------------------------------
+
+      row.remaining_quantity =
+        Math.max(
+          0,
+          availableFeet -
+            feetFromRow
+        );
+
+      feetRemaining -=
+        feetFromRow;
+    }
+
+    // -----------------------------------------------
+    // NOT ENOUGH FEET
+    // -----------------------------------------------
+
+    if (
+      feetRemaining > 0
+    ) {
+      throw new Error(
+        `${product.product_name} (${getCChannelLength(product)} ft channel) does not have enough stock. ${feetRemaining} ft are still required.`
+      );
+    }
+
+    const weightedAveragePrice =
+      weightedQuantity > 0
+        ? total /
+          weightedQuantity
+        : 0;
+
+    return {
+      total,
+
+      allocations,
+
+      unit_price:
+        weightedAveragePrice,
+
+      unit_cost:
+        weightedAveragePrice,
+    };
+  }
+
+  // ===================================================
+  // NORMAL PRODUCTS
+  // ===================================================
+
+  for (
+    const row of
+      matchingRows
+  ) {
+    if (
+      remaining <= 0
+    ) {
       break;
     }
 
@@ -1450,7 +2354,9 @@ function allocateFIFO(
         row.remaining_quantity
       );
 
-    if (available <= 0) {
+    if (
+      available <= 0
+    ) {
       continue;
     }
 
@@ -1460,20 +2366,16 @@ function allocateFIFO(
         remaining
       );
 
-    /*
-     * CRITICAL:
-     *
-     * Get price from THIS FIFO inventory row.
-     *
-     * DO NOT use the latest inventory price here.
-     */
     const unitCost =
-      getCostPerUnit(row);
+      getCostPerUnit(
+        row
+      );
 
     const allocationTotal =
-      allocate * unitCost;
+      allocate *
+      unitCost;
 
-    allocations.push({
+    const allocation = {
       inventory_id:
         row.id,
 
@@ -1488,7 +2390,11 @@ function allocateFIFO(
 
       total:
         allocationTotal,
-    });
+    };
+
+    allocations.push(
+      allocation
+    );
 
     total +=
       allocationTotal;
@@ -1496,9 +2402,6 @@ function allocateFIFO(
     weightedQuantity +=
       allocate;
 
-    /*
-     * Deduct stock from THIS FIFO row.
-     */
     row.remaining_quantity -=
       allocate;
 
@@ -1506,25 +2409,18 @@ function allocateFIFO(
       allocate;
   }
 
-  if (remaining > 0) {
+  if (
+    remaining > 0
+  ) {
     throw new Error(
       `${product.product_name} does not have enough live stock.`
     );
   }
 
-  /*
-   * Material Consumption has one Unit Price field.
-   *
-   * When multiple FIFO prices are involved,
-   * show/store the weighted average.
-   *
-   * Example:
-   *
-   * ₹14 / 12 = ₹1.166666...
-   */
   const weightedAveragePrice =
     weightedQuantity > 0
-      ? total / weightedQuantity
+      ? total /
+        weightedQuantity
       : 0;
 
   return {
@@ -1567,10 +2463,16 @@ function getSavedOriginalInverterCost(
     product?.inverter_cost,
   ];
 
-  for (const value of values) {
-    const cost = num(value);
+  for (
+    const value of
+      values
+  ) {
+    const cost =
+      num(value);
 
-    if (cost > 0) {
+    if (
+      cost > 0
+    ) {
       return cost;
     }
   }
@@ -1592,29 +2494,27 @@ function calculateOriginalInverterCost(
       kitProduct
     );
 
-  if (!originalBrand) {
+  if (
+    !originalBrand
+  ) {
     return {
       cost:
         getSavedOriginalInverterCost(
           kitProduct
-        ) * num(quantity),
+        ) *
+        num(quantity),
 
       allocations: [],
     };
   }
 
-  /*
-   * Find the latest matching original inverter
-   * purchase price.
-   *
-   * The original inverter is part of the kit and is
-   * not separately consumed from inventory here.
-   */
-
   let latestOriginalInverterPrice =
     0;
 
-  for (const row of rows) {
+  for (
+    const row of
+      rows
+  ) {
     const category =
       cleanText(
         row?.category
@@ -1626,7 +2526,8 @@ function calculateOriginalInverterCost(
       ).toLowerCase();
 
     if (
-      category !== "inverter" ||
+      category !==
+        "inverter" ||
       company !==
         originalBrand.toLowerCase()
     ) {
@@ -1634,16 +2535,21 @@ function calculateOriginalInverterCost(
     }
 
     const rowPrice =
-      getInventoryUnitCost(row);
+      getInventoryUnitCost(
+        row
+      );
 
-    if (rowPrice > 0) {
+    if (
+      rowPrice > 0
+    ) {
       latestOriginalInverterPrice =
         rowPrice;
     }
   }
 
   if (
-    latestOriginalInverterPrice > 0
+    latestOriginalInverterPrice >
+    0
   ) {
     return {
       cost:
@@ -1658,7 +2564,8 @@ function calculateOriginalInverterCost(
     cost:
       getSavedOriginalInverterCost(
         kitProduct
-      ) * num(quantity),
+      ) *
+      num(quantity),
 
     allocations: [],
   };
@@ -1700,13 +2607,6 @@ async function calculateFIFOCost(
       excludeConsumptionId
     );
 
-  /*
-   * IMPORTANT:
-   *
-   * Inventory rows remain in oldest -> newest order.
-   *
-   * This order is what makes FIFO work.
-   */
   const rows =
     prepareInventoryRows(
       inventoryRows,
@@ -1718,13 +2618,17 @@ async function calculateFIFOCost(
       (product) => ({
         ...product,
 
-        fifo_allocations: [],
+        fifo_allocations:
+          [],
 
-        total: 0,
+        total:
+          0,
 
-        unit_price: 0,
+        unit_price:
+          0,
 
-        unit_cost: 0,
+        unit_cost:
+          0,
 
         original_kit_inverter_cost:
           getSavedOriginalInverterCost(
@@ -1741,7 +2645,7 @@ async function calculateFIFOCost(
   for (
     let index = 0;
     index <
-    outputProducts.length;
+      outputProducts.length;
     index++
   ) {
     const product =
@@ -1752,7 +2656,9 @@ async function calculateFIFOCost(
         product
       );
 
-    if (required <= 0) {
+    if (
+      required <= 0
+    ) {
       continue;
     }
 
@@ -1769,15 +2675,159 @@ async function calculateFIFOCost(
     product.total =
       result.total;
 
-    /*
-     * If consumption uses multiple FIFO batches,
-     * this is their weighted average.
-     */
     product.unit_price =
       result.unit_price;
 
     product.unit_cost =
       result.unit_price;
+
+    // -------------------------------------------------
+    // C CHANNEL INFORMATION
+    // -------------------------------------------------
+if (
+  isCChannel(product)
+) {
+  /*
+   * =================================================
+   * C CHANNEL = FEET
+   * =================================================
+   *
+   * Qty Used is entered directly in feet.
+   *
+   * Example:
+   *
+   * User enters:
+   * 15
+   *
+   * This means:
+   * 15 ft
+   *
+   * It does NOT mean:
+   * 15 pieces.
+   */
+
+  const totalFeetUsed =
+    Math.max(
+      0,
+      num(
+        product.quantity
+      )
+    );
+
+  const sourceLength =
+    getCChannelLength(
+      product
+    );
+
+    console.log(
+  "C CHANNEL VALIDATION DEBUG:",
+  {
+    product,
+    sourceLength,
+    length_ft: product?.length_ft,
+    source_length_ft:
+      product?.source_length_ft,
+    quantity:
+      product?.quantity,
+  }
+);
+
+  const totalWeight =
+    getCChannelTotalWeight(
+      product
+    );
+
+  /*
+   * Actual consumed length is
+   * exactly the quantity entered.
+   */
+  const consumedLength =
+    totalFeetUsed;
+
+  product.length_ft =
+    sourceLength;
+
+  product.source_length_ft =
+    sourceLength;
+
+  product.total_weight =
+    totalWeight;
+
+  /*
+   * quantity = FEET USED
+   */
+  product.quantity =
+    totalFeetUsed;
+
+  /*
+   * consumed_length_ft = FEET USED
+   */
+  product.consumed_length_ft =
+    consumedLength;
+
+  /*
+   * Keep used_length_ft compatible
+   * with existing records.
+   *
+   * It is also FEET.
+   */
+  product.used_length_ft =
+    totalFeetUsed;
+
+  /*
+   * There is no piece-based
+   * consumption anymore.
+   */
+  product.cutting_pieces =
+    0;
+
+  /*
+   * This field now represents
+   * the consumed length, not a
+   * piece cut length.
+   */
+  product.piece_length_ft =
+    totalFeetUsed;
+
+  // -------------------------------------------------
+  // CALCULATE ACTUAL CONSUMED WEIGHT
+  // -------------------------------------------------
+
+  let calculatedConsumedWeight =
+    0;
+
+  if (
+    Array.isArray(
+      product.fifo_allocations
+    )
+  ) {
+    calculatedConsumedWeight =
+      product.fifo_allocations.reduce(
+        (
+          sum,
+          allocation
+        ) =>
+          sum +
+          num(
+            allocation.consumed_weight
+          ),
+        0
+      );
+  }
+
+  product.consumed_weight =
+    calculatedConsumedWeight;
+
+  // -------------------------------------------------
+  // COST PER USED FOOT
+  // -------------------------------------------------
+
+  product.piece_cost =
+    totalFeetUsed > 0
+      ? product.total /
+        totalFeetUsed
+      : 0;
+}
   }
 
   // ===================================================
@@ -1787,7 +2837,7 @@ async function calculateFIFOCost(
   for (
     let index = 0;
     index <
-    outputProducts.length;
+      outputProducts.length;
     index++
   ) {
     const kit =
@@ -1800,17 +2850,19 @@ async function calculateFIFOCost(
     }
 
     const quantity =
-      num(kit.quantity);
+      num(
+        kit.quantity
+      );
 
-    if (quantity <= 0) {
+    if (
+      quantity <= 0
+    ) {
       continue;
     }
 
-    /*
-     * No inverter swap.
-     */
     if (
-      kit.has_inverter_swap !== true
+      kit.has_inverter_swap !==
+      true
     ) {
       continue;
     }
@@ -1841,7 +2893,8 @@ async function calculateFIFOCost(
           product,
           productIndex
         ) =>
-          productIndex !== index &&
+          productIndex !==
+            index &&
           isKitReplacementInverter(
             product
           ) &&
@@ -1850,27 +2903,26 @@ async function calculateFIFOCost(
           ) === index
       );
 
-    let replacementCost = 0;
+    let replacementCost =
+      0;
 
     if (
-      replacementIndex >= 0
+      replacementIndex >=
+      0
     ) {
       const replacement =
         outputProducts[
           replacementIndex
         ];
 
-      /*
-       * Replacement inverter already went through
-       * FIFO costing above.
-       */
       replacementCost =
         num(
           replacement.total
         );
 
       replacement.replacement_inverter_cost =
-        replacement.quantity > 0
+        replacement.quantity >
+        0
           ? replacement.total /
             replacement.quantity
           : 0;
@@ -1887,7 +2939,9 @@ async function calculateFIFOCost(
     // -------------------------------------------------
 
     const originalKitCost =
-      num(kit.total);
+      num(
+        kit.total
+      );
 
     const adjustedKitCost =
       Math.max(
@@ -1929,7 +2983,9 @@ async function calculateFIFOCost(
 // ADDITIONAL CHARGES
 // =====================================================
 
-function getAggregateCharges(form) {
+function getAggregateCharges(
+  form
+) {
   const directAggregate =
     form?.aggregate_charges;
 
@@ -1939,7 +2995,8 @@ function getAggregateCharges(form) {
   if (
     directAggregate !==
       undefined &&
-    directAggregate !== null &&
+    directAggregate !==
+      null &&
     String(
       directAggregate
     ).trim() !== ""
@@ -1949,22 +3006,30 @@ function getAggregateCharges(form) {
     );
   }
 
-  return num(oldGitti);
+  return num(
+    oldGitti
+  );
 }
 
-function getBhadaCharges(form) {
+function getBhadaCharges(
+  form
+) {
   return num(
     form?.bhada_charges
   );
 }
 
-function getCementCharges(form) {
+function getCementCharges(
+  form
+) {
   return num(
     form?.cement_charges
   );
 }
 
-function getSandCharges(form) {
+function getSandCharges(
+  form
+) {
   return num(
     form?.sand_charges
   );
@@ -1981,13 +3046,21 @@ function calculateTotalPlantCost(
   return (
     num(materialCost) +
 
-    getAggregateCharges(form) +
+    getAggregateCharges(
+      form
+    ) +
 
-    getBhadaCharges(form) +
+    getBhadaCharges(
+      form
+    ) +
 
-    getCementCharges(form) +
+    getCementCharges(
+      form
+    ) +
 
-    getSandCharges(form) +
+    getSandCharges(
+      form
+    ) +
 
     num(
       form?.installation_charges
@@ -2027,18 +3100,28 @@ function calculateTotalPlantCost(
 // BUILD ADDITIONAL CHARGES
 // =====================================================
 
-function buildAdditionalCharges(form) {
+function buildAdditionalCharges(
+  form
+) {
   const aggregateCharges =
-    getAggregateCharges(form);
+    getAggregateCharges(
+      form
+    );
 
   const bhadaCharges =
-    getBhadaCharges(form);
+    getBhadaCharges(
+      form
+    );
 
   const cementCharges =
-    getCementCharges(form);
+    getCementCharges(
+      form
+    );
 
   const sandCharges =
-    getSandCharges(form);
+    getSandCharges(
+      form
+    );
 
   return {
     aggregate_charges:
@@ -2108,19 +3191,29 @@ function buildPayload(
   materialCost
 ) {
   const aggregateCharges =
-    getAggregateCharges(form);
+    getAggregateCharges(
+      form
+    );
 
   const bhadaCharges =
-    getBhadaCharges(form);
+    getBhadaCharges(
+      form
+    );
 
   const cementCharges =
-    getCementCharges(form);
+    getCementCharges(
+      form
+    );
 
   const sandCharges =
-    getSandCharges(form);
+    getSandCharges(
+      form
+    );
 
   const additionalCharges =
-    buildAdditionalCharges(form);
+    buildAdditionalCharges(
+      form
+    );
 
   return {
     customer_id:
@@ -2141,7 +3234,9 @@ function buildPayload(
     products,
 
     material_cost:
-      num(materialCost),
+      num(
+        materialCost
+      ),
 
     bhada_charges:
       bhadaCharges,
@@ -2213,12 +3308,15 @@ export async function addUsedInventory(
   form
 ) {
   const rawProducts =
-    Array.isArray(form?.products)
+    Array.isArray(
+      form?.products
+    )
       ? form.products
       : [];
 
   if (
-    rawProducts.length === 0
+    rawProducts.length ===
+    0
   ) {
     throw new Error(
       "At least one material is required."
@@ -2251,7 +3349,9 @@ export async function addUsedInventory(
     productsWithFIFO.reduce(
       (sum, product) =>
         sum +
-        num(product.total),
+        num(
+          product.total
+        ),
       0
     );
 
@@ -2278,7 +3378,9 @@ export async function addUsedInventory(
   } =
     await supabase
       .from("used_inventory")
-      .insert(payload)
+      .insert(
+        payload
+      )
       .select()
       .single();
 
@@ -2306,28 +3408,24 @@ export async function updateUsedInventory(
   }
 
   const rawProducts =
-    Array.isArray(data?.products)
+    Array.isArray(
+      data?.products
+    )
       ? data.products
       : [];
 
   if (
-    rawProducts.length === 0
+    rawProducts.length ===
+    0
   ) {
     throw new Error(
       "At least one material is required."
     );
   }
 
-  /*
-   * IMPORTANT:
-   *
-   * When editing an existing Material Consumption,
-   * exclude the current consumption from FIFO usage.
-   *
-   * Otherwise its old stock allocation would still
-   * count as consumed and the available quantity would
-   * become incorrect.
-   */
+  // ---------------------------------------------------
+  // EXCLUDE CURRENT CONSUMPTION
+  // ---------------------------------------------------
 
   const validatedProducts =
     await validateLiveStock(
@@ -2335,12 +3433,9 @@ export async function updateUsedInventory(
       id
     );
 
-  /*
-   * Recalculate FIFO again.
-   *
-   * This means editing an old Material Consumption will
-   * also rebuild its FIFO allocations and prices.
-   */
+  // ---------------------------------------------------
+  // RECALCULATE FIFO
+  // ---------------------------------------------------
 
   const productsWithFIFO =
     await calculateFIFOCost(
@@ -2348,18 +3443,17 @@ export async function updateUsedInventory(
       id
     );
 
-  /*
-   * NEVER trust the old material_cost supplied by the
-   * modal during edit.
-   *
-   * Calculate it again from FIFO.
-   */
+  // ---------------------------------------------------
+  // MATERIAL COST
+  // ---------------------------------------------------
 
   const materialCost =
     productsWithFIFO.reduce(
       (sum, product) =>
         sum +
-        num(product.total),
+        num(
+          product.total
+        ),
       0
     );
 
@@ -2376,8 +3470,13 @@ export async function updateUsedInventory(
   } =
     await supabase
       .from("used_inventory")
-      .update(payload)
-      .eq("id", id)
+      .update(
+        payload
+      )
+      .eq(
+        "id",
+        id
+      )
       .select()
       .single();
 
@@ -2395,7 +3494,8 @@ export async function updateUsedInventory(
 // =====================================================
 
 export async function deleteUsedInventory(
-  id
+  id,
+  options = {}
 ) {
   if (!id) {
     throw new Error(
@@ -2403,21 +3503,32 @@ export async function deleteUsedInventory(
     );
   }
 
-  const { error } =
-    await supabase
-      .from("used_inventory")
-      .delete()
-      .eq("id", id);
+  const {
+    error,
+  } = await supabase
+    .from("used_inventory")
+    .delete()
+    .eq(
+      "id",
+      id
+    );
 
   if (error) {
     throw error;
   }
 
-  await syncInventoryUsedQuantities();
+  // ---------------------------------------------------
+  // SYNC INVENTORY ONLY WHEN REQUESTED
+  // ---------------------------------------------------
+
+  if (
+    !options.skipSync
+  ) {
+    await syncInventoryUsedQuantities();
+  }
 
   return true;
 }
-
 // =====================================================
 // SYNC INVENTORY USED QUANTITIES
 // =====================================================
@@ -2434,7 +3545,16 @@ async function syncInventoryUsedQuantities() {
       consumptionRows
     );
 
-  for (const row of inventoryRows) {
+  // ---------------------------------------------------
+  // ONLY UPDATE INVENTORY ROWS WHERE USED QUANTITY
+  // HAS ACTUALLY CHANGED.
+  // ---------------------------------------------------
+
+  const updates = [];
+
+  for (
+    const row of inventoryRows
+  ) {
     const usedQuantity =
       num(
         usedMap.get(
@@ -2442,8 +3562,21 @@ async function syncInventoryUsedQuantities() {
         )
       );
 
-    const { error } =
-      await supabase
+    const currentUsedQuantity =
+      num(
+        row.used_quantity
+      );
+
+    // Nothing changed — skip this row completely.
+    if (
+      currentUsedQuantity ===
+      usedQuantity
+    ) {
+      continue;
+    }
+
+    updates.push(
+      supabase
         .from("inventory")
         .update({
           used_quantity:
@@ -2452,12 +3585,46 @@ async function syncInventoryUsedQuantities() {
         .eq(
           "id",
           row.id
-        );
+        )
+    );
+  }
 
-    if (error) {
-      throw error;
+  // ---------------------------------------------------
+  // RUN REQUIRED UPDATES IN PARALLEL
+  // ---------------------------------------------------
+
+  if (
+    updates.length > 0
+  ) {
+    const results =
+      await Promise.all(
+        updates
+      );
+
+    const failed =
+      results.find(
+        (result) =>
+          result.error
+      );
+
+    if (failed?.error) {
+      throw failed.error;
     }
   }
+
+  return true;
+}
+
+export async function repairInventoryUsedQuantities() {
+  console.log(
+    "========== INVENTORY USED QUANTITY REPAIR START =========="
+  );
+
+  await syncInventoryUsedQuantities();
+
+  console.log(
+    "========== INVENTORY USED QUANTITY REPAIR COMPLETE =========="
+  );
 
   return true;
 }
@@ -2506,4 +3673,5 @@ export {
   syncInventoryUsedQuantities,
   getProductKey,
   getProductUnit,
-};  
+  calculateFIFOCost,
+};
