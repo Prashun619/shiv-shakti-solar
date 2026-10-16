@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { supabase } from "../services/supabase";
 import KpiCard from "../components/ui/KpiCard";
 import { useEffect, useState } from "react";
@@ -602,43 +603,78 @@ const FINANCE_INVENTORY_PRODUCTS =
   // ----------------------------------------------------------
 
   const expenseTransactions =
-    billing.filter((item) => {
-      if (
-        item.source_type ===
-        "Customer Payment"
-      ) {
-        return false;
-      }
+  billing.filter((item) => {
+    if (
+      item.source_type ===
+      "Customer Payment"
+    ) {
+      return false;
+    }
 
-      const type =
-        normalizeName(item.type);
+    const type =
+      normalizeName(item.type);
 
-      const paidBy =
-        normalizeName(item.paid_by);
+    const sourceType =
+      normalizeName(item.source_type);
 
-      // ------------------------------------------------------
-      // EXPENSE PAID BY INVESTOR
-      // ------------------------------------------------------
+    const paidBy =
+      normalizeName(item.paid_by);
 
-      const isExpenseInvestment =
-        type === "expense" &&
-        EXPENSE_INVESTOR_NAMES.includes(
-          paidBy
-        );
+    // ------------------------------------------------------
+    // INVESTOR-PAID TRANSACTIONS
+    //
+    // These belong to Investment, not normal Expense.
+    // ------------------------------------------------------
 
-      // Do NOT show investor-paid expenses
-      // under normal Expense.
-      if (isExpenseInvestment) {
-        return false;
-      }
+    const investorPaid =
+      isInvestor(paidBy);
 
-      return (
-        type === "expense" ||
-        type === "vendor payment" ||
-        type === "installation charges" ||
-        type === "je charge"
+    const isInvestorDealerPayment =
+      investorPaid &&
+      (
+        type === "dealer payment" ||
+        sourceType === "dealer payment"
       );
-    });
+
+    const isInvestorVendorPayment =
+      investorPaid &&
+      (
+        type === "vendor payment" ||
+        sourceType === "vendor payment"
+      );
+
+    const isInvestorMiscellaneous =
+      investorPaid &&
+      (
+        type === "miscellaneous" ||
+        sourceType === "miscellaneous"
+      );
+
+    const isInvestorExpense =
+      investorPaid &&
+      type === "expense";
+
+    if (
+      isInvestorDealerPayment ||
+      isInvestorVendorPayment ||
+      isInvestorMiscellaneous ||
+      isInvestorExpense
+    ) {
+      return false;
+    }
+
+    // ------------------------------------------------------
+    // NORMAL BUSINESS EXPENSES
+    // ------------------------------------------------------
+
+    return (
+      type === "expense" ||
+      type === "vendor payment" ||
+      type === "miscellaneous" ||
+      type === "installation charges" ||
+      type === "je charge"
+    );
+  });
 
   const totalNormalExpense =
     expenseTransactions.reduce(
@@ -713,79 +749,102 @@ const FINANCE_INVENTORY_PRODUCTS =
   // ----------------------------------------------------------
 
   const investmentTransactions =
-    billing.filter((item) => {
-      if (
-        item.source_type ===
-        "Customer Payment"
-      ) {
-        return false;
-      }
-
-      const sourceType =
-        normalizeName(
-          item.source_type
-        );
-
-      const type =
-        normalizeName(item.type);
-
-      const remarks =
-        normalizeName(item.remarks);
-
-      const paidBy =
-        normalizeName(item.paid_by);
-
-      // ------------------------------------------------------
-      // NORMAL INVESTMENT
-      // ------------------------------------------------------
-
-      if (
-        sourceType ===
-        "investment"
-      ) {
-        return true;
-      }
-
-      // ------------------------------------------------------
-      // EXPENSE PAID BY INDIVIDUAL INVESTOR
-      //
-      // This is the NEW requested behavior.
-      // ------------------------------------------------------
-
-      const isExpenseInvestment =
-        type === "expense" &&
-        EXPENSE_INVESTOR_NAMES.includes(
-          paidBy
-        );
-
-      if (isExpenseInvestment) {
-        return true;
-      }
-
-      // ------------------------------------------------------
-      // INVESTOR-PAID DEALER PAYMENT
-      //
-      // Existing logic remains unchanged.
-      // ------------------------------------------------------
-
-      const isDealerPayment =
-        sourceType ===
-          "dealer payment" ||
-        remarks ===
-          "dealer payment" ||
-        remarks.includes(
-          "dealer payment"
-        );
-
-      if (
-        isDealerPayment &&
-        isInvestor(paidBy)
-      ) {
-        return true;
-      }
-
+  billing.filter((item) => {
+    if (
+      item.source_type ===
+      "Customer Payment"
+    ) {
       return false;
-    });
+    }
+
+    const sourceType =
+      normalizeName(
+        item.source_type
+      );
+
+    const type =
+      normalizeName(item.type);
+
+    const remarks =
+      normalizeName(item.remarks);
+
+    const paidBy =
+      normalizeName(item.paid_by);
+
+    // ------------------------------------------------------
+    // DIRECT INVESTMENT
+    // ------------------------------------------------------
+
+    if (
+      sourceType ===
+      "investment"
+    ) {
+      return true;
+    }
+
+    // ------------------------------------------------------
+    // INVESTOR-PAID DEALER PAYMENT
+    // ------------------------------------------------------
+
+    const isDealerPayment =
+      type === "dealer payment" ||
+      sourceType === "dealer payment" ||
+      remarks === "dealer payment" ||
+      remarks.includes("dealer payment");
+
+    if (
+      isDealerPayment &&
+      isInvestor(paidBy)
+    ) {
+      return true;
+    }
+
+    // ------------------------------------------------------
+    // INVESTOR-PAID VENDOR PAYMENT
+    // ------------------------------------------------------
+
+    const isVendorPayment =
+      type === "vendor payment" ||
+      sourceType === "vendor payment";
+
+    if (
+      isVendorPayment &&
+      isInvestor(paidBy)
+    ) {
+      return true;
+    }
+
+    // ------------------------------------------------------
+    // INVESTOR-PAID MISCELLANEOUS
+    // ------------------------------------------------------
+
+    const isMiscellaneous =
+      type === "miscellaneous" ||
+      sourceType === "miscellaneous";
+
+    if (
+      isMiscellaneous &&
+      isInvestor(paidBy)
+    ) {
+      return true;
+    }
+
+    // ------------------------------------------------------
+    // INVESTOR-PAID EXPENSE
+    // ------------------------------------------------------
+
+    const isExpenseInvestment =
+      type === "expense" &&
+      EXPENSE_INVESTOR_NAMES.includes(
+        paidBy
+      );
+
+    if (isExpenseInvestment) {
+      return true;
+    }
+
+    return false;
+  });
 
   // ==========================================================
   // KPI TOTALS
@@ -848,8 +907,7 @@ const FINANCE_INVENTORY_PRODUCTS =
   // ==========================================================
 
   const totalIncome =
-    totalCustomerPayment +
-    totalInvestment;
+  totalCustomerPayment;
 
   const totalExpense =
     totalNormalExpense +
@@ -1422,7 +1480,7 @@ async function handleBulkDelete() {
   // TRANSACTION TABLE
   // ==========================================================
 
-  function TransactionTable() {
+  function renderTransactionTable() {
   return (
       <div
         className="
@@ -1504,25 +1562,26 @@ async function handleBulkDelete() {
 
         <div className="p-4">
           <div className="mb-4">
-            <input
-              type="text"
-              placeholder="🔍 Search transaction"
-              value={search}
-              onChange={(e) =>
-                setSearch(
-                  e.target.value
-                )
-              }
-              className="
-                border-2
-                border-black
-                rounded-lg
-                px-3
-                py-2
-                w-72
-                outline-none
-              "
-            />
+          
+<input
+  type="search"
+  placeholder="🔍 Search transaction"
+  value={search}
+  autoComplete="off"
+  onChange={(e) => {
+    setSearch(e.target.value);
+  }}
+  className="
+    border-2
+    border-black
+    rounded-lg
+    px-3
+    py-2
+    w-72
+    outline-none
+  "
+/>
+
           </div>
 
           <div className="overflow-x-auto">
@@ -3520,10 +3579,8 @@ async function handleBulkDelete() {
       ====================================================== */}
 
       {selectedBlock &&
-        selectedBlock !==
-          "plantExpense" && (
-          <TransactionTable />
-        )}
+  selectedBlock !== "plantExpense" &&
+  renderTransactionTable()}
 
       {/* ======================================================
           SELECTED PLANT EXPENSE

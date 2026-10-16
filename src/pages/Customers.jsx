@@ -740,9 +740,9 @@ loadCustomers();
      <div className="overflow-hidden rounded-2xl bg-white shadow-xl border border-slate-200 min-w-0">
   <div className="overflow-x-auto rounded-2xl">
 
-       <table className="w-full min-w-[1050px] text-xs border border-black border-collapse">
+       <table className="w-full min-w-[1050px] text-base border border-black border-collapse">
 
-           <thead className="bg-slate-900 text-white border border-black">
+           <thead className="bg-slate-900 text-white border border-black text-base">
 
             <tr>
 
@@ -778,9 +778,7 @@ Payment Type
   Remaining
 </th>
 
-<th className="px-3 py-3 text-center whitespace-nowrap border border-black">
-  Status
-</th>
+
 
 <th className="px-3 py-3 text-center whitespace-nowrap border border-black">
   Actions
@@ -796,8 +794,8 @@ Payment Type
 
               <tr>
 
-                <td
-  colSpan="10"
+               <td
+  colSpan="9"
   className="py-16 text-center text-slate-400 text-lg"
 >
                   Loading...
@@ -810,7 +808,7 @@ Payment Type
               <tr>
 
                 <td
-  colSpan="10"
+  colSpan="9"
   className="py-16 text-center"
 >
                   <div className="flex flex-col items-center">
@@ -870,7 +868,7 @@ Payment Type
 <td className="px-3 py-3 border border-black text-center whitespace-nowrap">
 
 <span
-className={`px-3 py-1 rounded-full text-xs font-semibold ${
+className={`px-3 py-1 rounded-full text-sm font-semibold ${
 customer.payment_type === "Finance"
 ? "bg-purple-100 text-purple-700"
 : "bg-green-100 text-green-700"
@@ -882,7 +880,7 @@ customer.payment_type === "Finance"
 </td>
 
 
-<td className="px-3 py-3 border border-black text-center text-sm text-slate-700">
+<td className="px-3 py-3 border border-black text-center text-base text-black">
   {customer.project?.project_size || customer.plant_size || "-"} KW
 </td>
 
@@ -902,19 +900,7 @@ customer.payment_type === "Finance"
 </td>
 
 
-<td className="px-3 py-3 border border-black text-center whitespace-nowrap">
 
-  <span
-    className={`px-3 py-1 rounded-full text-xs font-bold ${
-      customer.project?.status === "Completed"
-        ? "bg-green-100 text-green-700"
-        : "bg-orange-100 text-orange-700"
-    }`}
-  >
-    {customer.project?.status || "Pending"}
-  </span>
-
-</td>
 
 
 <td className="px-3 py-2 border border-black whitespace-nowrap text-center">

@@ -1,3 +1,5 @@
+import PaymentReceipt from "./pages/PaymentReceipt";
+import NewInvoice from "./pages/NewInvoice";
 import Investments from "./pages/Investments";
 
 import { Navigate } from "react-router-dom";
@@ -7,7 +9,7 @@ import PlantCosting from "./pages/PlantCosting";
 import {
   Routes,
   Route,
-  Link,
+  NavLink,
   useNavigate,
 } from "react-router-dom";
 
@@ -25,11 +27,273 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import FinanceLedger from "./pages/FinanceLedger";
 import Billing from "./pages/Billing";
-import Invoice from "./pages/Invoice";
 import CreateInvoice from "./pages/CreateInvoice";
 
 
+// ============================================================
+// SIDEBAR ICONS
+// ============================================================
+
+function SidebarIcon({ type }) {
+
+  const common = {
+    width: 24,
+    height: 24,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+  };
+
+
+  // Dashboard
+
+  if (type === "dashboard") {
+    return (
+      <svg {...common}>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </svg>
+    );
+  }
+
+
+  // Customers
+
+  if (type === "customers") {
+    return (
+      <svg {...common}>
+        <circle cx="9" cy="8" r="3" />
+        <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+        <path d="M16 5.5a3 3 0 0 1 0 5.8" />
+        <path d="M18 14c1.8.8 3 2.5 3 5" />
+      </svg>
+    );
+  }
+
+
+  // Inventory
+
+  if (type === "inventory") {
+    return (
+      <svg {...common}>
+        <path d="M4 7h16v13H4z" />
+        <path d="M7 7V4h10v3" />
+        <path d="M8 11h8" />
+      </svg>
+    );
+  }
+
+
+  // Material Consumption
+
+  if (type === "material") {
+    return (
+      <svg {...common}>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M7 8h10" />
+        <path d="M7 12h6" />
+        <path d="M7 16h8" />
+      </svg>
+    );
+  }
+
+
+  // Finance
+
+  if (type === "finance") {
+    return (
+      <svg {...common}>
+        <rect x="3" y="5" width="18" height="15" rx="2" />
+        <path d="M7 5V3h10v2" />
+        <path d="M7 10h10" />
+        <path d="M8 15h3" />
+        <path d="M15 15h1" />
+      </svg>
+    );
+  }
+
+
+  // Investments
+
+  if (type === "investment") {
+    return (
+      <svg {...common}>
+        <path d="M4 19V9" />
+        <path d="M10 19V5" />
+        <path d="M16 19v-7" />
+        <path d="M22 19V3" />
+      </svg>
+    );
+  }
+
+
+  // Invoice
+
+  if (type === "invoice") {
+    return (
+      <svg {...common}>
+        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" />
+        <path d="M9 8h6" />
+        <path d="M9 12h6" />
+        <path d="M9 16h4" />
+      </svg>
+    );
+  }
+
+  // Payment Receipt
+if (type === "payment-receipt") {
+  return (
+    <svg {...common}>
+      <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" />
+      <path d="M9 8h6" />
+      <path d="M9 12h6" />
+      <path d="M9 16h3" />
+      <path d="M16 15v4" />
+    </svg>
+  );
+}
+
+  // Plant Costing
+
+  if (type === "plant") {
+    return (
+      <svg {...common}>
+        <path d="M12 21V10" />
+        <path d="M12 14c-4 0-6-2-6-6 4 0 6 2 6 6z" />
+        <path d="M12 11c0-4 2-6 6-6 0 4-2 6-6 6z" />
+        <path d="M8 21h8" />
+      </svg>
+    );
+  }
+
+
+  // Reports
+
+  if (type === "reports") {
+    return (
+      <svg {...common}>
+        <path d="M4 19V5" />
+        <path d="M4 19h16" />
+        <path d="M7 16v-5" />
+        <path d="M12 16V8" />
+        <path d="M17 16v-9" />
+      </svg>
+    );
+  }
+
+
+  // Settings
+
+  if (type === "settings") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="3" />
+
+        <path
+          d="
+            M19.4 15
+            a1.7 1.7 0 0 0 .3 1.9
+            l.1.1
+            -1.8 1.8
+            -.1-.1
+            a1.7 1.7 0 0 0-1.9-.3
+            1.7 1.7 0 0 0-1 1.6
+            V20
+            h-2.6
+            v-.1
+            a1.7 1.7 0 0 0-1-1.6
+            1.7 1.7 0 0 0-1.9.3
+            l-.1.1
+            -1.8-1.8
+            .1-.1
+            a1.7 1.7 0 0 0 .3-1.9
+            1.7 1.7 0 0 0-1.6-1
+            H6
+            v-2.6
+            h.1
+            a1.7 1.7 0 0 0 1.6-1
+            1.7 1.7 0 0 0-.3-1.9
+            l-.1-.1
+            1.8-1.8
+            .1.1
+            a1.7 1.7 0 0 0 1.9.3
+            1.7 1.7 0 0 0 1-1.6
+            V4
+            h2.6
+            v.1
+            a1.7 1.7 0 0 0 1 1.6
+            1.7 1.7 0 0 0 1.9-.3
+            l.1-.1
+            1.8 1.8
+            -.1.1
+            a1.7 1.7 0 0 0-.3 1.9
+            1.7 1.7 0 0 0 1.6 1
+            h.1
+            v2.6
+            h-.1
+            a1.7 1.7 0 0 0-1.6 1z
+          "
+        />
+      </svg>
+    );
+  }
+
+
+  // Logout
+
+  if (type === "logout") {
+    return (
+      <svg {...common}>
+        <path d="M10 17l5-5-5-5" />
+        <path d="M15 12H3" />
+        <path d="M14 4h5v16h-5" />
+      </svg>
+    );
+  }
+
+
+  return null;
+}
+
+
+// ============================================================
+// SIDEBAR LINK CLASS
+// ============================================================
+
+function sidebarLinkClass({ isActive }) {
+
+  return `
+    w-full
+    h-12
+    px-4
+    rounded-[17px]
+    flex
+    items-center
+    gap-3
+    shrink-0
+    transition-all
+    duration-200
+
+    ${
+      isActive
+        ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+        : "text-slate-500 hover:bg-slate-100 hover:text-blue-600"
+    }
+  `;
+}
+
+
+// ============================================================
+// MAIN APP
+// ============================================================
+
 export default function App() {
+
 
   const [currentUser, setCurrentUser] = useState(() => {
 
@@ -42,12 +306,21 @@ export default function App() {
 
 
   const [userLoaded, setUserLoaded] = useState(false);
-const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const [mobileMenuOpen, setMobileMenuOpen] =
+    useState(false);
+
 
   useEffect(() => {
+
     setUserLoaded(true);
+
   }, []);
 
+
+  // ============================================================
+  // PERMISSIONS
+  // ============================================================
 
   function hasPermission(permission) {
 
@@ -66,6 +339,10 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
 
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+
   async function handleLogout() {
 
     await supabase.auth.signOut();
@@ -79,14 +356,18 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   }
 
 
+  // ============================================================
+  // LOADING
+  // ============================================================
+
   if (!userLoaded) {
     return null;
   }
 
 
-  /* =====================================================
-     LOGIN
-  ===================================================== */
+  // ============================================================
+  // LOGIN
+  // ============================================================
 
   if (!currentUser) {
 
@@ -112,589 +393,564 @@ const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   }
 
 
-  /* =====================================================
-     APPLICATION
-  ===================================================== */
+  // ============================================================
+  // APPLICATION
+  // ============================================================
 
   return (
     <>
-      
 
 
-      {/* =================================================
+      {/* ========================================================
           MAIN APPLICATION
-      ================================================= */}
+      ======================================================== */}
 
-     <div className="h-screen flex bg-gradient-to-br from-slate-50 via-cyan-100 to-purple-100 overflow-hidden">
+      <div
+        className="
+          h-screen
+          flex
+          bg-gradient-to-br
+          from-slate-50
+          via-cyan-100
+          to-purple-100
+          overflow-hidden
+        "
+      >
 
 
-        {/* =================================================
+        {/* ======================================================
+            MOBILE OVERLAY
+        ====================================================== */}
+
+        {mobileMenuOpen && (
+          <div
+            className="
+              fixed
+              inset-0
+              bg-black/60
+              z-40
+              lg:hidden
+            "
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
+
+
+        {/* ======================================================
             SIDEBAR
-        ================================================= */}
+        ====================================================== */}
 
-{mobileMenuOpen && (
-  <div
-    className="fixed inset-0 bg-black/60 z-40 lg:hidden"
-    onClick={() => setMobileMenuOpen(false)}
-  />
-)}
+        <aside
+          className={`
+            fixed
+            inset-y-0
+            left-0
+            w-64
+            bg-white
+            border-r
+            border-slate-200
+            shadow-[2px_0_10px_rgba(0,0,0,0.04)]
+            z-50
+            overflow-hidden
 
-<aside
-         className={`
-  fixed
-  inset-y-0
-  left-0
-  w-64
-  text-slate-700
-  flex
-  flex-col
-  shadow-lg
-  z-50
-  overflow-hidden
-  bg-green-50
-  border-r
-  border-slate-200
+            transform
+            transition-transform
+            duration-300
+            ease-in-out
 
-  transform
-  transition-transform
-  duration-300
-  ease-in-out
+            lg:relative
+            lg:translate-x-0
+            lg:z-40
 
-  lg:relative
-  lg:translate-x-0
-  lg:z-40
+            ${mobileMenuOpen
+              ? "translate-x-0"
+              : "-translate-x-full"
+            }
+          `}
+        >
 
-  ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-`}
->
+          <div className="h-full flex flex-col items-center">
 
 
-            {/* =================================================
-                SIDEBAR BACKGROUND — SAME AS LOGIN
-            ================================================= */}
+            {/* ==================================================
+                LOGO
+            ================================================== */}
 
+            <div
+              className="
+                h-[82px]
+                w-full
+                flex
+                items-center
+                justify-center
+                shrink-0
+              "
+            >
 
-           
-
-            {/* =================================================
-                SIDEBAR CONTENT
-            ================================================= */}
-
-            <div className="relative z-10 flex flex-col h-full">
-
-
-              {/* =================================================
-                  HEADER
-              ================================================= */}
-
-              <div
+              <img
+                src="/logo.png"
+                alt="Shiv Shakti Solar"
                 className="
-  p-5
-  border-b
-  border-slate-200
-  bg-gradient-to-r
-  from-blue-50
-  via-blue-300
-  to-purple-50
-"
-              >
-
-                <div className="flex items-center gap-3">
-
-
-                  {/* Logo */}
-
-                  <div
-                    className="
-                      relative
-                      w-10
-                      h-10
-                      flex
-                      items-center
-                      justify-center
-                    "
-                  >
-
-                      <img
-                      src="/logo.png"
-                      className="
-  relative
-  h-10
-  w-auto
-  object-contain
-"
-                      alt="Shiv Shakti Solar"
-                    />
-
-                  </div>
-
-
-                  {/* Title */}
-
-                  <div>
-
-                    <h1
-                      className="
-                        text-sm
-                        font-bold
-                        text-slate-800
-                        tracking-wide
-                      "
-                    >
-                      Shiv Shakti Solar
-                    </h1>
-
-                    <p
-                      className="
-                        text-xs
-                        text-cyan-300/70
-                      "
-                    >
-                    
-                    </p>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-
-              {/* =================================================
-                  NAVIGATION
-              ================================================= */}
-
-              <nav
-                className="
-                  flex-1
-                  p-4
-                  space-y-2
-                  overflow-y-auto
+                  w-28
+                  h-28
+                  object-contain
                 "
-              >
-
-
-                {/* Dashboard */}
-
-                <Link
-                  className="
-                    block
-                    px-4
-                    py-3
-                    rounded-xl
-                    text-sm
-                    font-medium
-                    text-black-600
-hover:bg-blue-200
-hover:text-blue-700
-hover:translate-x-1
-                    transition-all
-                    duration-200
-                  "
-                  to="/"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
-
-
-                {/* Customers */}
-
-                {hasPermission("customers") && (
-                  <Link
-  className="
-    block
-    px-4
-    py-3
-    rounded-xl
-    text-sm
-    font-medium
-    text-black-200
-    hover:bg-blue-200
-    hover:text-blue-700
-    hover:translate-x-1
-    transition-all
-    duration-200
-  "
-  to="/customers"
-  onClick={() => setMobileMenuOpen(false)}
->
-  Customers
-</Link>
-                )}
-
-
-                {/* Master Inventory */}
-
-                {hasPermission("inventory") && (
-                  <Link
-                    className="
-                      block
-                      px-4
-                      py-3
-                      rounded-xl
-                      text-sm
-                      font-medium
-                      text-black-200
-                      hover:bg-blue-200
-    hover:text-blue-700
-                      hover:translate-x-1
-                      transition-all
-                      duration-200
-                    "
-                    to="/master-inventory"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Master Inventory
-                  </Link>
-                )}
-
-
-                {/* Inventory */}
-
-                {hasPermission("inventory") && (
-                  <Link
-                    className="
-                      block
-                      px-4
-                      py-3
-                      rounded-xl
-                      text-sm
-                      font-medium
-                      text-black-200
-                      hover:bg-blue-200
-    hover:text-blue-700
-                      hover:translate-x-1
-                      transition-all
-                      duration-200
-                    "
-                    to="/inventory"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Inventory
-                  </Link>
-                )}
-
-
-                {/* Material Consumption */}
-
-                {hasPermission("used_inventory") && (
-                  <Link
-                    className="
-                      block
-                      px-4
-                      py-3
-                      rounded-xl
-                      text-sm
-                      font-medium
-                      text-black-200
-                      hover:bg-blue-200
-    hover:text-blue-700
-                      hover:translate-x-1
-                      transition-all
-                      duration-200
-                    "
-                    to="/used-inventory"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Material Consumption
-                  </Link>
-                )}
-
-
-                {/* Finance Ledger */}
-
-                {hasPermission("billing") && (
-                  <Link
-                    className="
-                      block
-                      px-4
-                      py-3
-                      rounded-xl
-                      text-sm
-                      font-medium
-                      text-black-200
-                      hover:bg-blue-200
-    hover:text-blue-700
-                      hover:translate-x-1
-                      transition-all
-                      duration-200
-                    "
-                    to="/finance"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Finance Ledger
-                  </Link>
-                )}
-
-
-                {/* Investments */}
-
-                {hasPermission("investments") && (
-                  <Link
-                    className="
-                      block
-                      px-4
-                      py-3
-                      rounded-xl
-                      text-sm
-                      font-medium
-                      text-black-200
-                      hover:bg-blue-200
-    hover:text-blue-700
-                      hover:translate-x-1
-                      transition-all
-                      duration-200
-                    "
-                    to="/investments"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Investments
-                  </Link>
-                )}
-
-
-                {/* Invoice */}
-
-                {hasPermission("invoices") && (
-                  <Link
-                    className="
-                      block
-                      px-4
-                      py-3
-                      rounded-xl
-                      text-sm
-                      font-medium
-                      text-black-200
-                      hover:bg-blue-200
-    hover:text-blue-700
-                      hover:translate-x-1
-                      transition-all
-                      duration-200
-                    "
-                    to="/invoice"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Invoice
-                  </Link>
-                )}
-
-
-                {/* Plant Costing */}
-
-                {hasPermission("settings") && (
-                  <Link
-                    className="
-                      block
-                      px-4
-                      py-3
-                      rounded-xl
-                      text-sm
-                      font-medium
-                      text-black-200
-                      hover:bg-blue-200
-    hover:text-blue-700
-                      hover:translate-x-1
-                      transition-all
-                      duration-200
-                    "
-                    to="/plant-costing"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Plant Costing
-                  </Link>
-                )}
-
-
-                {/* Reports */}
-
-                {hasPermission("reports") && (
-                  <Link
-                    className="
-                      block
-                      px-4
-                      py-3
-                      rounded-xl
-                      text-sm
-                      font-medium
-                      text-black-200
-                      hover:bg-blue-200
-    hover:text-blue-700
-                      hover:translate-x-1
-                      transition-all
-                      duration-200
-                    "
-                    to="/reports"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Reports
-                  </Link>
-                )}
-
-
-                {/* Settings */}
-
-                {hasPermission("settings") && (
-                  <Link
-                    className="
-                      block
-                      px-4
-                      py-3
-                      rounded-xl
-                      text-sm
-                      font-medium
-                      text-black-200
-                      hover:bg-blue-200
-    hover:text-blue-700
-                      hover:translate-x-1
-                      transition-all
-                      duration-200
-                    "
-                    to="/settings"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Settings
-                  </Link>
-                )}
-
-              </nav>
-
-
-              {/* =================================================
-                  USER / LOGOUT
-              ================================================= */}
-
-              <div
-                className="
-                  relative
-                  p-4
-                  border-t
-border-cyan-500
-bg-white-100
-                "
-              >
-
-                {currentUser && (
-                  <div className="mb-4">
-
-                    <p
-                      className="
-                        font-bold
-                        text-red-600
-                        flex
-                        items-center
-                        gap-2
-                      "
-                    >
-                      👤 {currentUser.full_name}
-                    </p>
-
-                    <p
-                      className="
-                        text-sm
-                        text-black-400
-                        mt-1
-                      "
-                    >
-                      Role: {currentUser.role}
-                    </p>
-
-                  </div>
-                )}
-
-
-                <button
-                  onClick={handleLogout}
-                  className="
-  w-full
-  bg-red-50
-  hover:bg-red-100
-  text-red-600
-  border
-  border-red-200
-  py-2
-  rounded-xl
-  font-semibold
-  transition
-"
-                >
-                  🚪 Logout
-                </button>
-
-              </div>
+              />
 
             </div>
 
-          </aside>
+
+            {/* ==================================================
+                NAVIGATION
+            ================================================== */}
+
+            <nav
+              className="
+                flex-1
+                w-full
+                flex
+                flex-col
+                items-center
+                gap-3
+                px-3
+                py-5
+                overflow-y-auto
+                scrollbar-thin
+              "
+            >
 
 
-        {/* =================================================
-    MAIN CONTENT
-================================================= */}
+              {/* ==================================================
+                  DASHBOARD
+              ================================================== */}
 
-<div
-  className="
-    flex-1
-    min-w-0
-    p-3
-    sm:p-4
-    lg:p-6
-    overflow-x-hidden
-    overflow-y-auto
-  "
+              <NavLink
+                to="/"
+                title="Dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className={sidebarLinkClass}
+              >
+
+                <SidebarIcon type="dashboard" />
+
+                <span>
+                  Dashboard
+                </span>
+
+              </NavLink>
+
+
+              {/* ==================================================
+                  CUSTOMERS
+              ================================================== */}
+
+              {hasPermission("customers") && (
+
+                <NavLink
+                  to="/customers"
+                  title="Customers"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={sidebarLinkClass}
+                >
+
+                  <SidebarIcon type="customers" />
+
+                  <span>
+                    Customers
+                  </span>
+
+                </NavLink>
+
+              )}
+
+
+              {/* ==================================================
+                  MASTER INVENTORY
+              ================================================== */}
+
+              {hasPermission("inventory") && (
+
+                <NavLink
+                  to="/master-inventory"
+                  title="Master Inventory"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={sidebarLinkClass}
+                >
+
+                  <SidebarIcon type="inventory" />
+
+                  <span>
+                    Master Inventory
+                  </span>
+
+                </NavLink>
+
+              )}
+
+
+              {/* ==================================================
+                  INVENTORY
+              ================================================== */}
+
+              {hasPermission("inventory") && (
+
+                <NavLink
+                  to="/inventory"
+                  title="Inventory"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={sidebarLinkClass}
+                >
+
+                  <SidebarIcon type="inventory" />
+
+                  <span>
+                    Inventory
+                  </span>
+
+                </NavLink>
+
+              )}
+
+
+              {/* ==================================================
+                  MATERIAL CONSUMPTION
+              ================================================== */}
+
+              {hasPermission("used_inventory") && (
+
+                <NavLink
+                  to="/used-inventory"
+                  title="Material Consumption"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={sidebarLinkClass}
+                >
+
+                  <SidebarIcon type="material" />
+
+                  <span>
+                    Material Consumption
+                  </span>
+
+                </NavLink>
+
+              )}
+
+
+              {/* ==================================================
+                  FINANCE LEDGER
+              ================================================== */}
+
+              {hasPermission("billing") && (
+
+                <NavLink
+                  to="/finance"
+                  title="Finance Ledger"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={sidebarLinkClass}
+                >
+
+                  <SidebarIcon type="finance" />
+
+                  <span>
+                    Finance Ledger
+                  </span>
+
+                </NavLink>
+
+              )}
+
+
+              {/* ==================================================
+                  INVESTMENTS
+              ================================================== */}
+
+              {hasPermission("investments") && (
+
+                <NavLink
+                  to="/investments"
+                  title="Investments"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={sidebarLinkClass}
+                >
+
+                  <SidebarIcon type="investment" />
+
+                  <span>
+                    Investments
+                  </span>
+
+                </NavLink>
+
+              )}
+
+
+              {/* ==================================================
+                  INVOICE
+              ================================================== */}
+
+              {hasPermission("invoices") && (
+
+                <NavLink
+  to="/invoice/new-design"
+  title="Invoice"
+  onClick={() => setMobileMenuOpen(false)}
+  className={sidebarLinkClass}
 >
+  <SidebarIcon type="invoice" />
 
-  {/* MOBILE HEADER */}
-  <div className="lg:hidden flex items-center justify-between mb-4">
+  <span>
+    Invoice
+  </span>
+</NavLink>
 
-    <button
-      type="button"
-      onClick={() => setMobileMenuOpen(true)}
-      className="
-        w-11
-        h-11
-        rounded-xl
-        bg-slate-900
-        text-cyan-300
-        border
-        border-cyan-400/30
-        shadow-lg
-        flex
-        items-center
-        justify-center
-        text-2xl
-        active:scale-95
-        transition
-      "
-      aria-label="Open menu"
-    >
-      ☰
-    </button>
+              )}
 
-    <div className="flex items-center gap-2">
+              {/* ==================================================}
+                  Payment Receipt
+              ================================================== */}
+             
+             {hasPermission("invoices") && (
 
-      <img
-        src="/logo.png"
-        alt="Shiv Shakti Solar"
-        className="h-9 w-auto object-contain"
-      />
+              <NavLink
+  to="/payment-receipt"
+  className={sidebarLinkClass}
+>
+ <SidebarIcon type="payment-receipt" />
 
-      <span className="text-white text-sm font-bold">
-        Shiv Shakti Solar
-      </span>
+<span>
+  Payment Receipt
+</span>
+</NavLink>
+  )}
 
-    </div>
+              {/* ==================================================
+                  PLANT COSTING
+              ================================================== */}
 
-    <div className="w-11" />
+              {hasPermission("settings") && (
 
-  </div>
+                <NavLink
+                  to="/plant-costing"
+                  title="Plant Costing"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={sidebarLinkClass}
+                >
 
-          <div className="w-full max-w-[1200px] mx-auto min-w-0">
+                  <SidebarIcon type="plant" />
+
+                  <span>
+                    Plant Costing
+                  </span>
+
+                </NavLink>
+
+              )}
+
+
+              {/* ==================================================
+                  REPORTS
+              ================================================== */}
+
+              {hasPermission("reports") && (
+
+                <NavLink
+                  to="/reports"
+                  title="Reports"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={sidebarLinkClass}
+                >
+
+                  <SidebarIcon type="reports" />
+
+                  <span>
+                    Reports
+                  </span>
+
+                </NavLink>
+
+              )}
+
+
+              {/* ==================================================
+                  SETTINGS
+              ================================================== */}
+
+              {hasPermission("settings") && (
+
+                <NavLink
+                  to="/settings"
+                  title="Settings"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={sidebarLinkClass}
+                >
+
+                  <SidebarIcon type="settings" />
+
+                  <span>
+                    Settings
+                  </span>
+
+                </NavLink>
+
+              )}
+
+            </nav>
+
+
+            {/* ==================================================
+                LOGOUT
+            ================================================== */}
+
+            <div
+              className="
+                w-full
+                flex
+                justify-center
+                px-3
+                pb-5
+                shrink-0
+              "
+            >
+
+              <button
+                onClick={handleLogout}
+                title={`Logout ${currentUser?.full_name || ""}`}
+                className="
+                  w-full
+                  h-12
+                  px-4
+                  rounded-[17px]
+                  flex
+                  items-center
+                  gap-3
+                  text-slate-500
+                  hover:bg-red-50
+                  hover:text-red-600
+                  transition-all
+                  duration-200
+                "
+              >
+
+                <SidebarIcon type="logout" />
+
+                <span>
+                  Logout
+                </span>
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </aside>
+
+
+        {/* ======================================================
+            MAIN CONTENT
+        ====================================================== */}
+
+        <div
+          className="
+            flex-1
+            min-w-0
+            p-3
+            sm:p-4
+            lg:p-6
+            overflow-x-hidden
+            overflow-y-auto
+          "
+        >
+
+
+          {/* ====================================================
+              MOBILE HEADER
+          ==================================================== */}
+
+          <div
+            className="
+              lg:hidden
+              flex
+              items-center
+              justify-between
+              mb-4
+            "
+          >
+
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="
+                w-11
+                h-11
+                rounded-xl
+                bg-slate-900
+                text-cyan-300
+                border
+                border-cyan-400/30
+                shadow-lg
+                flex
+                items-center
+                justify-center
+                text-2xl
+                active:scale-95
+                transition
+              "
+              aria-label="Open menu"
+            >
+              ☰
+            </button>
+
+
+            <div className="flex items-center gap-2">
+
+              <img
+                src="/logo.png"
+                alt="Shiv Shakti Solar"
+                className="
+                  h-9
+                  w-auto
+                  object-contain
+                "
+              />
+
+              <span
+                className="
+                  text-white
+                  text-sm
+                  font-bold
+                "
+              >
+                Shiv Shakti Solar
+              </span>
+
+            </div>
+
+
+            <div className="w-11" />
+
+          </div>
+
+
+          {/* ====================================================
+              ROUTES CONTAINER
+          ==================================================== */}
+
+          <div
+            className="
+              w-full
+              max-w-[1200px]
+              mx-auto
+              min-w-0
+            "
+          >
 
             <Routes>
 
 
-              {/* Dashboard */}
+              {/* ==================================================
+                  DASHBOARD
+              ================================================== */}
 
               <Route
                 path="/"
@@ -706,7 +962,9 @@ bg-white-100
               />
 
 
-              {/* Customers */}
+              {/* ==================================================
+                  CUSTOMERS
+              ================================================== */}
 
               <Route
                 path="/customers"
@@ -718,7 +976,9 @@ bg-white-100
               />
 
 
-              {/* Master Inventory */}
+              {/* ==================================================
+                  MASTER INVENTORY
+              ================================================== */}
 
               <Route
                 path="/master-inventory"
@@ -730,7 +990,9 @@ bg-white-100
               />
 
 
-              {/* Inventory */}
+              {/* ==================================================
+                  INVENTORY
+              ================================================== */}
 
               <Route
                 path="/inventory"
@@ -742,7 +1004,9 @@ bg-white-100
               />
 
 
-              {/* Material Consumption */}
+              {/* ==================================================
+                  MATERIAL CONSUMPTION
+              ================================================== */}
 
               <Route
                 path="/used-inventory"
@@ -754,7 +1018,9 @@ bg-white-100
               />
 
 
-              {/* Finance */}
+              {/* ==================================================
+                  FINANCE
+              ================================================== */}
 
               <Route
                 path="/finance"
@@ -766,7 +1032,9 @@ bg-white-100
               />
 
 
-              {/* Investments */}
+              {/* ==================================================
+                  INVESTMENTS
+              ================================================== */}
 
               <Route
                 path="/investments"
@@ -778,7 +1046,9 @@ bg-white-100
               />
 
 
-              {/* Billing */}
+              {/* ==================================================
+                  BILLING
+              ================================================== */}
 
               <Route
                 path="/billing"
@@ -790,19 +1060,24 @@ bg-white-100
               />
 
 
-              {/* Invoice */}
 
-              <Route
-                path="/invoice"
-                element={
-                  <ProtectedRoute permission="invoices">
-                    <Invoice />
-                  </ProtectedRoute>
-                }
-              />
+              {/* ==================================================
+                  INVOICE
+              ================================================== */}
 
+             
 
-              {/* Create Invoice */}
+<Route
+  path="/invoice/new-design"
+  element={
+    <ProtectedRoute>
+      <NewInvoice />
+    </ProtectedRoute>
+  }
+/>
+              {/* ==================================================
+                  CREATE INVOICE
+              ================================================== */}
 
               <Route
                 path="/invoice/new"
@@ -813,8 +1088,22 @@ bg-white-100
                 }
               />
 
+{/* ==================================================}
+      PAYMENT RECEIPT
+  ================================================== */}
+  <Route
+  path="/payment-receipt"
+  element={
+    <ProtectedRoute permission="invoices">
+      <PaymentReceipt />
+    </ProtectedRoute>
+  }
+/>
 
-              {/* Plant Costing */}
+
+              {/* ==================================================
+                  PLANT COSTING
+              ================================================== */}
 
               <Route
                 path="/plant-costing"
@@ -826,6 +1115,10 @@ bg-white-100
               />
 
 
+              {/* ==================================================
+                  PLANT COSTING BY SIZE
+              ================================================== */}
+
               <Route
                 path="/plant-costing/:size"
                 element={
@@ -836,7 +1129,9 @@ bg-white-100
               />
 
 
-              {/* Settings */}
+              {/* ==================================================
+                  SETTINGS
+              ================================================== */}
 
               <Route
                 path="/settings"
@@ -848,7 +1143,9 @@ bg-white-100
               />
 
 
-              {/* Reports */}
+              {/* ==================================================
+                  REPORTS
+              ================================================== */}
 
               <Route
                 path="/reports"
@@ -866,6 +1163,7 @@ bg-white-100
         </div>
 
       </div>
+
     </>
   );
 }

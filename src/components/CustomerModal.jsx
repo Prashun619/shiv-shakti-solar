@@ -1,6 +1,7 @@
 import { supabase } from "../services/supabase";
 import { useEffect, useState } from "react";
 
+
 import {
   addCustomer,
   updateCustomer,
@@ -18,6 +19,8 @@ export default function CustomerModal({
   onSaved,
   customer,
 }) {
+
+  const [pincodeCities, setPincodeCities] = useState([]);
 
   const initialForm = {
     customer_name: "",
@@ -65,6 +68,8 @@ export default function CustomerModal({
     async function loadCustomerData() {
 
       if (customer) {
+
+        setPincodeCities([]);
 
         // =====================================================
         // LOAD PROJECT NUMBER
@@ -255,11 +260,12 @@ export default function CustomerModal({
 
       } else {
 
-        setForm(initialForm);
-        setProject(null);
-        setProjectNo("");
+  setForm(initialForm);
+  setProject(null);
+  setProjectNo("");
+  setPincodeCities([]);
 
-      }
+}
 
     }
 
@@ -630,6 +636,60 @@ export default function CustomerModal({
     return null;
 
 
+  async function handlePincodeChange(value) {
+  setForm((prev) => ({
+    ...prev,
+    pincode: value,
+  }));
+
+  setPincodeCities([]);
+
+  if (value.length !== 6) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.postalpincode.in/pincode/${value}`
+    );
+
+    const data = await response.json();
+
+    const postOffices = data?.[0]?.PostOffice || [];
+
+    if (!postOffices.length) {
+      return;
+    }
+
+    // Get all unique location names
+    const cities = [
+      ...new Set(
+        postOffices
+          .map((office) => office.Name)
+          .filter(Boolean)
+      ),
+    ];
+
+    console.log("PINCODE POST OFFICES:", postOffices);
+    console.log("PINCODE CITIES:", cities);
+
+    setPincodeCities(cities);
+
+    const firstOffice = postOffices[0];
+
+    setForm((prev) => ({
+      ...prev,
+      pincode: value,
+      city: cities.length === 1 ? cities[0] : "",
+      district: firstOffice.District || "",
+      state: firstOffice.State || "",
+    }));
+  } catch (error) {
+    console.error("Pincode lookup error:", error);
+  }
+}
+
+
   return (
 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -677,13 +737,20 @@ export default function CustomerModal({
             />
 
 
-            <input
-              name="vendor_name"
-              placeholder="Vendor Name"
-              value={form.vendor_name}
-              onChange={handleChange}
-              className="border rounded-lg px-3 py-2"
-            />
+           <select
+  value={form.vendor_name}
+  onChange={(e) =>
+    setForm({
+      ...form,
+      vendor_name: e.target.value,
+    })
+  }
+  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+>
+  <option value="">Select Vendor</option>
+   <option value="Gupta Brothers">Gupta Brothers </option>
+    <option value="Solar Array Infinity">Solar Array Infinity</option>
+</select>
 
 
             <input
@@ -721,7 +788,7 @@ export default function CustomerModal({
     onChange={(e) =>
       setProjectNo(e.target.value)
     }
-    className="border rounded-lg px-3 py-2"
+    className="border rounded-lg px-3 py-2f"
   />
 )}
 
@@ -799,24 +866,36 @@ export default function CustomerModal({
                 </label>
 
 
-                <input
-                  type="text"
-                  name="city"
-                  placeholder="Enter City"
-                  value={form.city}
-                  onChange={handleChange}
-                  onBlur={(e) =>
-                    fetchPincodeFromCity(
-                      e.target.value
-                    )
-                  }
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none"
-                />
+                {pincodeCities.length > 1 ? (
+  <select
+    name="city"
+    value={form.city}
+    onChange={handleChange}
+    className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none"
+  >
+    <option value="">Select City</option>
+
+    {pincodeCities.map((city, index) => (
+      <option key={`${city}-${index}`} value={city}>
+        {city}
+      </option>
+    ))}
+  </select>
+) : (
+  <input
+    type="text"
+    name="city"
+    placeholder="Enter City"
+    value={form.city}
+    onChange={handleChange}
+    className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none"
+  />
+)}
 
 
                 <p className="text-xs text-slate-500 mt-1">
-                  Pincode will be fetched automatically
-                </p>
+  Filled automatically from Pincode
+</p>
 
               </div>
 
@@ -872,15 +951,20 @@ export default function CustomerModal({
                 </label>
 
 
-                <input
-                  type="text"
-                  name="pincode"
-                  placeholder="Pincode"
-                  maxLength={6}
-                  value={form.pincode}
-                  onChange={handleChange}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none"
-                />
+              <input
+  type="text"
+  name="pincode"
+  placeholder="Pincode"
+  maxLength={6}
+  inputMode="numeric"
+  value={form.pincode}
+  onChange={(e) =>
+    handlePincodeChange(
+      e.target.value.replace(/\D/g, "")
+    )
+  }
+  className="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none"
+/>
 
               </div>
 
@@ -1129,8 +1213,8 @@ export default function CustomerModal({
                     UPI
                   </option>
 
-                  <option value="Bank">
-                    Bank
+                  <option value="Bank Transfer">
+                    Bank Transfer
                   </option>
 
                   <option value="Cheque">

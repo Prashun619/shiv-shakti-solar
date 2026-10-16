@@ -120,7 +120,13 @@ const [editingId, setEditingId] = useState(null);
           getInvestments(),
         ]);
 
-      setPartners(partnersData || []);
+      setPartners(
+  (partnersData || []).filter(
+    (partner) =>
+      partner.partner_name?.trim().toLowerCase() !==
+      "saurabh nigam"
+  )
+);
       setInvestments(investmentsData || []);
     } catch (error) {
       console.error(

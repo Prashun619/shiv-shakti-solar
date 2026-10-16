@@ -1079,107 +1079,152 @@ console.log(
 
         <thead className="bg-gradient-to-r from-indigo-700 to-blue-700 text-white">
 
-          <tr>
+  <tr>
 
-            <th className="border border-black px-4 py-3 text-center text-xs font-bold">
-              Product
-            </th>
+    <th className="border border-black px-4 py-3 text-center text-xs font-bold">
+      Product
+    </th>
 
-            <th className="border border-black px-4 py-3 text-center text-xs font-bold">
-              Serial Number
-            </th>
+    <th className="border border-black px-4 py-3 text-center text-xs font-bold">
+      Serial Number
+    </th>
 
-          </tr>
+    <th className="border border-black px-4 py-3 text-center text-xs font-bold">
+      Inverter Company
+    </th>
 
-        </thead>
+    <th className="border border-black px-4 py-3 text-center text-xs font-bold">
+      Model
+    </th>
+
+    <th className="border border-black px-4 py-3 text-center text-xs font-bold">
+      Inverter Serial Number
+    </th>
+
+  </tr>
+
+</thead>
 
         <tbody>
 
-          {panelProducts.flatMap((product, productIndex) => {
+  {panelProducts.flatMap((product, productIndex) => {
 
-            const serials =
-              cleanArray(product.serial_numbers)
-                .filter(Boolean);
+    const serials =
+      cleanArray(product.serial_numbers)
+        .filter(Boolean);
 
-            const quantity =
-              Number(product.quantity || 0);
+    const quantity =
+      Number(product.quantity || 0);
 
-            const count =
-              Math.max(quantity, serials.length);
+    const count =
+      Math.max(quantity, serials.length);
 
-            return Array.from(
-              { length: count },
-              (_, index) => (
+    // Use the first inverter for the first panel row
+    const inverter =
+      inverterProducts[0] || null;
 
-                <tr
-                  key={`panel-${productIndex}-${index}`}
-                  className="hover:bg-blue-50 transition"
-                >
+    const inverterSerials =
+      cleanArray(
+        inverter?.serial_numbers
+      ).filter(Boolean);
 
-                  <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
-                    {[
-                      product.company,
-                      "Panel",
-                      product.specification,
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  </td>
+    const inverterModels =
+      cleanArray(
+        inverter?.inverter_models
+      ).filter(Boolean);
 
-                  <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
-                    {serials[index] || "-"}
-                  </td>
+    const inverterCompany =
+      inverter?.company || "";
 
-                </tr>
+    const inverterModel =
+      inverterModels[0] ||
+      inverter?.specification ||
+      "";
 
-              )
-            );
+    const inverterSerial =
+      inverterSerials[0] || "";
 
-          })}
+    return Array.from(
+      { length: count },
+      (_, index) => {
 
-          {inverterProducts.flatMap((product, productIndex) => {
+        const isFirstRow =
+          productIndex === 0 &&
+          index === 0;
 
-            const serials =
-              cleanArray(product.serial_numbers)
-                .filter(Boolean);
+        return (
+          <tr
+            key={`panel-${productIndex}-${index}`}
+            className="hover:bg-blue-50 transition"
+          >
 
-            const quantity =
-              Number(product.quantity || 0);
+            {/* PRODUCT */}
 
-            const count =
-              Math.max(quantity, serials.length);
+            <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
 
-            return Array.from(
-              { length: count },
-              (_, index) => (
+              {index === 0
+                ? [
+                    product.company,
+                    "Panel",
+                    product.specification,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                : ""}
 
-                <tr
-                  key={`inverter-${productIndex}-${index}`}
-                  className="hover:bg-blue-50 transition"
-                >
+            </td>
 
-                  <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
-                    {[
-                      product.company,
-                      "Inverter",
-                      product.specification,
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  </td>
 
-                  <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
-                    {serials[index] || "-"}
-                  </td>
+            {/* PANEL SERIAL NUMBER */}
 
-                </tr>
+            <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
 
-              )
-            );
+              {serials[index] || "-"}
 
-          })}
+            </td>
 
-        </tbody>
+
+            {/* INVERTER COMPANY */}
+
+            <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
+
+              {isFirstRow
+                ? inverterCompany
+                : ""}
+
+            </td>
+
+
+            {/* INVERTER MODEL */}
+
+            <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
+
+              {isFirstRow
+                ? inverterModel
+                : ""}
+
+            </td>
+
+
+            {/* INVERTER SERIAL NUMBER */}
+
+            <td className="border border-black px-4 py-3 text-center align-middle font-semibold text-slate-800">
+
+              {isFirstRow
+                ? inverterSerial
+                : ""}
+
+            </td>
+
+          </tr>
+        );
+
+      }
+    );
+
+  })}
+
+</tbody>
 
       </table>
 

@@ -632,14 +632,7 @@ async function downloadUsedInventoryCSV(item) {
         .join(" ");
     }
 
-    if (
-      lowerName === "kit" ||
-      category.toLowerCase() === "kit"
-    ) {
-      return [company, specification, "Kit"]
-        .filter(Boolean)
-        .join(" ");
-    }
+    
 
     return productName || "-";
   }

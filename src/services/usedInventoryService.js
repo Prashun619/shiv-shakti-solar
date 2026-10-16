@@ -284,27 +284,7 @@ function getConsumptionQuantity(product) {
   return num(product.quantity);
 }
 
-// =====================================================
-// KIT HELPERS
-// =====================================================
 
-function isKitProduct(product) {
-  return (
-    product?.is_kit === true ||
-    cleanText(
-      product?.category
-    ).toLowerCase() === "kit"
-  );
-}
-
-function isKitReplacementInverter(product) {
-  return (
-    product?.is_kit_inverter === true &&
-    cleanText(
-      product?.category
-    ).toLowerCase() === "inverter"
-  );
-}
 
 // =====================================================
 // PURCHASED QUANTITY
@@ -2437,152 +2417,17 @@ const weightPerFoot =
 }
 
 // =====================================================
-// FIND ORIGINAL KIT INVERTER
-// =====================================================
-
-function getOriginalKitInverter(
-  product
-) {
-  return cleanText(
-    product?.original_kit_inverter ||
-      product?.kit_inverter_brand ||
-      ""
-  );
-}
-
-// =====================================================
-// SAVED ORIGINAL INVERTER COST
-// =====================================================
-
-function getSavedOriginalInverterCost(
-  product
-) {
-  const values = [
-    product?.original_kit_inverter_cost,
-    product?.kit_inverter_cost,
-    product?.inverter_cost,
-  ];
-
-  for (
-    const value of
-      values
-  ) {
-    const cost =
-      num(value);
-
-    if (
-      cost > 0
-    ) {
-      return cost;
-    }
-  }
-
-  return 0;
-}
-
-// =====================================================
-// ORIGINAL KIT INVERTER COST
-// =====================================================
-
-function calculateOriginalInverterCost(
-  rows,
-  kitProduct,
-  quantity
-) {
-  const originalBrand =
-    getOriginalKitInverter(
-      kitProduct
-    );
-
-  if (
-    !originalBrand
-  ) {
-    return {
-      cost:
-        getSavedOriginalInverterCost(
-          kitProduct
-        ) *
-        num(quantity),
-
-      allocations: [],
-    };
-  }
-
-  let latestOriginalInverterPrice =
-    0;
-
-  for (
-    const row of
-      rows
-  ) {
-    const category =
-      cleanText(
-        row?.category
-      ).toLowerCase();
-
-    const company =
-      cleanText(
-        row?.company
-      ).toLowerCase();
-
-    if (
-      category !==
-        "inverter" ||
-      company !==
-        originalBrand.toLowerCase()
-    ) {
-      continue;
-    }
-
-    const rowPrice =
-      getInventoryUnitCost(
-        row
-      );
-
-    if (
-      rowPrice > 0
-    ) {
-      latestOriginalInverterPrice =
-        rowPrice;
-    }
-  }
-
-  if (
-    latestOriginalInverterPrice >
-    0
-  ) {
-    return {
-      cost:
-        latestOriginalInverterPrice *
-        num(quantity),
-
-      allocations: [],
-    };
-  }
-
-  return {
-    cost:
-      getSavedOriginalInverterCost(
-        kitProduct
-      ) *
-      num(quantity),
-
-    allocations: [],
-  };
-}
-
-// =====================================================
-// REPLACEMENT INVERTER FIFO
+// FIFO ALLOCATION WRAPPER
 // =====================================================
 
 function calculateReplacementInverterFIFO(
   rows,
-  replacementProduct,
+  product,
   quantity
 ) {
   return allocateFIFO(
     rows,
-    replacementProduct,
+    product,
     quantity
   );
 }
@@ -2613,29 +2458,24 @@ async function calculateFIFOCost(
       usedMap
     );
 
-  const outputProducts =
-    products.map(
-      (product) => ({
-        ...product,
+ const outputProducts =
+  products.map(
+    (product) => ({
+      ...product,
 
-        fifo_allocations:
-          [],
+      fifo_allocations:
+        [],
 
-        total:
-          0,
+      total:
+        0,
 
-        unit_price:
-          0,
+      unit_price:
+        0,
 
-        unit_cost:
-          0,
-
-        original_kit_inverter_cost:
-          getSavedOriginalInverterCost(
-            product
-          ),
-      })
-    );
+      unit_cost:
+        0,
+    })
+  );
 
   // ===================================================
   // FIRST PASS
@@ -2830,151 +2670,7 @@ if (
 }
   }
 
-  // ===================================================
-  // KIT PRICE ADJUSTMENT
-  // ===================================================
 
-  for (
-    let index = 0;
-    index <
-      outputProducts.length;
-    index++
-  ) {
-    const kit =
-      outputProducts[index];
-
-    if (
-      !isKitProduct(kit)
-    ) {
-      continue;
-    }
-
-    const quantity =
-      num(
-        kit.quantity
-      );
-
-    if (
-      quantity <= 0
-    ) {
-      continue;
-    }
-
-    if (
-      kit.has_inverter_swap !==
-      true
-    ) {
-      continue;
-    }
-
-    // -------------------------------------------------
-    // ORIGINAL INVERTER
-    // -------------------------------------------------
-
-    const originalResult =
-      calculateOriginalInverterCost(
-        rows,
-        kit,
-        quantity
-      );
-
-    const originalCost =
-      num(
-        originalResult.cost
-      );
-
-    // -------------------------------------------------
-    // REPLACEMENT INVERTER
-    // -------------------------------------------------
-
-    const replacementIndex =
-      outputProducts.findIndex(
-        (
-          product,
-          productIndex
-        ) =>
-          productIndex !==
-            index &&
-          isKitReplacementInverter(
-            product
-          ) &&
-          Number(
-            product.kit_parent_index
-          ) === index
-      );
-
-    let replacementCost =
-      0;
-
-    if (
-      replacementIndex >=
-      0
-    ) {
-      const replacement =
-        outputProducts[
-          replacementIndex
-        ];
-
-      replacementCost =
-        num(
-          replacement.total
-        );
-
-      replacement.replacement_inverter_cost =
-        replacement.quantity >
-        0
-          ? replacement.total /
-            replacement.quantity
-          : 0;
-
-      replacement.unit_price =
-        replacement.replacement_inverter_cost;
-
-      replacement.unit_cost =
-        replacement.replacement_inverter_cost;
-    }
-
-    // -------------------------------------------------
-    // ADJUST KIT
-    // -------------------------------------------------
-
-    const originalKitCost =
-      num(
-        kit.total
-      );
-
-    const adjustedKitCost =
-      Math.max(
-        0,
-        originalKitCost -
-          originalCost
-      );
-
-    kit.kit_original_inverter_deduction =
-      originalCost;
-
-    kit.kit_adjusted_total =
-      adjustedKitCost;
-
-    kit.original_kit_inverter_cost =
-      quantity > 0
-        ? originalCost /
-          quantity
-        : originalCost;
-
-    kit.total =
-      adjustedKitCost;
-
-    kit.kit_original_inverter_cost_total =
-      originalCost;
-
-    kit.kit_replacement_inverter_cost_total =
-      replacementCost;
-
-    kit.kit_final_cost =
-      adjustedKitCost +
-      replacementCost;
-  }
 
   return outputProducts;
 }

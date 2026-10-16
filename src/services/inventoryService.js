@@ -32,14 +32,7 @@
     );
   }
 
-  function isKit(item) {
-    return (
-      item?.type === "Kit" ||
-      item?.purchase_type === "Kit" ||
-      normalize(item?.category) === "kit" ||
-      normalize(item?.unit) === "kit"
-    );
-  }
+  
 
 
   // =====================================================
@@ -241,19 +234,7 @@ used_quantity:
           totalWeight *
           rowPrice;
 
-      } else if (isKit(row)) {
-
-        const kitValue =
-          num(
-            row.kit_overall_value ??
-            row.price
-          );
-
-        rowBaseCost =
-          rowQuantity *
-          kitValue;
-
-            } else if (isCChannel(row)) {
+      } else if (isCChannel(row)) {
 
         // C Channel purchase price is ₹ / Kg.
         // Total purchase cost is based on total weight.
@@ -702,7 +683,7 @@ if (isCChannel(master)) {
 
 
         // =================================================
-        // NORMAL / PANEL / INVERTER / KIT
+        // NORMAL / PANEL / INVERTER
         // =================================================
 
         return {
@@ -990,81 +971,26 @@ if (isCChannel(master)) {
     );
   }
 
+function calculateItemBase(item) {
+  const quantity = Number(item.quantity || 0);
+  const price = Number(item.price || 0);
 
-  // =====================================================
-  // CALCULATE KIT BASE
-  // =====================================================
-
-  export function calculateKitBase(item = {}) {
-
-    const kitQty =
-      num(item.quantity);
-
-    const kitValue =
-      num(
-        item.kit_overall_value ??
-        item.price
-      );
-
-
-    return (
-      kitQty *
-      kitValue
-    );
+  // Kg products:
+  // price is per Kg and total_weight is the bill weight
+  if (item.unit === "Kg") {
+    return Number(item.total_weight || 0) * price;
   }
 
+  // Normal products
+  return quantity * price;
+}
 
-  // =====================================================
-  // CALCULATE KIT GST
-  // =====================================================
+function calculateItemGST(item) {
+  const base = calculateItemBase(item);
+  const gst = Number(item.gst || 0);
 
-  export function calculateKitGST(item = {}) {
-
-    const base =
-      calculateKitBase(item);
-
-    const gst =
-      num(
-        item.kit_gst ??
-        item.gst
-      );
-
-
-    return (
-      base *
-      gst /
-      100
-    );
-  }
-
-
-  // =====================================================
-  // ITEM BASE
-  // =====================================================
-
-  function calculateItemBase(item = {}) {
-
-    if (isKit(item)) {
-      return calculateKitBase(item);
-    }
-
-    return calculateProductBase(item);
-  }
-
-
-  // =====================================================
-  // ITEM GST
-  // =====================================================
-
-  function calculateItemGST(item = {}) {
-
-    if (isKit(item)) {
-      return calculateKitGST(item);
-    }
-
-    return calculateProductGST(item);
-  }
-
+  return (base * gst) / 100;
+}
 
   // =====================================================
   // GET ALL INVENTORY
@@ -1279,46 +1205,12 @@ if (isCChannel(master)) {
   }
 
 
-  // =====================================================
-  // GET PURCHASE VALUE
-  // =====================================================
-  //
-  // This value is ONLY used to divide transportation.
-  //
-  // Normal Product:
-  // quantity × price
-  //
-  // KG:
-  // total weight × price
-  //
-  // Kit:
-  // kit quantity × kit value
-  //
+  // Product
+// Calculated from product quantity / weight
 
   function getPurchaseValue(item) {
 
-    // ===================================================
-    // KIT
-    // ===================================================
-
-    if (isKit(item)) {
-
-      const kitQuantity =
-        num(item.quantity);
-
-      const kitValue =
-        num(
-          item.kit_overall_value ??
-          item.price
-        );
-
-
-      return (
-        kitQuantity *
-        kitValue
-      );
-    }
-
+    
 
     // ===================================================
     // NORMAL PRODUCT
@@ -1345,11 +1237,7 @@ if (isCChannel(master)) {
     existingRow = null
   ) {
 
-    const type =
-      item.type ||
-      item.purchase_type ||
-      item.category ||
-      "Product";
+    
 
 
     // ===================================================
@@ -1366,222 +1254,7 @@ if (isCChannel(master)) {
       );
 
 
-    // ===================================================
-    // KIT
-    // ===================================================
-
-    if (isKit(item)) {
-
-      const kitQty =
-        num(item.quantity);
-
-      const kitGST =
-        num(
-          item.kit_gst ??
-          item.gst
-        );
-
-
-      const kitName =
-        item.kit_name ||
-        item.product_name ||
-        "";
-
-
-      const componentCost =
-        (item.kit_components || []).reduce(
-          (sum, component) => {
-
-            const componentQuantity =
-              num(component.quantity);
-
-            const componentPrice =
-              num(
-                component.unit_price ??
-                component.price
-              );
-
-
-            return (
-              sum +
-              componentQuantity *
-              componentPrice
-            );
-          },
-          0
-        );
-
-
-      // =================================================
-      // KIT BASE
-      // =================================================
-
-      const baseAmount =
-        componentCost *
-        kitQty;
-
-
-      // =================================================
-      // KIT GST
-      // =================================================
-
-      const gstAmount =
-        baseAmount *
-        kitGST /
-        100;
-
-
-      // =================================================
-      // KIT FINAL LANDED COST
-      // =================================================
-
-      const totalAmount =
-        baseAmount +
-        gstAmount +
-        rowTransportation;
-
-
-      // =================================================
-      // KIT FINAL UNIT COST
-      // =================================================
-      //
-      // Component Price
-      // + GST
-      // + Allocated Transportation
-      //
-
-      const unitCost =
-        kitQty > 0
-          ? totalAmount /
-            kitQty
-          : 0;
-
-
-      return {
-
-        ...(existingRow?.id
-          ? {
-              id:
-                existingRow.id,
-            }
-          : {}),
-
-        date,
-
-        supplier,
-
-        product_name:
-          kitName,
-
-        category:
-          "Kit",
-
-        company:
-          item.company ||
-          kitName
-            .replace(
-              /\s+Kit$/i,
-              ""
-            )
-            .trim(),
-
-        specification:
-          item.kit_panel_watt ||
-          item.specification ||
-          "",
-
-        quantity:
-          kitQty,
-
-        purchased_quantity:
-          kitQty,
-
-        used_quantity:
-          existingRow
-            ? num(
-                existingRow.used_quantity
-              )
-            : 0,
-
-        unit:
-          "Kit",
-
-        // Original component purchase value
-        price:
-          componentCost,
-
-        total_weight:
-          0,
-
-        gst:
-          kitGST,
-
-        cgst:
-          0,
-
-        sgst:
-          0,
-
-        // Allocated transportation
-        transportation:
-          rowTransportation,
-
-        // Final total including GST + transport
-        total_amount:
-          totalAmount,
-
-        // Final landed unit cost
-        unit_cost:
-          unitCost,
-
-        remarks:
-          item.remarks ||
-          "Includes Panel, Inverter, ACDB, DCDB and Earthing Kit",
-
-        active:
-          existingRow?.active ??
-          true,
-
-        is_default:
-          existingRow?.is_default ??
-          false,
-
-        batch_id:
-          batchId,
-
-        purchase_type:
-          "Kit",
-
-        kit_name:
-          kitName,
-
-        kit_panel_watt:
-          item.kit_panel_watt ||
-          null,
-
-        kit_panel_qty:
-          num(
-            item.kit_panel_qty
-          ),
-
-        kit_inverter_brand:
-          item.kit_inverter_brand ||
-          null,
-
-        kit_overall_value:
-          componentCost,
-
-        kit_gst:
-          kitGST,
-
-        kit_components:
-          Array.isArray(
-            item.kit_components
-          )
-            ? item.kit_components
-            : [],
-      };
-    }
+   
 
 
     // ===================================================
@@ -1717,9 +1390,10 @@ const unitCost =
         item.company || "",
 
       specification:
-    item.specification || "",
+  item.specification || "",
 
-  length_ft:
+
+length_ft:
   isCChannel(item)
     ? num(item.length_ft)
     : num(
@@ -1785,26 +1459,7 @@ const unitCost =
       purchase_type:
         "Product",
 
-      kit_name:
-        null,
-
-      kit_panel_watt:
-        null,
-
-      kit_panel_qty:
-        0,
-
-      kit_inverter_brand:
-        null,
-
-      kit_overall_value:
-        0,
-
-      kit_gst:
-        0,
-
-      kit_components:
-        null,
+  
     };
   }
 
@@ -1843,8 +1498,8 @@ const unitCost =
     ) {
 
       throw new Error(
-        "At least one product or kit is required."
-      );
+  "At least one product is required."
+);
     }
 
 
@@ -1963,8 +1618,8 @@ const unitCost =
     ) {
 
       throw new Error(
-        "At least one product or kit is required."
-      );
+  "At least one product is required."
+);
     }
 
 
@@ -2295,50 +1950,6 @@ const unitCost =
 export function calculateUnitCost(
   product = {}
 ) {
-
-  // ===================================================
-  // KIT
-  // ===================================================
-
-  if (isKit(product)) {
-
-    const quantity =
-      num(product.quantity);
-
-    const kitValue =
-      num(
-        product.kit_overall_value ??
-        product.price
-      );
-
-    const gst =
-      num(
-        product.kit_gst ??
-        product.gst
-      );
-
-    const transportation =
-      num(product.transportation);
-
-    const baseAmount =
-      quantity *
-      kitValue;
-
-    const gstAmount =
-      baseAmount *
-      gst /
-      100;
-
-    const totalCost =
-      baseAmount +
-      gstAmount +
-      transportation;
-
-      return quantity > 0
-        ? totalCost /
-          quantity
-        : 0;
-    }
 
 
   // ===================================================
@@ -2847,150 +2458,7 @@ if (isCChannel(product)) {
         num(row.unit_cost);
 
 
-      // =================================================
-      // FALLBACK CALCULATION
-      // =================================================
-
-      if (unitCost <= 0) {
-
-        if (isKit(row)) {
-
-          const kitValue =
-            num(
-              row.kit_overall_value ??
-              row.price
-            );
-
-
-          const kitGST =
-            num(
-              row.kit_gst ??
-              row.gst
-            );
-
-
-          const gstAmount =
-            kitValue *
-            kitGST /
-            100;
-
-
-          unitCost =
-            kitValue +
-            gstAmount +
-            num(
-              row.transportation
-            );
-
-        }
-
-        // =================================================
-        // KG
-        // =================================================
-
-        else if (isKg(row)) {
-
-          const totalWeight =
-            num(row.total_weight);
-
-          const totalPurchaseBase =
-            totalWeight *
-            purchasePrice;
-
-          const gst =
-            num(row.gst);
-
-          const gstAmount =
-            totalPurchaseBase *
-            gst /
-            100;
-
-          const totalPurchaseCost =
-            totalPurchaseBase +
-            gstAmount +
-            num(
-              row.transportation
-            );
-
-
-          unitCost =
-            purchased > 0
-              ? totalPurchaseCost /
-                purchased
-              : 0;
-
-        }
-
-       // =================================================
-// C CHANNEL
-// =================================================
-//
-// purchasePrice = ₹ / Kg
-// total_weight  = total Kg
-// purchased     = total feet
-//
-// Therefore:
-// material cost = total_weight × ₹/Kg
-// unit cost     = landed cost ÷ total feet
-//
-// =================================================
-
-else if (isCChannel(row)) {
-
-  const totalWeight =
-    num(row.total_weight);
-
-  const baseAmount =
-    totalWeight *
-    purchasePrice;
-
-  const gst =
-    num(row.gst);
-
-  const gstAmount =
-    baseAmount *
-    gst /
-    100;
-
-  const totalPurchaseCost =
-    baseAmount +
-    gstAmount +
-    num(row.transportation);
-
-
-  unitCost =
-    purchased > 0
-      ? totalPurchaseCost /
-        purchased
-      : 0;
-}
-
-// =================================================
-// NORMAL PRODUCT / INVERTER / PANEL
-// =================================================
-
-else {
-
-  const baseAmount =
-    purchasePrice;
-
-  const gst =
-    num(row.gst);
-
-  const gstAmount =
-    baseAmount *
-    gst /
-    100;
-
-
-  unitCost =
-    baseAmount +
-    gstAmount +
-    num(
-      row.transportation
-    );
-}
-      }
+      
 
 
       // =================================================
@@ -3375,8 +2843,10 @@ else {
             company:
               normalizedCompany,
             specification:
-              normalizedSpecification,
-            quantity: qty,
+  normalizedSpecification,
+
+
+quantity: qty,
             purchased_quantity: qty,
             used_quantity: usedQuantity,
             unit,
@@ -3428,9 +2898,9 @@ else {
         normalizedCompany,
 
       specification:
-        normalizedSpecification,
+  normalizedSpecification,
 
-      quantity: qty,
+quantity: qty,
 
       purchased_quantity: qty,
 

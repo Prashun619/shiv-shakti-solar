@@ -208,31 +208,24 @@ function getInventoryGST(row) {
 // UNIT COST
 // =====================================================
 
+
 function getInventoryUnitPrice(row) {
   if (!row) {
     return 0;
   }
 
-  /*
-    Plant Costing uses Inventory's calculated unit_cost.
-
-    Raw price is only a fallback for old inventory
-    records which don't have unit_cost.
-  */
-
-  const unitCost =
-    Number(row?.unit_cost);
+  const unitCost = Number(row?.unit_cost);
 
   if (
     Number.isFinite(unitCost) &&
     unitCost > 0
   ) {
-    return unitCost;
+    return Number(unitCost.toFixed(2));
   }
 
-  return (
-    Number(row?.price ?? 0) || 0
-  );
+  const price = Number(row?.price ?? 0) || 0;
+
+  return Number(price.toFixed(2));
 }
 
 // =====================================================
@@ -1694,6 +1687,16 @@ export default function PlantCosting() {
     );
   }
 
+  
+function formatPriceInput(value) {
+  if (value === "" || value == null) {
+    return "";
+  }
+
+  return Number(value).toFixed(2);
+}
+
+
   // ===================================================
   // MATERIAL TOTAL
   // ===================================================
@@ -2462,181 +2465,101 @@ export default function PlantCosting() {
                         </td>
 
                         {/* =================================================
-                            QTY
-                        ================================================= */}
+    QTY
+================================================= */}
 
-                        <td className="border-2 border-black px-2 py-2 text-center">
-                          {row.isAdditionalCharge ? (
-                            <span className="font-semibold">
-                              1
-                            </span>
-                          ) : isPanel ? (
-                            /*
-                              PANEL:
+<td className="border-2 border-black px-2 py-2 text-center">
+  {row.isAdditionalCharge ? (
+    <span className="font-semibold">
+      1
+    </span>
+  ) : (
+    <input
+      type="number"
+      min="0"
+      step={isPanel ? "1" : "any"}
+      value={row.qty ?? ""}
+      onChange={(e) => {
+        const qty =
+          e.target.value === ""
+            ? 0
+            : Math.max(
+                0,
+                Number(e.target.value)
+              );
 
-                              Initially:
-                                0
+        updateRow(index, {
+          qty,
+        });
+      }}
+      onWheel={preventWheelChange}
+      className="
+        border
+        border-black
+        rounded
+        px-2
+        py-1
+        w-20
+        text-center
+        no-spinner
+        bg-white
+        text-black
+      "
+    />
+  )}
+</td>
 
-                              After selection:
+{/* =================================================
+    PRICE
+================================================= */}
 
-                                3 KW   = 5
-                                3.5 KW = 6
-                                5 KW   = 9
+<td className="border-2 border-black px-2 py-2 text-center">
+  {row.isAdditionalCharge && !row.editingCharge ? (
+    <span className="font-semibold">
+      ₹ {Number(row.price || 0).toFixed(2)}
+    </span>
+  ) : (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={
+  row.price === "" || row.price == null
+    ? ""
+    : String(row.price)
+}
+      onChange={(e) => {
+        const value = e.target.value;
 
-                              If dropdown is cleared,
-                              it returns to 0.
-                            */
+        if (/^\d*\.?\d{0,2}$/.test(value) || value === "") {
+          updateRow(index, { price: value });
+        }
+      }}
+      onFocus={(e) => {
+        e.target.select();
+      }}
+      onBlur={(e) => {
+        const value = e.target.value.trim();
+        const formattedPrice =
+          value === "" ? "0.00" : Number(value).toFixed(2);
 
-                            <input
-                              type="number"
-                              value={
-                                row.selectedOptionId
-                                  ? getPanelQuantityForPlantSize(
-                                      requestedPlantSize
-                                    )
-                                  : 0
-                              }
-                              readOnly
-                              className="
-                                border
-                                border-black
-                                rounded
-                                px-2
-                                py-1
-                                w-20
-                                text-center
-                                bg-slate-100
-                                text-black
-                                font-bold
-                                cursor-not-allowed
-                              "
-                            />
-                          ) : (
-                            /*
-                              INVERTER AND OTHER PRODUCTS:
-
-                              Initial quantity = 0.
-
-                              User can enter quantity manually.
-                            */
-
-                            <input
-                              type="number"
-                              min="0"
-                              step="any"
-                              value={
-                                row.qty ===
-                                0
-                                  ? ""
-                                  : row.qty
-                              }
-                              onChange={(e) => {
-                                const qty =
-                                  e
-                                    .target
-                                    .value ===
-                                  ""
-                                    ? 0
-                                    : Number(
-                                        e
-                                          .target
-                                          .value
-                                      );
-
-                                updateRow(
-                                  index,
-                                  {
-                                    qty,
-                                  }
-                                );
-                              }}
-                              onWheel={
-                                preventWheelChange
-                              }
-                              className="
-                                border
-                                border-black
-                                rounded
-                                px-2
-                                py-1
-                                w-20
-                                text-center
-                                no-spinner
-                                bg-white
-                                text-black
-                              "
-                            />
-                          )}
-                        </td>
-
-                        {/* =================================================
-                            PRICE
-                        ================================================= */}
-
-                        <td className="border-2 border-black px-2 py-2 text-center">
-                          {row.isAdditionalCharge &&
-                          !row.editingCharge ? (
-                            <span className="font-semibold">
-                              ₹{" "}
-                              {formatAmount(
-                                row.price
-                              )}
-                            </span>
-                          ) : (
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={
-                                row.price ===
-                                  "" ||
-                                row.price ==
-                                  null
-                                  ? ""
-                                  : Number(
-                                      row.price
-                                    ).toFixed(
-                                      2
-                                    )
-                              }
-                              onChange={(e) => {
-                                const price =
-                                  e
-                                    .target
-                                    .value ===
-                                  ""
-                                    ? 0
-                                    : Number(
-                                        e
-                                          .target
-                                          .value
-                                      );
-
-                                updateRow(
-                                  index,
-                                  {
-                                    price,
-                                  }
-                                );
-                              }}
-                              onWheel={
-                                preventWheelChange
-                              }
-                              className="
-                                border
-                                border-black
-                                rounded
-                                px-2
-                                py-1
-                                w-28
-                                text-center
-                                no-spinner
-                                bg-white
-                                text-black
-                              "
-                            />
-                          )}
-                        </td>
+        updateRow(index, { price: formattedPrice });
+      }}
+      onWheel={preventWheelChange}
+      className="
+        border
+        border-black
+        rounded
+        px-2
+        py-1
+        w-28
+        text-center
+        no-spinner
+        bg-white
+        text-black
+      "
+    />
+  )}
+</td>
 
                         {/* =================================================
                             GST
