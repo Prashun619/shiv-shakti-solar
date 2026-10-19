@@ -278,7 +278,7 @@ export async function updateInvestment(
   // 2. UPDATE INVESTMENT
   // =====================================================
 
-  const {
+   const {
     data: updatedInvestment,
     error: investmentError,
   } = await supabase
@@ -286,7 +286,7 @@ export async function updateInvestment(
     .update(investment)
     .eq("id", id)
     .select()
-    .single();
+    .maybeSingle();
 
   if (investmentError) {
     console.error(
@@ -295,6 +295,12 @@ export async function updateInvestment(
     );
 
     throw investmentError;
+  }
+
+    if (!updatedInvestment) {
+    throw new Error(
+      "Investment was not updated. Check the record ID and Supabase RLS UPDATE/SELECT policies."
+    );
   }
 
   // =====================================================
@@ -400,7 +406,7 @@ export async function updateInvestment(
     error: expenseInvestmentError,
   } = await supabase
     .from("investments")
-    .select("billing_id, investment_type")
+        .select("billing_id, investment_type, remarks")
     .eq("id", id)
     .maybeSingle();
 
@@ -426,74 +432,59 @@ export async function updateInvestment(
 
   let billingQuery;
 
+ 
   if (
-    expenseInvestment?.investment_type ===
-    "Expense Investment" &&
-    expenseInvestment?.billing_id
+    expenseInvestment?.billing_id &&
+    (
+      expenseInvestment?.investment_type === "Expense Investment" ||
+      expenseInvestment?.investment_type === "Payment to Investor"
+    )
   ) {
     billingQuery = supabase
       .from("billing")
       .update({
-        date:
-          updatedInvestment.investment_date,
-
+        date: updatedInvestment.investment_date,
         type: "Expense",
-
         company:
-          updatedInvestment.purpose ||
-          "Expense",
-
-        paid_by:
-          partner.partner_name,
-
-        payment_mode:
-          updatedInvestment.payment_mode,
-
-        amount:
-          Number(
-            updatedInvestment.amount || 0
-          ),
-
-        remarks:
-          updatedInvestment.remarks ||
-          "",
+          updatedInvestment.purpose || "Payment to Investor",
+        paid_by: partner.partner_name,
+        payment_mode: updatedInvestment.payment_mode,
+        amount: Number(updatedInvestment.amount || 0),
+        remarks: updatedInvestment.remarks || "",
       })
-      .eq(
-        "id",
-        expenseInvestment.billing_id
-      )
+      .eq("id", expenseInvestment.billing_id)
       .select()
       .single();
   } else {
     billingQuery = supabase
       .from("billing")
-      .update(
-        billingEntry
-      )
-      .eq(
-        "source_type",
-        "Investment"
-      )
-      .eq(
-        "source_id",
-        id
-      )
+      .update(billingEntry)
+      .eq("source_type", "Investment")
+      .eq("source_id", id)
       .select()
       .single();
   }
+
 
   const {
     data: billingData,
     error: billingError,
   } = await billingQuery;
 
-  if (billingError) {
+    if (billingError) {
     console.error(
       "FINANCE LEDGER UPDATE ERROR:",
       billingError
     );
 
     throw billingError;
+  }
+
+  if (!billingData) {
+    console.warn(
+      "No linked Finance Ledger entry found for investment:",
+      id
+    );
   }
 
   console.log(
@@ -920,5 +911,63 @@ export async function deleteExpenseInvestment(
 
   if (error) {
     throw error;
+  }
+}
+
+
+export async function syncInvestorPayment(billingEntry) {
+  if (!billingEntry?.id) {
+    throw new Error("Billing ID is required for investor payment.");
+  }
+
+  const partner = await getPartnerByName(billingEntry.paid_by);
+
+  if (!partner) {
+    throw new Error(
+      `Investor "${billingEntry.paid_by}" was not found in Partners.`
+    );
+  }
+
+  const investmentData = {
+    partner_id: partner.id,
+    investment_date: billingEntry.date,
+    investment_type: "Payment to Investor",
+    dealer_name: null,
+    vendor_name: null,
+    amount: Number(billingEntry.amount || 0),
+    payment_mode: billingEntry.payment_mode || "Cash",
+    reference_no: null,
+    purpose: "Payment to Investor",
+    remarks: billingEntry.remarks || "Payment to Investor",
+    billing_id: billingEntry.id,
+  };
+
+  const { data: existing, error: lookupError } = await supabase
+    .from("investments")
+    .select("id")
+    .eq("billing_id", billingEntry.id)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw lookupError;
+  }
+
+  if (existing) {
+    const { error } = await supabase
+      .from("investments")
+      .update(investmentData)
+      .eq("id", existing.id);
+
+    if (error) {
+      throw error;
+    }
+  } else {
+    const { error } = await supabase
+      .from("investments")
+      .insert([investmentData]);
+
+    if (error) {
+      throw error;
+    }
   }
 }
