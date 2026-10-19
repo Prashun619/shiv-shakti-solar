@@ -365,32 +365,32 @@ export default function App() {
   }
 
 
-  // ============================================================
-  // LOGIN
-  // ============================================================
+    // ============================================================
+    // LOGIN
+    // ============================================================
 
-  if (!currentUser) {
+    if (!currentUser) {
 
-    return (
-      <Routes>
+      return (
+        <Routes>
 
-        <Route
-          path="/login"
-          element={
-            <Login setCurrentUser={setCurrentUser} />
-          }
-        />
+          <Route
+            path="/login"
+            element={
+              <Login setCurrentUser={setCurrentUser} />
+            }
+          />
 
-        <Route
-          path="*"
-          element={
-            <Navigate to="/login" />
-          }
-        />
+          <Route
+            path="*"
+            element={
+              <Navigate to="/login" />
+            }
+          />
 
-      </Routes>
-    );
-  }
+        </Routes>
+      );
+    }
 
 
   // ============================================================
@@ -518,6 +518,8 @@ export default function App() {
                 scrollbar-thin
               "
             >
+
+              
 
 
               {/* ==================================================
@@ -711,8 +713,10 @@ export default function App() {
              
              {hasPermission("invoices") && (
 
-              <NavLink
+            <NavLink
   to="/payment-receipt"
+  title="Payment Receipt"
+  onClick={() => setMobileMenuOpen(false)}
   className={sidebarLinkClass}
 >
  <SidebarIcon type="payment-receipt" />
@@ -945,7 +949,13 @@ export default function App() {
             "
           >
 
-            <Routes>
+    <Routes>
+
+  {/* Redirect logged-in users away from the login page */}
+  <Route
+    path="/login"
+    element={<Navigate to="/" replace />}
+  />
 
 
               {/* ==================================================
@@ -1070,7 +1080,7 @@ export default function App() {
 <Route
   path="/invoice/new-design"
   element={
-    <ProtectedRoute>
+    <ProtectedRoute permission="invoices">
       <NewInvoice />
     </ProtectedRoute>
   }

@@ -13,6 +13,8 @@ import {
 import {
   syncExpenseInvestment,
   deleteExpenseInvestment,
+  syncInvestorPayment,
+  getPartners,
 } from "../services/investmentService";
 
 import { getAllPayments } from "../services/paymentsService.js";
@@ -113,6 +115,8 @@ export default function FinanceLedger() {
 
   const [billing, setBilling] = useState([]);
 
+  const [investors, setInvestors] = useState([]);
+
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
@@ -143,10 +147,10 @@ const FINANCE_INVENTORY_PRODUCTS =
   type: "Expense",
   company: "",
   paid_by: "Shiv Shakti Solar",
+  investor_name: "",
   payment_mode: "Cash",
   amount: "",
   remarks: "",
-
   product_name: "",
   quantity: "",
   inventory_company: "",
@@ -392,9 +396,23 @@ const FINANCE_INVENTORY_PRODUCTS =
   // ==========================================================
 
   useEffect(() => {
-    loadBilling();
-    loadPlantExpenses();
-  }, []);
+  loadBilling();
+  loadPlantExpenses();
+
+  getPartners()
+    .then((data) => {
+      setInvestors(
+        (data || []).filter(
+          (partner) =>
+            partner.partner_name?.trim().toLowerCase() !==
+            "saurabh nigam"
+        )
+      );
+    })
+    .catch((error) => {
+      console.error("INVESTOR LOAD ERROR:", error);
+    });
+}, []);
 
   async function loadBilling() {
     try {
@@ -1088,6 +1106,7 @@ const FINANCE_INVENTORY_PRODUCTS =
     type: "Expense",
     company: "",
     paid_by: "Shiv Shakti Solar",
+    investor_name: "",
     payment_mode: "Cash",
     amount: "",
     remarks: "",
@@ -1124,6 +1143,15 @@ const FINANCE_INVENTORY_PRODUCTS =
     paid_by:
       item.paid_by ||
       "Shiv Shakti Solar",
+
+    investor_name:
+  item.type === "Expense" &&
+  item.source_type === "Investment" &&
+  String(item.remarks || "")
+    .toLowerCase()
+    .startsWith("payment to investor")
+    ? item.paid_by || ""
+    : "",
 
     payment_mode:
       item.payment_mode ||
@@ -1188,6 +1216,14 @@ function openTransactionView(item) {
 const isExpense =
   normalizedType === "expense";
 
+  const isInvestorPayment =
+  normalizedType === "payment to investor";
+
+if (isInvestorPayment && !form.investor_name) {
+  alert("Please select an investor.");
+  return;
+}
+
 const isInventoryTransaction =
   normalizedType ===
   "inventory transaction";
@@ -1210,13 +1246,15 @@ const hasInventoryProduct =
     const billingData = {
       date: form.date,
 
-      type: form.type,
+      type: isInvestorPayment ? "Expense" : form.type,
 
-      company:
-        form.company,
+company: isInvestorPayment ? "Investment" : form.company,
 
-      paid_by:
-        form.paid_by,
+paid_by: isInvestorPayment
+  ? form.investor_name
+  : form.paid_by,
+
+source_type: isInvestorPayment ? "Investment" : null,
 
       payment_mode:
         form.payment_mode,
@@ -1224,8 +1262,13 @@ const hasInventoryProduct =
       amount:
         Number(form.amount),
 
-      remarks:
-        form.remarks,
+      remarks: isInvestorPayment
+  ? `Payment to Investor${
+      form.remarks.trim()
+        ? ` - ${form.remarks.trim()}`
+        : ""
+    }`
+  : form.remarks,
 
      product_name:
   isInventoryTransaction
@@ -1265,15 +1308,20 @@ inventory_specification:
     }
 
     // ======================================================
-    // EXPENSE → INVESTMENT SYNC
-    // ======================================================
+// INVESTOR PAYMENT / EXPENSE → INVESTMENT SYNC
+// ======================================================
 
-    if (isExpense) {
-      await syncExpenseInvestment({
-        ...billingData,
-        id: savedBilling.id,
-      });
-    }
+if (isInvestorPayment) {
+  await syncInvestorPayment({
+    ...billingData,
+    id: savedBilling.id,
+  });
+} else if (isExpense) {
+  await syncExpenseInvestment({
+    ...billingData,
+    id: savedBilling.id,
+  });
+}
 
     // ======================================================
     // EXPENSE → INVENTORY SYNC
@@ -1382,6 +1430,13 @@ inventory_specification:
         item.id
       );
     }
+
+    if (
+  normalizeName(item.source_type) === "investment" &&
+  normalizeName(item.remarks).startsWith("payment to investor")
+) {
+  await deleteExpenseInvestment(item.id);
+}
 
     // ======================================================
     // DELETE BILLING ENTRY
@@ -3079,6 +3134,10 @@ async function handleBulkDelete() {
                     company = "";
                   }
 
+                  if (type === "Payment to Investor") {
+  company = "Investment";
+}
+
                   setForm({
                     ...form,
                     type,
@@ -3086,29 +3145,35 @@ async function handleBulkDelete() {
                   });
                 }}
               >
-                <option value="Expense">
+
+<option value="Dealer Payment">
+  Dealer Payment
+</option>
+
+<option value="Expense">
   Expense
+</option>
+
+<option value="Installation Charges">
+  Installation Charges
 </option>
 
 <option value="Inventory Transaction">
   Inventory Transaction
 </option>
 
-                <option value="Dealer Payment">
-                  Dealer Payment
-                </option>
+<option value="JE Charge">
+  JE Charge
+</option>
 
-                <option value="Vendor Payment">
-                  Vendor Payment
-                </option>
+<option value="Payment to Investor">
+  Payment to Investor
+</option>
 
-                <option value="Installation Charges">
-                  Installation Charges
-                </option>
+<option value="Vendor Payment">
+  Vendor Payment 
+</option>
 
-                <option value="JE Charge">
-                  JE Charge
-                </option>
               </select>
 
               {/* DATE */}
@@ -3257,57 +3322,56 @@ async function handleBulkDelete() {
   </>
 )}
 
-              {/* PAID BY */}
+              
+{/* PAID BY / INVESTOR */}
 
-              {(form.type === "Expense" ||
-  form.type === "Inventory Transaction") ? (
-                <select
-                  className="
-                    border-2
-                    border-black
-                    p-3
-                    rounded
-                  "
-                  value={form.paid_by}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      paid_by:
-                        e.target.value,
-                    })
-                  }
-                >
-                  <option value="Shiv Shakti Solar">
-                    Shiv Shakti Solar
-                  </option>
+{form.type === "Payment to Investor" ? (
+  <select
+    className="border-2 border-black p-3 rounded"
+    value={form.investor_name}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        investor_name: e.target.value,
+        paid_by: e.target.value,
+        company: "Investment",
+      })
+    }
+    required
+  >
+    <option value="">Select Investor</option>
 
-                  <option value="Prashun Dixit">
-                    Prashun Dixit
-                  </option>
+    {investors.map((partner) => (
+      <option key={partner.id} value={partner.partner_name}>
+        {partner.partner_name}
+      </option>
+    ))}
+  </select>
+) : (
+  (form.type === "Expense" ||
+    form.type === "Inventory Transaction") ? (
+    <select
+      className="border-2 border-black p-3 rounded"
+      value={form.paid_by}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          paid_by: e.target.value,
+        })
+      }
+    >
+      <option value="Shiv Shakti Solar">Shiv Shakti Solar</option>
+      <option value="Prashun Dixit">Prashun Dixit</option>
+      <option value="Shubhendu Dixit">Shubhendu Dixit</option>
+      <option value="Vipin Saxena">Vipin Saxena</option>
+    </select>
+  ) : (
+    <div className="border-2 border-emerald-300 bg-emerald-50 p-3 rounded font-semibold text-emerald-800">
+      Shiv Shakti Solar
+    </div>
+  )
+)}
 
-                  <option value="Shubhendu Dixit">
-                    Shubhendu Dixit
-                  </option>
-
-                  <option value="Vipin Saxena">
-                    Vipin Saxena
-                  </option>
-                </select>
-              ) : (
-                <div
-                  className="
-                    border-2
-                    border-emerald-300
-                    bg-emerald-50
-                    p-3
-                    rounded
-                    font-semibold
-                    text-emerald-800
-                  "
-                >
-                  Shiv Shakti Solar
-                </div>
-              )}
 
               {/* MODE */}
 

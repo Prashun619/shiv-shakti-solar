@@ -61,9 +61,12 @@ function getInvestmentTypeStyle(type) {
       return "bg-purple-100 text-purple-800 border border-purple-300";
 
     case "Expense Investment":
-      return "bg-red-100 text-red-800 border border-red-300";
+  return "bg-red-100 text-red-800 border border-red-300";
 
-    default:
+case "Payment to Investor":
+  return "bg-red-100 text-red-800 border border-red-300";
+
+default:
       return "bg-slate-100 text-slate-800 border border-slate-300";
   }
 }
@@ -207,15 +210,15 @@ const [editingId, setEditingId] = useState(null);
   // =====================================================
 
   const totalInvestment = useMemo(() => {
-    return investments.reduce(
-      (sum, investment) =>
-        sum +
-        Number(
-          investment.amount || 0
-        ),
-      0
-    );
-  }, [investments]);
+  return investments.reduce((sum, investment) => {
+    const amount = Number(investment.amount || 0);
+
+    return sum +
+      (investment.investment_type === "Payment to Investor"
+        ? -amount
+        : amount);
+  }, 0);
+}, [investments]);
 
   // =====================================================
   // OPEN ADD MODAL
@@ -476,29 +479,22 @@ const [editingId, setEditingId] = useState(null);
 
         {partners.map(
           (partner, index) => {
-            const partnerTotal =
-              investments
-                .filter(
-                  (investment) =>
-                    String(
-                      investment.partner_id
-                    ) ===
-                    String(
-                      partner.id
-                    )
-                )
-                .reduce(
-                  (
-                    sum,
-                    investment
-                  ) =>
-                    sum +
-                    Number(
-                      investment.amount ||
-                        0
-                    ),
-                  0
-                );
+          const partnerTotal =
+  investments
+    .filter(
+      (investment) =>
+        String(
+          investment.partner_id
+        ) === String(partner.id)
+    )
+    .reduce((sum, investment) => {
+      const amount = Number(investment.amount || 0);
+
+      return sum +
+        (investment.investment_type === "Payment to Investor"
+          ? -amount
+          : amount);
+    }, 0);
 
             const gradients = [
               "from-blue-500 to-indigo-600",
@@ -729,17 +725,19 @@ const [editingId, setEditingId] = useState(null);
 
                       {/* AMOUNT */}
 
-                      <td className="border border-black px-3 py-2 text-center text-sm font-bold text-green-700">
-
-                        ₹{" "}
-                        {Number(
-                          investment.amount ||
-                            0
-                        ).toLocaleString(
-                          "en-IN"
-                        )}
-
-                      </td>
+<td
+  className={`border border-black px-3 py-2 text-center text-sm font-bold ${
+    investment.investment_type === "Payment to Investor"
+      ? "text-red-700"
+      : "text-green-700"
+  }`}
+>
+  {investment.investment_type === "Payment to Investor"
+    ? "- "
+    : ""}
+  ₹{" "}
+  {Number(investment.amount || 0).toLocaleString("en-IN")}
+</td>
 
                       {/* PAYMENT MODE */}
 

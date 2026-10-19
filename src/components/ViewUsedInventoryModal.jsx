@@ -737,6 +737,19 @@ console.log(
     pdfMode ? "fixed -left-[10000px] top-0" : ""
   }`}
 >
+  <button
+  type="button"
+  onClick={onClose}
+  className="absolute top-3 right-3 z-50 print:hidden
+             w-9 h-9 flex items-center justify-center
+             rounded-full bg-red-600 text-white
+             text-2xl font-bold shadow-md
+             hover:bg-red-700 transition"
+  title="Close"
+  aria-label="Close Material Consumption"
+>
+  ×
+</button>
 
         {/* =====================================================
             HEADER
