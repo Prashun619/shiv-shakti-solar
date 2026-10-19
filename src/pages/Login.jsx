@@ -28,22 +28,54 @@ export default function Login({ setCurrentUser }) {
       }
 
       // Auth login using username converted email
+     
       const { data, error } =
         await supabase.auth.signInWithPassword({
           email: loginEmail,
           password,
         });
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      console.log("JWT email:", session?.user?.email);
-
+      // Check login error before continuing
       if (error) {
+        console.error("SUPABASE LOGIN ERROR:", error);
         alert(error.message);
         return;
       }
+
+      // Verify that a real Supabase session exists
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (
+        sessionError ||
+        !session ||
+        !session.access_token ||
+        session.user.id !== data.user?.id
+      ) {
+        console.error("SUPABASE SESSION ERROR:", {
+          sessionError,
+          hasSession: !!session,
+          hasAccessToken: !!session?.access_token,
+          loginUserId: data.user?.id,
+          sessionUserId: session?.user?.id,
+        });
+
+        await supabase.auth.signOut();
+
+        alert(
+          "Login succeeded but the authenticated session could not be verified. Please login again."
+        );
+        return;
+      }
+
+      console.log("Authenticated session verified:", {
+        email: session.user.email,
+        userId: session.user.id,
+        hasAccessToken: !!session.access_token,
+      });
+
 
       const {
         data: user,
