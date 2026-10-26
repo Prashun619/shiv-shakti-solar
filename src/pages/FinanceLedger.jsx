@@ -31,24 +31,19 @@ import {
 // ============================================================
 
 const INVESTOR_NAMES = [
-  "shubhendu",
-  "vipin",
-  "prashun",
-  "saurabh",
+  "prashun dixit",
+  "shubhendu dixit",
+  "vipin saxena",
 ];
-
-// ============================================================
-// EXPENSE INVESTOR NAMES
-//
-// Expense transactions paid by these people are treated
-// as Investment transactions.
-// ============================================================
 
 const EXPENSE_INVESTOR_NAMES = [
   "prashun dixit",
   "shubhendu dixit",
   "vipin saxena",
 ];
+
+const VENDOR_PAYMENT_TYPE = "Vendor Payment";
+const INVESTOR_PAYMENT_TYPE = "Payment to Investor";
 
 // ============================================================
 // HELPERS
@@ -67,10 +62,8 @@ function normalizeName(value) {
 }
 
 function isInvestor(name) {
-  const normalized = normalizeName(name);
-
-  return INVESTOR_NAMES.some((investor) =>
-    normalized.includes(investor)
+  return INVESTOR_NAMES.includes(
+    normalizeName(name)
   );
 }
 
@@ -594,12 +587,10 @@ const FINANCE_INVENTORY_PRODUCTS =
   // CUSTOMER PAYMENTS
   // ----------------------------------------------------------
 
-  const customerPaymentTransactions =
-    billing.filter(
-      (item) =>
-        item.source_type ===
-        "Customer Payment"
-    );
+  const customerPaymentTransactions = billing.filter(
+  (item) =>
+    normalizeName(item.source_type) === "customer payment"
+);
 
   // ----------------------------------------------------------
   // EXPENSE
@@ -620,79 +611,80 @@ const FINANCE_INVENTORY_PRODUCTS =
   // intentionally excluded from this section.
   // ----------------------------------------------------------
 
-  const expenseTransactions =
-  billing.filter((item) => {
-    if (
-      item.source_type ===
-      "Customer Payment"
-    ) {
-      return false;
-    }
 
-    const type =
-      normalizeName(item.type);
+const expenseTransactions = billing.filter((item) => {
+  const type = normalizeName(item.type);
+  const sourceType = normalizeName(item.source_type);
+  const paidBy = normalizeName(item.paid_by);
+  const remarks = normalizeName(item.remarks);
+  const company = normalizeName(item.company);
 
-    const sourceType =
-      normalizeName(item.source_type);
+  // Customer payments must not appear as expenses.
+  if (sourceType === "customer payment") {
+    return false;
+  }
 
-    const paidBy =
-      normalizeName(item.paid_by);
+  // Exclude Dealer Payments from Expense, regardless of
+  // which field identifies the transaction.
+  const isDealerPayment =
+    type === "dealer payment" ||
+    sourceType === "dealer payment" ||
+    company === "dealer payment" ||
+    remarks.includes("dealer payment");
 
-    // ------------------------------------------------------
-    // INVESTOR-PAID TRANSACTIONS
-    //
-    // These belong to Investment, not normal Expense.
-    // ------------------------------------------------------
+  // Exclude Vendor Payments from Expense.
+  const isVendorPayment =
+    type === "vendor payment" ||
+    sourceType === "vendor payment" ||
+    company === "vendor payment" ||
+    remarks.includes("vendor payment");
 
-    const investorPaid =
-      isInvestor(paidBy);
+  if (isDealerPayment || isVendorPayment) {
+    return false;
+  }
 
-    const isInvestorDealerPayment =
-      investorPaid &&
-      (
-        type === "dealer payment" ||
-        sourceType === "dealer payment"
-      );
+  const investorPaid = isInvestor(paidBy);
 
-    const isInvestorVendorPayment =
-      investorPaid &&
-      (
-        type === "vendor payment" ||
-        sourceType === "vendor payment"
-      );
-
-    const isInvestorMiscellaneous =
-      investorPaid &&
-      (
-        type === "miscellaneous" ||
-        sourceType === "miscellaneous"
-      );
-
-    const isInvestorExpense =
-      investorPaid &&
-      type === "expense";
-
-    if (
-      isInvestorDealerPayment ||
-      isInvestorVendorPayment ||
-      isInvestorMiscellaneous ||
-      isInvestorExpense
-    ) {
-      return false;
-    }
-
-    // ------------------------------------------------------
-    // NORMAL BUSINESS EXPENSES
-    // ------------------------------------------------------
-
-    return (
-      type === "expense" ||
-      type === "vendor payment" ||
+  // Investor-paid Miscellaneous transactions remain in Expense.
+  const isInvestorMiscellaneous =
+    investorPaid &&
+    (
       type === "miscellaneous" ||
-      type === "installation charges" ||
-      type === "je charge"
+      sourceType === "miscellaneous" ||
+      company === "miscellaneous" ||
+      remarks.includes("miscellaneous")
     );
-  });
+
+  // Investment-linked Expense / Expense Investment transactions.
+  const isExpenseInvestment =
+    sourceType === "investment" &&
+    (
+      type === "expense" ||
+      type === "expense investment"
+    );
+
+  // Investor-paid normal expenses.
+  const isInvestorExpense =
+    investorPaid &&
+    type === "expense";
+
+  if (
+    isInvestorMiscellaneous ||
+    isExpenseInvestment ||
+    isInvestorExpense
+  ) {
+    return true;
+  }
+
+  // Normal business expenses.
+  return (
+    type === "expense" ||
+    type === "miscellaneous" ||
+    type === "installation charges" ||
+    type === "je charge"
+  );
+});
+
 
   const totalNormalExpense =
     expenseTransactions.reduce(
@@ -702,168 +694,122 @@ const FINANCE_INVENTORY_PRODUCTS =
       0
     );
 
-  // ----------------------------------------------------------
-  // DEALER PAYMENTS
-  //
-  // Only dealer payments made by Shiv Shakti Solar.
-  //
-  // Investor-paid dealer payments are NOT included here.
-  // ----------------------------------------------------------
+  
 
-  const dealerPaymentTransactions =
-    billing.filter((item) => {
-      if (
-        item.source_type ===
-        "Customer Payment"
-      ) {
-        return false;
-      }
+    // ==========================================================
+// DEALER PAYMENTS
+// Investor-paid dealer payments also appear here.
+// They can also appear under Investments.
+// ==========================================================
 
-      const type =
-        normalizeName(item.type);
 
-      const remarks =
-        normalizeName(item.remarks);
+const dealerPaymentTransactions = billing.filter((item) => {
+  const sourceType = normalizeName(item.source_type);
 
-      const paidBy =
-        normalizeName(item.paid_by);
-
-      // New Transaction Type
-      const isDealerPaymentType =
-        type === "dealer payment";
-
-      // Old records that used remarks
-      const isDealerPaymentRemark =
-        remarks === "dealer payment" ||
-        remarks.includes(
-          "dealer payment"
-        );
-
-      if (
-        !isDealerPaymentType &&
-        !isDealerPaymentRemark
-      ) {
-        return false;
-      }
-
-      // Investor-paid dealer payment
-      // continues to go under Investment.
-      if (isInvestor(paidBy)) {
-        return false;
-      }
-
-      return true;
-    });
-
-  // ----------------------------------------------------------
-  // INVESTMENT
-  //
-  // 1. Normal investment entries
-  // 2. Dealer payments made by investors
-  // 3. Expense transactions paid by:
-  //    - Prashun Dixit
-  //    - Shaubhendu Dixit
-  //    - Vipin Saxena
-  // ----------------------------------------------------------
-
-  const investmentTransactions =
-  billing.filter((item) => {
-    if (
-      item.source_type ===
-      "Customer Payment"
-    ) {
-      return false;
-    }
-
-    const sourceType =
-      normalizeName(
-        item.source_type
-      );
-
-    const type =
-      normalizeName(item.type);
-
-    const remarks =
-      normalizeName(item.remarks);
-
-    const paidBy =
-      normalizeName(item.paid_by);
-
-    // ------------------------------------------------------
-    // DIRECT INVESTMENT
-    // ------------------------------------------------------
-
-    if (
-      sourceType ===
-      "investment"
-    ) {
-      return true;
-    }
-
-    // ------------------------------------------------------
-    // INVESTOR-PAID DEALER PAYMENT
-    // ------------------------------------------------------
-
-    const isDealerPayment =
-      type === "dealer payment" ||
-      sourceType === "dealer payment" ||
-      remarks === "dealer payment" ||
-      remarks.includes("dealer payment");
-
-    if (
-      isDealerPayment &&
-      isInvestor(paidBy)
-    ) {
-      return true;
-    }
-
-    // ------------------------------------------------------
-    // INVESTOR-PAID VENDOR PAYMENT
-    // ------------------------------------------------------
-
-    const isVendorPayment =
-      type === "vendor payment" ||
-      sourceType === "vendor payment";
-
-    if (
-      isVendorPayment &&
-      isInvestor(paidBy)
-    ) {
-      return true;
-    }
-
-    // ------------------------------------------------------
-    // INVESTOR-PAID MISCELLANEOUS
-    // ------------------------------------------------------
-
-    const isMiscellaneous =
-      type === "miscellaneous" ||
-      sourceType === "miscellaneous";
-
-    if (
-      isMiscellaneous &&
-      isInvestor(paidBy)
-    ) {
-      return true;
-    }
-
-    // ------------------------------------------------------
-    // INVESTOR-PAID EXPENSE
-    // ------------------------------------------------------
-
-    const isExpenseInvestment =
-      type === "expense" &&
-      EXPENSE_INVESTOR_NAMES.includes(
-        paidBy
-      );
-
-    if (isExpenseInvestment) {
-      return true;
-    }
-
+  if (sourceType === "customer payment") {
     return false;
-  });
+  }
 
+  const type = normalizeName(item.type);
+  const remarks = normalizeName(item.remarks);
+  const company = normalizeName(item.company);
+
+  const isDealerPayment =
+    type === "dealer payment" ||
+    sourceType === "dealer payment" ||
+    company === "dealer payment" ||
+    remarks.includes("dealer payment");
+
+  return isDealerPayment;
+});
+
+
+
+// ==========================================================
+// VENDOR PAYMENTS
+// All vendor payments belong to this category only.
+// ==========================================================
+
+const vendorPaymentTransactions = billing.filter((item) => {
+  if (normalizeName(item.source_type) === "customer payment") {
+    return false;
+  }
+
+  const type = normalizeName(item.type);
+  const sourceType = normalizeName(item.source_type);
+  const remarks = normalizeName(item.remarks);
+
+  return (
+    type === "vendor payment" ||
+    sourceType === "vendor payment" ||
+    remarks.includes("vendor payment")
+  );
+});
+
+
+// ==========================================================
+// INVESTMENTS
+// Exclude Vendor Payments so they are not double-counted
+// in the Investments category.
+// ==========================================================
+
+
+const investmentTransactions = billing.filter((item) => {
+  if (
+    normalizeName(item.source_type) === "customer payment"
+  ) {
+    return false;
+  }
+
+  const sourceType = normalizeName(item.source_type);
+  const type = normalizeName(item.type);
+  const remarks = normalizeName(item.remarks);
+  const paidBy = normalizeName(item.paid_by);
+  const company = normalizeName(item.company);
+
+  const isDealerPayment =
+    type === "dealer payment" ||
+    sourceType === "dealer payment" ||
+    remarks.includes("dealer payment");
+
+  const isVendorPayment =
+    type === "vendor payment" ||
+    sourceType === "vendor payment" ||
+    remarks.includes("vendor payment");
+
+  // Dealer Payments and Vendor Payments paid by an investor.
+  if (isDealerPayment || isVendorPayment) {
+    return isInvestor(paidBy);
+  }
+
+  // Direct investment-linked transactions, including Payment to Investor.
+  if (sourceType === "investment") {
+    return true;
+  }
+
+  // Investor-paid Miscellaneous transactions.
+  const isMiscellaneous =
+    type === "miscellaneous" ||
+    sourceType === "miscellaneous" ||
+    company === "miscellaneous" ||
+    remarks.includes("miscellaneous");
+
+  if (isMiscellaneous && isInvestor(paidBy)) {
+    return true;
+  }
+
+  // Investor-paid expenses, including Expense Investment.
+  if (
+    type === "expense" &&
+    EXPENSE_INVESTOR_NAMES.includes(paidBy)
+  ) {
+    return true;
+  }
+
+  return false;
+});
+
+ 
   // ==========================================================
   // KPI TOTALS
   // ==========================================================
@@ -888,15 +834,23 @@ const FINANCE_INVENTORY_PRODUCTS =
       0
     );
 
+    const totalVendorPayment =
+  vendorPaymentTransactions.reduce(
+    (sum, item) => sum + Number(item.amount || 0),
+    0
+  );
+
   const totalInvestment =
-    investmentTransactions.reduce(
-      (sum, item) =>
-        sum +
-        Number(
-          item.amount || 0
-        ),
-      0
-    );
+  investmentTransactions.reduce((sum, item) => {
+    const amount = Number(item.amount || 0);
+
+    const isPaymentToInvestor =
+      normalizeName(item.remarks).startsWith(
+        "payment to investor"
+      );
+
+    return sum + (isPaymentToInvestor ? -amount : amount);
+  }, 0);
 
   // ==========================================================
   // TOTAL PLANT EXPENSE
@@ -925,15 +879,15 @@ const FINANCE_INVENTORY_PRODUCTS =
   // ==========================================================
 
   const totalIncome =
-  totalCustomerPayment;
+  totalCustomerPayment + totalInvestment;
 
-  const totalExpense =
-    totalNormalExpense +
-    totalDealerPayment;
+const totalExpense =
+  totalNormalExpense +
+  totalDealerPayment +
+  totalVendorPayment;
 
-  const netBalance =
-    totalIncome -
-    totalExpense;
+const netBalance =
+  totalIncome - totalExpense;
 
   // ==========================================================
   // CASH BALANCE
@@ -1073,6 +1027,16 @@ const FINANCE_INVENTORY_PRODUCTS =
     selectedTransactions =
       filterTransactions(
         dealerPaymentTransactions
+      );
+  }
+
+    if (
+    selectedBlock ===
+    "vendor"
+  ) {
+    selectedTransactions =
+      filterTransactions(
+        vendorPaymentTransactions
       );
   }
 
@@ -1686,7 +1650,11 @@ async function handleBulkDelete() {
   Description
 </th>
 
-{(selectedBlock === "expense" || selectedBlock === "dealer") && (
+{(
+  selectedBlock === "expense" ||
+  selectedBlock === "dealer" ||
+  selectedBlock === "vendor"
+) && (
   <th className="px-3 py-2 text-center text-sm border border-black">
     Action
   </th>
@@ -1908,7 +1876,11 @@ async function handleBulkDelete() {
 
 {/* ACTION */}
 
-{(selectedBlock === "expense" || selectedBlock === "dealer") && (
+{(
+  selectedBlock === "expense" ||
+  selectedBlock === "dealer" ||
+  selectedBlock === "vendor"
+) && (
   <td className="px-3 py-2 text-center border border-black whitespace-nowrap">
     <div className="flex items-center justify-center gap-2">
       <button
@@ -3536,6 +3508,20 @@ async function handleBulkDelete() {
   setSelectedBlock("dealer");
   setSelectedTransactionIds([]);
 }}
+          />
+
+                    {/* VENDOR PAYMENTS */}
+
+          <LedgerBlock
+            title="Vendor Payments"
+            description="Payments made to vendors"
+            amount={totalVendorPayment}
+            count={vendorPaymentTransactions.length}
+            color="orange"
+            onClick={() => {
+              setSelectedBlock("vendor");
+              setSelectedTransactionIds([]);
+            }}
           />
 
           {/* EXPENSE */}

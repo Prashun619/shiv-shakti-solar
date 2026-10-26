@@ -430,67 +430,91 @@ export async function updateInvestment(
   // billing_id points to original billing Expense
   // =====================================================
 
-  let billingQuery;
+  let billingData = null;
+  let billingError = null;
 
- 
-  if (
-    expenseInvestment?.billing_id &&
-    (
-      expenseInvestment?.investment_type === "Expense Investment" ||
-      expenseInvestment?.investment_type === "Payment to Investor"
-    )
-  ) {
-    billingQuery = supabase
-      .from("billing")
-      .update({
+  const investmentType = updatedInvestment.investment_type;
+  const linkedBillingId = expenseInvestment?.billing_id;
+
+  // Update the existing Finance Ledger row using billing_id first.
+  if (linkedBillingId) {
+    let billingUpdate = { ...billingEntry };
+
+    if (
+      investmentType === "Expense Investment" ||
+      investmentType === "Payment to Investor"
+    ) {
+      billingUpdate = {
         date: updatedInvestment.investment_date,
         type: "Expense",
         company:
-          updatedInvestment.purpose || "Payment to Investor",
+          investmentType === "Payment to Investor"
+            ? "Investment"
+            : updatedInvestment.purpose || "Expense",
         paid_by: partner.partner_name,
         payment_mode: updatedInvestment.payment_mode,
         amount: Number(updatedInvestment.amount || 0),
-        remarks: updatedInvestment.remarks || "",
-      })
-      .eq("id", expenseInvestment.billing_id)
-      .select()
-      .single();
-  } else {
-    billingQuery = supabase
+        remarks:
+          investmentType === "Payment to Investor"
+            ? `Payment to Investor${
+                updatedInvestment.purpose
+                  ? ` - ${updatedInvestment.purpose}`
+                  : ""
+              }`
+            : updatedInvestment.remarks || "",
+      };
+    }
+
+    const { data, error } = await supabase
       .from("billing")
-      .update(billingEntry)
-      .eq("source_type", "Investment")
-      .eq("source_id", id)
+      .update(billingUpdate)
+      .eq("id", linkedBillingId)
       .select()
-      .single();
+      .maybeSingle();
+
+    billingData = data;
+    billingError = error;
+  } else {
+    // Fallback for investments without billing_id.
+    const { data: existingBilling, error: lookupError } =
+      await supabase
+        .from("billing")
+        .select("id")
+        .eq("source_type", "Investment")
+        .eq("source_id", id)
+        .maybeSingle();
+
+    if (lookupError) {
+      console.error("FINANCE LEDGER LOOKUP ERROR:", lookupError);
+      throw lookupError;
+    }
+
+    if (existingBilling?.id) {
+      const { data, error } = await supabase
+        .from("billing")
+        .update(billingEntry)
+        .eq("id", existingBilling.id)
+        .select()
+        .maybeSingle();
+
+      billingData = data;
+      billingError = error;
+    }
   }
 
-
-  const {
-    data: billingData,
-    error: billingError,
-  } = await billingQuery;
-
-    if (billingError) {
-    console.error(
-      "FINANCE LEDGER UPDATE ERROR:",
-      billingError
-    );
-
+  if (billingError) {
+    console.error("FINANCE LEDGER UPDATE ERROR:", billingError);
     throw billingError;
   }
 
-  if (!billingData) {
+  if (billingData) {
+    console.log("FINANCE LEDGER ENTRY UPDATED:", billingData);
+  } else {
     console.warn(
-      "No linked Finance Ledger entry found for investment:",
+      "No linked Finance Ledger entry was updated for investment:",
       id
     );
   }
-
-  console.log(
-    "FINANCE LEDGER ENTRY UPDATED:",
-    billingData
-  );
 
   return updatedInvestment;
 }
