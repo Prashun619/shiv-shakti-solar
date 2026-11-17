@@ -677,12 +677,13 @@ const expenseTransactions = billing.filter((item) => {
   }
 
   // Normal business expenses.
-  return (
-    type === "expense" ||
-    type === "miscellaneous" ||
-    type === "installation charges" ||
-    type === "je charge"
-  );
+ return (
+  type === "expense" ||
+  type === "miscellaneous" ||
+  type === "installation charges" ||
+  type === "je charge" ||
+  type === "agreement charges"
+);
 });
 
 
@@ -1631,8 +1632,10 @@ async function handleBulkDelete() {
                   </th>
 
                   <th className="px-3 py-2 text-center text-sm border border-black">
-                    Description
-                  </th>
+  {selectedBlock === "vendor"
+    ? "Company Name"
+    : "Transaction Type"}
+</th>
 
                   <th className="px-3 py-2 text-center text-sm border border-black">
                     Mode
@@ -1773,22 +1776,24 @@ async function handleBulkDelete() {
                             "-"}
                         </td>
 
-                        {/* DESCRIPTION */}
+                       {/* TRANSACTION TYPE */}
 
-                        <td
-                          className="
-                            px-3
-                            py-2
-                            text-sm
-                            text-center
-                            border
-                            border-black
-                            whitespace-nowrap
-                          "
-                        >
-                          {item.company ||
-                            "-"}
-                        </td>
+<td
+  className="
+    px-3
+    py-2
+    text-sm
+    text-center
+    border
+    border-black
+    whitespace-nowrap
+  "
+>
+  {selectedBlock === "dealer" ||
+ selectedBlock === "vendor"
+  ? item.company || "-"
+  : item.type || "-"}
+</td>
 
                         {/* MODE */}
 
@@ -2574,54 +2579,56 @@ async function handleBulkDelete() {
         min-h-screen
       "
     >
-      {/* ======================================================
-          HEADER
-      ====================================================== */}
+      
+{/* ======================================================
+    HEADER
+====================================================== */}
 
-      <div
-        className="
-          mb-5
-          rounded-2xl
-          bg-gradient-to-r
-          from-emerald-700
-          via-indigo-600
-          to-teal-500
-          p-5
-          shadow-xl
-        "
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-white">
-              Finance Ledger
-            </h1>
+<div className="relative mb-5 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-4 sm:p-6 shadow-xl">
 
-            <p className="text-green-100 mt-1">
-              Complete financial transaction overview
-            </p>
-          </div>
+  {/* Background highlights */}
+  <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-pink-400/30 blur-2xl" />
+  <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
 
-          <button
-            onClick={() => {
-              resetForm();
-              setShowForm(true);
-            }}
-            className="
-              bg-white
-              text-emerald-700
-              px-4
-              py-2
-              rounded-lg
-              font-semibold
-              shadow
-              hover:bg-gray-100
-              whitespace-nowrap
-            "
-          >
-            + Add Transaction
-          </button>
+  <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+    {/* TITLE */}
+    <div className="min-w-0">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-2xl shadow-lg backdrop-blur-md">
+          💹
+        </div>
+
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-wide text-white sm:text-3xl">
+            Finance Ledger
+          </h1>
+
+          <p className="mt-1 text-sm text-white/90">
+            Complete financial transaction overview
+          </p>
         </div>
       </div>
+
+      <div className="mt-4 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
+    </div>
+
+    {/* ADD TRANSACTION BUTTON */}
+    <button
+      type="button"
+      onClick={() => {
+        resetForm();
+        setShowForm(true);
+      }}
+      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/95 px-5 py-3 font-bold text-indigo-700 shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-xl sm:w-auto"
+    >
+      <span className="text-xl leading-none">+</span>
+      Add Transaction
+    </button>
+
+  </div>
+</div>
+
 
       {/* ======================================================
     KPI CARDS
@@ -3079,21 +3086,17 @@ async function handleBulkDelete() {
                   let company =
                     form.company;
 
-                  if (
-                    type ===
-                    "Installation Charges"
-                  ) {
-                    company =
-                      "Shailendra";
-                  }
+                  if (type === "Installation Charges") {
+  company = "Shailendra";
+}
 
-                  if (
-                    type ===
-                    "JE Charge"
-                  ) {
-                    company =
-                      "MPEB";
-                  }
+if (type === "JE Charge") {
+  company = "MPEB";
+}
+
+if (type === "Agreement Charges") {
+  company = "Tehshil";
+}
 
                   if (
                     type ===
@@ -3126,6 +3129,10 @@ async function handleBulkDelete() {
   Expense
 </option>
 
+<option value="Agreement Charges">
+  Agreement Charges
+</option>
+
 <option value="Installation Charges">
   Installation Charges
 </option>
@@ -3143,7 +3150,7 @@ async function handleBulkDelete() {
 </option>
 
 <option value="Vendor Payment">
-  Vendor Payment 
+  Vendor Payment
 </option>
 
               </select>
@@ -3170,30 +3177,63 @@ async function handleBulkDelete() {
 
               {/* COMPANY / DESCRIPTION */}
 
-              <input
-                className="
-                  border-2
-                  border-black
-                  p-3
-                  rounded
-                  bg-gray-50
-                "
-                placeholder="Company / Description"
-                value={form.company}
-                readOnly={
-                  form.type ===
-                    "Installation Charges" ||
-                  form.type ===
-                    "JE Charge"
-                }
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    company:
-                      e.target.value,
-                  })
-                }
-              />
+{form.type === "Vendor Payment" ? (
+  <select
+    className="
+      border-2
+      border-black
+      p-3
+      rounded
+      bg-gray-50
+    "
+    value={form.company}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        company: e.target.value,
+      })
+    }
+  >
+    <option value="">
+      Select Company
+    </option>
+
+    <option value="Gupta Brothers">
+      Gupta Brothers
+    </option>
+
+    <option value="Shiv Shakti Solar">
+      Shiv Shakti Solar
+    </option>
+
+    <option value="Solar Array (Harsh Dubey)">
+      Solar Array (Harsh Dubey)
+    </option>
+  </select>
+) : (
+  <input
+    className="
+      border-2
+      border-black
+      p-3
+      rounded
+      bg-gray-50
+    "
+    placeholder="Company / Description"
+    value={form.company}
+    readOnly={
+      form.type === "Installation Charges" ||
+      form.type === "JE Charge" ||
+      form.type === "Agreement Charges"
+    }
+    onChange={(e) =>
+      setForm({
+        ...form,
+        company: e.target.value,
+      })
+    }
+  />
+)}
 
               {/* INVENTORY PRODUCT */}
 

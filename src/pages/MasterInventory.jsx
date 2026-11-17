@@ -400,204 +400,85 @@ export default function MasterInventory() {
     ">
 
 
-      {/* ======================================
-          HEADER
-      ====================================== */}
+     
+{/* ======================================
+    HEADER
+====================================== */}
+
+<div className="relative mb-4 sm:mb-6 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-4 sm:p-6 shadow-lg">
+
+  <div className="pointer-events-none absolute -right-8 -top-12 h-40 w-40 rounded-full bg-pink-400/30 blur-2xl" />
+  <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
+
+  <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-5">
+
+    <div className="flex items-center gap-3 sm:gap-5 min-w-0">
+
+      <div className="h-12 w-12 sm:h-16 sm:w-16 shrink-0 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center text-2xl sm:text-3xl shadow-lg">
+        📦
+      </div>
+
+      <div className="min-w-0">
+        <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-white">
+          Master Inventory
+        </h1>
+
+        <p className="mt-2 text-xs sm:text-sm text-white/90">
+          Overall Product Stock Summary
+        </p>
+
+        <div className="mt-3 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
+      </div>
+
+    </div>
+
+    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full lg:w-auto">
+
+      {/* LOW STOCK */}
 
       <div
-        className="
-          mb-4
-          sm:mb-6
-          rounded-3xl
-          bg-gradient-to-r
-          from-indigo-700
-          via-blue-600
-          to-cyan-500
-          p-4
-          sm:p-6
-          shadow-2xl
-          border
-          border-white/20
-        "
+        className="flex-1 lg:flex-none cursor-pointer rounded-2xl border border-white/15 bg-white/15 px-4 sm:px-6 py-3 sm:py-4 shadow-lg backdrop-blur-md transition hover:bg-white/25"
+        onClick={() =>
+          setStockFilter(
+            stockFilter === "Low Stock" ? "All" : "Low Stock"
+          )
+        }
       >
+        <p className="text-xs sm:text-sm text-white/90">
+          Low Stock
+        </p>
 
-        <div className="
-          flex
-          flex-col
-          lg:flex-row
-          lg:items-center
-          lg:justify-between
-          gap-4
-          sm:gap-5
-        ">
+        <h2 className="mt-1 text-2xl sm:text-3xl font-bold text-white">
+          {lowStockCount}
+        </h2>
+      </div>
 
+      {/* TOTAL VALUE */}
 
-          <div className="
-            flex
-            items-center
-            gap-3
-            sm:gap-5
-            min-w-0
-          ">
+      <div className="min-w-0 flex-1 lg:flex-none rounded-2xl border border-white/15 bg-white/15 px-4 sm:px-6 py-3 sm:py-4 shadow-lg backdrop-blur-md">
 
-            <div className="
-              h-12
-              w-12
-              sm:h-16
-              sm:w-16
-              shrink-0
-              rounded-2xl
-              bg-white/15
-              backdrop-blur-md
-              flex
-              items-center
-              justify-center
-              text-2xl
-              sm:text-3xl
-              shadow-lg
-            ">
-              📦
-            </div>
+        <p className="text-xs sm:text-sm text-white/90">
+          Total Stock Value
+        </p>
 
-
-            <div className="min-w-0">
-
-              <h1 className="
-                text-xl
-                sm:text-3xl
-                font-bold
-                text-white
-                truncate
-              ">
-                Master Inventory
-              </h1>
-
-
-              <p className="
-                mt-1
-                text-xs
-                sm:text-sm
-                text-blue-100
-              ">
-                Overall Product Stock Summary
-              </p>
-
-            </div>
-
-          </div>
-
-
-          <div className="
-            flex
-            flex-col
-            sm:flex-row
-            gap-3
-            sm:gap-4
-            w-full
-            lg:w-auto
-          ">
-
-
-            {/* LOW STOCK */}
-
-            <div
-              className="
-                bg-white/15
-                backdrop-blur-md
-                rounded-2xl
-                px-4
-                sm:px-6
-                py-3
-                sm:py-4
-                shadow-lg
-                cursor-pointer
-                flex-1
-                lg:flex-none
-              "
-              onClick={() =>
-                setStockFilter(
-                  stockFilter === "Low Stock"
-                    ? "All"
-                    : "Low Stock"
-                )
-              }
-            >
-
-              <p className="
-                text-xs
-                sm:text-sm
-                text-orange-100
-              ">
-                Low Stock
-              </p>
-
-              <h2 className="
-                mt-1
-                text-2xl
-                sm:text-3xl
-                font-bold
-                text-white
-              ">
-                {lowStockCount}
-              </h2>
-
-            </div>
-
-
-            {/* TOTAL VALUE */}
-
-            <div className="
-              bg-white/15
-              backdrop-blur-md
-              rounded-2xl
-              px-4
-              sm:px-6
-              py-3
-              sm:py-4
-              shadow-lg
-              flex-1
-              lg:flex-none
-              min-w-0
-            ">
-
-              <p className="
-                text-xs
-                sm:text-sm
-                text-blue-100
-              ">
-                Total Stock Value
-              </p>
-
-
-              <h2 className="
-                mt-1
-                text-xl
-                sm:text-3xl
-                font-bold
-                text-white
-                whitespace-nowrap
-              ">
-
-                ₹{" "}
-                {Number(
-                  totalStockValue
-                ).toLocaleString(
-                  undefined,
-                  {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  }
-                )}
-
-              </h2>
-
-            </div>
-
-          </div>
-
-        </div>
+        <h2 className="mt-1 whitespace-nowrap text-xl sm:text-3xl font-bold text-white">
+          ₹{" "}
+          {Number(totalStockValue).toLocaleString(
+            undefined,
+            {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }
+          )}
+        </h2>
 
       </div>
+
+    </div>
+
+  </div>
+</div>
+
 
 
       {/* ======================================

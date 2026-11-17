@@ -815,278 +815,107 @@ export default function Dashboard() {
         "
       >
 
-        {/* =================================================
-            HEADER
-        ================================================== */}
+       
+{/* =================================================
+    HEADER
+================================================== */}
 
-        <div
-          className="
-  mb-6
-  rounded-2xl
-  border
-  border-blue-700
-  bg-gradient-to-r
-  from-blue-400
-  via-white
-  to-purple-400
-  px-5
-  py-4
-  shadow-md
-  flex
-  flex-col
-  lg:flex-row
-  lg:justify-between
-  lg:items-center
-  gap-5
-"
-        >
+<div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-4 shadow-xl sm:p-6">
 
-          <div>
+  {/* Background highlights */}
+  <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-pink-400/30 blur-3xl" />
+  <div className="pointer-events-none absolute -bottom-12 left-1/3 h-36 w-36 rounded-full bg-cyan-300/30 blur-3xl" />
 
-            <div
-              className="
-                flex
-                items-center
-                gap-5
-              "
-            >
+  <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
-              <div
-                className="
-                  h-16
-                  w-16
-                  rounded-2xl
-                  border
-                  border-blue-200
-                  bg-gradient-to-br
-                  from-blue-50
-                  to-cyan-50
-                  flex
-                  items-center
-                  justify-center
-                  shadow-sm
-                "
-              >
+    {/* COMPANY BRANDING */}
+    <div className="min-w-0">
 
-                <img
-                  src="/logo.png"
-                  alt="Shiv Shakti Solar"
-                  className="
-                    h-14
-                    w-14
-                    object-contain
-                  "
-                />
+      <div className="flex items-center gap-3 sm:gap-5">
 
-              </div>
-
-              <div>
-
-                <h1
-                  className="
-                    text-3xl
-                    font-black
-                    tracking-tight
-                    text-slate-800
-                  "
-                >
-                  Shiv Shakti Solar
-                </h1>
-
-                <p
-                  className="
-                    mt-1
-                    text-sm
-                    font-medium
-                    text-red-500
-                  "
-                >
-                  Smart Renewable Energy Management System
-                </p>
-
-              </div>
-
-            </div>
-
-            <div
-              className="
-                mt-5
-                inline-flex
-                items-center
-                gap-3
-                rounded-full
-                border
-                border-emerald-200
-                bg-emerald-50
-                px-4
-                py-1.5
-              "
-            >
-
-              <span
-                className="
-                  h-2.5
-                  w-2.5
-                  rounded-full
-                  bg-emerald-500
-                  animate-pulse
-                "
-              />
-
-              <span
-                className="
-                  text-sm
-                  font-bold
-                  text-emerald-700
-                "
-              >
-                System Online
-              </span>
-
-              <span
-                className="
-                  text-sm
-                  text-slate-300
-                "
-              >
-                •
-              </span>
-
-              <span
-                className="
-                  text-sm
-                  text-slate-500
-                "
-              >
-                Dashboard Overview
-              </span>
-
-            </div>
-
-          </div>
-
-          {/* DATE / TIME */}
-
-          <div
-            className="
-              min-w-[300px]
-              rounded-2xl
-              border
-              border-blue-200
-              bg-gradient-to-br
-                  from-blue-50
-                  to-cyan-50
-              bg-slate-50
-              px-5
-              py-4
-              shadow-sm
-            "
-          >
-
-            <div
-              className="
-                flex
-                items-center
-                justify-between
-                gap-8
-              "
-            >
-
-              <div>
-
-                <p
-                  className="
-                    text-[10px]
-                    uppercase
-                    tracking-[0.25em]
-                    font-bold
-                    text-blue-600
-                  "
-                >
-                  Today
-                </p>
-
-                <p
-                  className="
-                    mt-1
-                    text-sm
-                    font-bold
-                    text-slate-800
-                  "
-                >
-                  {currentDate}
-                </p>
-
-              </div>
-
-              <div
-                className="text-right"
-              >
-
-                <p
-                  className="
-                    text-[10px]
-                    uppercase
-                    tracking-[0.25em]
-                    font-bold
-                    text-purple-600
-                  "
-                >
-                  Current Time
-                </p>
-
-                <h2
-                  className="
-                    text-3xl
-                    font-black
-                    text-blue-600
-                  "
-                >
-                  {currentTime}
-                </h2>
-
-              </div>
-
-            </div>
-
-            <div
-              className="
-                mt-4
-                border-t
-                border-slate-200
-                pt-3
-                flex
-                items-center
-                gap-2
-                text-sm
-                text-slate-500
-              "
-            >
-
-              <span
-                className="text-blue-600"
-              >
-                👤
-              </span>
-
-              <span>
-                Welcome back,
-              </span>
-
-              <span
-                className="
-                  font-bold
-                  text-slate-800
-                "
-              >
-                Admin
-              </span>
-
-            </div>
-
-          </div>
-
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/30 bg-white/20 p-1.5 shadow-lg backdrop-blur-md sm:h-16 sm:w-16">
+          <img
+            src="/logo.png"
+            alt="Shiv Shakti Solar"
+            className="h-full w-full object-contain"
+          />
         </div>
+
+        <div className="min-w-0">
+          <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+            Shiv Shakti Solar
+          </h1>
+
+          <p className="mt-1 text-xs font-medium text-white/90 sm:text-sm">
+            Smart Renewable Energy Management System
+          </p>
+        </div>
+
+      </div>
+
+      {/* SYSTEM STATUS */}
+      <div className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-2 shadow-md backdrop-blur-md sm:gap-3 sm:px-4">
+
+        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-300" />
+
+        <span className="text-xs font-bold text-white sm:text-sm">
+          System Online
+        </span>
+
+        <span className="text-white/50">•</span>
+
+        <span className="text-xs text-white/90 sm:text-sm">
+          Dashboard Overview
+        </span>
+
+      </div>
+
+    </div>
+
+    {/* DATE / TIME */}
+    <div className="w-full rounded-2xl border border-white/25 bg-white/15 px-4 py-4 shadow-lg backdrop-blur-md sm:px-5 lg:w-auto lg:min-w-[320px]">
+
+      <div className="flex items-center justify-between gap-4 sm:gap-8">
+
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-100">
+            Today
+          </p>
+
+          <p className="mt-1 text-sm font-bold text-white">
+            {currentDate}
+          </p>
+        </div>
+
+        <div className="text-right">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-pink-100">
+            Current Time
+          </p>
+
+          <h2 className="mt-1 whitespace-nowrap text-2xl font-black text-white sm:text-3xl">
+            {currentTime}
+          </h2>
+        </div>
+
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/20 pt-3 text-sm">
+        <span>👤</span>
+
+        <span className="text-white/80">
+          Welcome back,
+        </span>
+
+        <span className="font-bold text-white">
+          Admin
+        </span>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
 
         {/* =================================================
             MAIN KPI CARDS

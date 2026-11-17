@@ -1,5 +1,6 @@
 import { supabase } from "../services/supabase";
 import { useEffect, useState } from "react";
+import GradientHeader from "../components/ui/GradientHeader";
 
 import {
   IndianRupee,
@@ -85,11 +86,7 @@ const customerPending = customers.reduce(
   0
 );
 
-const customerProfit = customers.reduce(
-  (sum, customer) =>
-    sum + Number(customer.project?.profit || 0),
-  0
-);
+
 
   useEffect(() => {
     loadCustomers();
@@ -120,6 +117,32 @@ const customerProfit = customers.reduce(
     }
 
     const projectList = projects || [];
+
+    // FETCH PROJECTS HAVING PAYMENT HISTORY
+
+const projectIds = projectList.map(
+  (project) => project.id
+);
+
+let paidProjectIds = new Set();
+
+if (projectIds.length > 0) {
+  const { data: paymentEntries, error: paymentError } =
+    await supabase
+      .from("payments")
+      .select("project_id")
+      .in("project_id", projectIds);
+
+  if (paymentError) {
+    console.error("Payment Entries Error:", paymentError);
+  } else {
+    paidProjectIds = new Set(
+      (paymentEntries || []).map(
+        (payment) => payment.project_id
+      )
+    );
+  }
+}
 
     /* =====================================================
    FETCH PLANT COSTS
@@ -204,10 +227,13 @@ projectList.forEach((project) => {
   const projectValue =
     Number(project?.total_amount || 0);
 
-  const profit =
-    Number(plantCost) > 0
-      ? projectValue - Number(plantCost)
-      : 0;
+ const hasPaymentHistory =
+  paidProjectIds.has(project?.id);
+
+const profit =
+  hasPaymentHistory && Number(plantCost) > 0
+    ? projectValue - Number(plantCost)
+    : 0;
 
   return {
     ...customer,
@@ -275,6 +301,32 @@ projectList.forEach((project) => {
     }
 
     const projectList = projects || [];
+
+   // FETCH PROJECTS HAVING PAYMENT HISTORY
+
+const projectIds = projectList.map(
+  (project) => project.id
+);
+
+let paidProjectIds = new Set();
+
+if (projectIds.length > 0) {
+  const { data: paymentEntries, error: paymentError } =
+    await supabase
+      .from("payments")
+      .select("project_id")
+      .in("project_id", projectIds);
+
+  if (paymentError) {
+    console.error("Payment Entries Error:", paymentError);
+  } else {
+    paidProjectIds = new Set(
+      (paymentEntries || []).map(
+        (payment) => payment.project_id
+      )
+    );
+  }
+}
 
     /* =====================================================
    FETCH PLANT COSTS
@@ -358,10 +410,13 @@ projectList.forEach((project) => {
   const projectValue =
     Number(project?.total_amount || 0);
 
-  const profit =
-    Number(plantCost) > 0
-      ? projectValue - Number(plantCost)
-      : 0;
+  const hasPaymentHistory =
+  paidProjectIds.has(project?.id);
+
+const profit =
+  hasPaymentHistory && Number(plantCost) > 0
+    ? projectValue - Number(plantCost)
+    : 0;
 
   return {
     ...customer,
@@ -559,42 +614,49 @@ loadCustomers();
   return (
     <div className="p-2 sm:p-4 bg-[#f4f6fb] min-h-screen w-full min-w-0">
 
-     {/* Header */}
+    
+{/* Header */}
 
-<div className="bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-700 rounded-2xl shadow-xl px-4 sm:px-6 py-4 sm:py-5 mb-4 sm:mb-6">
+<div className="relative overflow-hidden bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 rounded-2xl shadow-lg px-4 sm:px-6 py-5 sm:py-6 mb-4 sm:mb-6">
 
-  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+  <div className="absolute -right-8 -top-12 h-40 w-40 rounded-full bg-pink-400/30 blur-2xl pointer-events-none" />
+  <div className="absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl pointer-events-none" />
+
+  <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
 
     <div>
-      <h1 className="text-2xl sm:text-3xl font-bold text-white">
+      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
         Customers
       </h1>
 
-      <p className="text-blue-100 mt-1">
+      <p className="mt-2 text-sm sm:text-base text-white/90">
         Manage Customer Information
       </p>
+
+      <div className="mt-4 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
     </div>
 
-   <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
+    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
 
-  <button
-    onClick={() => setOpenPaymentModal(true)}
-    className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-4 sm:px-6 py-3 rounded-xl shadow-lg transition-all duration-200 hover:-translate-y-0.5"
-  >
-    + Add Payment
-  </button>
+      <button
+        onClick={() => setOpenPaymentModal(true)}
+        className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-4 sm:px-6 py-3 rounded-xl shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+      >
+        + Add Payment
+      </button>
 
-  <button
-    onClick={handleAddCustomer}
-    className="w-full sm:w-auto bg-white text-indigo-700 border border-indigo-200 font-semibold px-4 sm:px-6 py-3 rounded-xl shadow-lg hover:bg-indigo-50 transition-all duration-200 hover:-translate-y-0.5"
-  >
-    + Add Customer
-  </button>
+      <button
+        onClick={handleAddCustomer}
+        className="w-full sm:w-auto bg-white text-indigo-700 border border-indigo-200 font-semibold px-4 sm:px-6 py-3 rounded-xl shadow-lg hover:bg-indigo-50 transition-all duration-200 hover:-translate-y-0.5"
+      >
+        + Add Customer
+      </button>
 
-</div>
+    </div>
+
   </div>
-
 </div>
+
    
         
 
@@ -680,7 +742,7 @@ loadCustomers();
 <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
 
   <KpiCard
-    title="Project Value"
+    title="Total Cost"
     value={formatAmount(customerProjectValue)}
     icon={
       <IndianRupee
@@ -688,7 +750,7 @@ loadCustomers();
         strokeWidth={2.2}
       />
     }
-    subtitle="Total Project Value"
+    subtitle="Total Project Cost"
     color="blue"
   />
 
@@ -719,18 +781,7 @@ loadCustomers();
     trend="down"
   />
 
-  <KpiCard
-    title="Profit"
-    value={formatAmount(customerProfit)}
-    icon={
-      <TrendingUp
-        size={26}
-        strokeWidth={2.2}
-      />
-    }
-    subtitle="Project Profit"
-    color="green"
-  />
+ 
 
 </div>
 

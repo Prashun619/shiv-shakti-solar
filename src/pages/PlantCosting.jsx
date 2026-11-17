@@ -6,12 +6,15 @@ import {
   Trash2,
   Plus,
   ArrowLeft,
+  Home,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import {
   plantTemplates,
   panelOptions,
   inverterOptions,
+  manualCostItems,
 } from "../utils/plantTemplates";
 
 import { getInventory } from "../services/inventoryService";
@@ -20,18 +23,12 @@ import { getInventory } from "../services/inventoryService";
 // DEFAULT ADDITIONAL CHARGES
 // =====================================================
 
-const DEFAULT_ADDITIONAL_CHARGES = [
-  { item: "Aggregate", price: 160 },
-  { item: "Sand", price: 450 },
-  { item: "Cement", price: 300 },
-  { item: "Bhada", price: 300 },
-  { item: "Installation Charges", price: 4850 },
-  { item: "Vendor Charges", price: 5500 },
-  { item: "Meter Name Change Charge", price: 1700 },
-  { item: "Meter Change Charge", price: 300 },
-  { item: "Meter Connection Charge", price: 300 },
-  { item: "JE", price: 3300 },
-];
+const DEFAULT_ADDITIONAL_CHARGES = manualCostItems.map(
+  (item) => ({
+    item,
+    price: 0,
+  })
+);
 
 // =====================================================
 // HELPERS
@@ -189,21 +186,10 @@ function getLatestInventoryEntry(
 // =====================================================
 
 function getInventoryGST(row) {
-  if (!row) {
-    return 0;
-  }
-
-  /*
-    Use ONLY the single GST field.
-
-    CGST + SGST is intentionally NOT used.
-  */
-
-  return (
-    Number(row?.gst ?? 0) || 0
-  );
+  // GST is already included in Master Inventory unit_cost.
+  // Do not add GST again in Plant Costing.
+  return 0;
 }
-
 // =====================================================
 // UNIT COST
 // =====================================================
@@ -214,18 +200,13 @@ function getInventoryUnitPrice(row) {
     return 0;
   }
 
-  const unitCost = Number(row?.unit_cost);
+  const unitCost = Number(row.unit_cost);
 
-  if (
-    Number.isFinite(unitCost) &&
-    unitCost > 0
-  ) {
-    return Number(unitCost.toFixed(2));
+  if (!Number.isFinite(unitCost)) {
+    return 0;
   }
 
-  const price = Number(row?.price ?? 0) || 0;
-
-  return Number(price.toFixed(2));
+  return Number(unitCost.toFixed(2));
 }
 
 // =====================================================
@@ -685,50 +666,30 @@ function getLatestPanelInventory(
 // =====================================================
 
 function getPanelQuantityForPlantSize(
-  size
+  size,
+  panelWatts = 0
 ) {
   const plantSize =
     getNumericPlantSize(size);
 
-  /*
-    FIXED PANEL QUANTITY:
-
-    3 KW   = 5 panels
-    3.5 KW = 6 panels
-    5 KW   = 9 panels
-
-    IMPORTANT:
-
-    This function does NOT use panel wattage.
-    There is NO:
-
-      plant watts / panel watts
-
-    calculation anywhere here.
-  */
-
-  if (
-    Math.abs(
-      plantSize - 3
-    ) < 0.000001
-  ) {
+  // Existing fixed quantities
+  if (Math.abs(plantSize - 3) < 0.000001) {
     return 5;
   }
 
-  if (
-    Math.abs(
-      plantSize - 3.5
-    ) < 0.000001
-  ) {
+  if (Math.abs(plantSize - 3.5) < 0.000001) {
     return 6;
   }
 
-  if (
-    Math.abs(
-      plantSize - 5
-    ) < 0.000001
-  ) {
+  if (Math.abs(plantSize - 5) < 0.000001) {
     return 9;
+  }
+
+  // Automatic panel quantity above 5 KW
+  if (plantSize > 5 && panelWatts > 0) {
+    return Math.ceil(
+      (plantSize * 1000) / panelWatts
+    );
   }
 
   return 0;
@@ -793,23 +754,30 @@ function createProductRow(
 
   let inventoryRow = null;
 
-  /*
-    Do NOT load panel inventory here.
+if (
+  !isPanel &&
+  !isInverter
+) {
+  const normalizedProduct =
+    normalizeCompact(productName);
 
-    Panel must remain completely zero
-    until the dropdown selection.
-  */
+  const inventoryLookupName =
+  normalizedProduct === "earthing"
+    ? "Earthing Kit"
+    : normalizedProduct === "acdbbox"
+    ? "ACDB"
+    : normalizedProduct === "dcdbbox"
+    ? "DCDB"
+    : normalizedProduct === "armouredcable"
+    ? "Armoured Wire"
+    : productName;
 
-  if (
-    !isPanel &&
-    !isInverter
-  ) {
-    inventoryRow =
-      getLatestInventoryEntry(
-        inventory,
-        productName
-      );
-  }
+  inventoryRow =
+    getLatestInventoryEntry(
+      inventory,
+      inventoryLookupName
+    );
+}
 
   return {
     item: productName,
@@ -822,7 +790,13 @@ function createProductRow(
       after selection.
     */
 
-    qty: 0,
+    qty:
+  isInverter ||
+  ["earthing", "acdbbox", "dcdbbox"].includes(
+    normalizeCompact(productName)
+  )
+    ? 1
+    : 0,
 
     templateQty: Number(
       templateItem?.qty || 0
@@ -1032,15 +1006,18 @@ function getPanelWattage(option) {
 // =====================================================
 
 export default function PlantCosting() {
+  const navigate = useNavigate();
   const [
     selectedSize,
     setSelectedSize,
   ] = useState("");
 
+
+
   const [
-    showPlantSizeModal,
-    setShowPlantSizeModal,
-  ] = useState(false);
+  showCostingPage,
+  setShowCostingPage,
+] = useState(false);
 
   const [
     plantSizeInput,
@@ -1051,6 +1028,11 @@ export default function PlantCosting() {
     requestedPlantSize,
     setRequestedPlantSize,
   ] = useState(0);
+
+  // STRUCTURE ARRANGEMENT
+// Each value represents structures in one row.
+const [structureRows, setStructureRows] = useState([0]);
+const [rowCountInput, setRowCountInput] = useState("1");
 
   const [
     items,
@@ -1136,38 +1118,79 @@ export default function PlantCosting() {
           )
       );
 
-    const chargeRows =
-      DEFAULT_ADDITIONAL_CHARGES.map(
-        (charge) => ({
-          item: charge.item,
+   const plantSizeKw = getNumericPlantSize(size);
 
-          qty: 1,
+const isSupportedPlantSize =
+  [3, 3.5, 5].includes(plantSizeKw);
 
-          templateQty: 1,
+// Civil charges included in Installation
+const installationCivilCharges =
+  plantSizeKw === 3 || plantSizeKw === 3.5
+    ? 350
+    : plantSizeKw === 5
+    ? 500
+    : 0;
 
-          options: [],
+const installationAmount =
+  plantSizeKw * 1000 * 1.5 +
+  installationCivilCharges;
 
-          selectedOptionId: "",
+// Separate Civil Material amount
+const civilMaterialAmount =
+  plantSizeKw === 3 || plantSizeKw === 3.5
+    ? 700
+    : plantSizeKw === 5
+    ? 1350
+    : 0;
 
-          price: Number(
-            charge.price || 0
-          ),
+// Vendor Charges = plant size in watts × ₹1
+const vendorChargesAmount =
+  isSupportedPlantSize
+    ? plantSizeKw * 1000
+    : 0;
 
-          gst: 0,
+// MPEB Charges
+const mpebChargesAmount =
+  isSupportedPlantSize ? 3300 : 0;
 
-          amount: Number(
-            charge.price || 0
-          ),
+const chargeRows =
+  DEFAULT_ADDITIONAL_CHARGES.map((charge) => {
+    const chargeName = normalizeText(charge.item);
 
-          inventoryId: null,
+    let price = Number(charge.price || 0);
 
-          inventoryProductName: "",
+    if (chargeName === normalizeText("Installation")) {
+      price = installationAmount;
+    }
 
-          isAdditionalCharge: true,
+    if (chargeName === normalizeText("Civil Material")) {
+      price = civilMaterialAmount;
+    }
 
-          editingCharge: false,
-        })
-      );
+    if (chargeName === normalizeText("Vendor Charges")) {
+      price = vendorChargesAmount;
+    }
+
+    if (chargeName === normalizeText("MPEB Charges")) {
+      price = mpebChargesAmount;
+    }
+
+    return {
+      item: charge.item,
+      qty: 1,
+      templateQty: 1,
+      options: [],
+      selectedOptionId: "",
+      price,
+      gst: 0,
+      amount: price,
+      inventoryId: null,
+      inventoryProductName: "",
+      isAdditionalCharge: true,
+      editingCharge: false,
+    };
+  });
+    
 
     setItems([
       ...productRows,
@@ -1195,87 +1218,47 @@ export default function PlantCosting() {
   ]);
 
   // ===================================================
-  // PLANT SIZE MODAL
-  // ===================================================
+// OPEN COSTING PAGE
+// ===================================================
 
-  function openPlantSizeModal() {
-    setPlantSizeInput(
-      requestedPlantSize > 0
-        ? String(
-            requestedPlantSize
-          )
-        : ""
-    );
+function openPlantSizeModal() {
+  setPlantSizeInput(
+    requestedPlantSize > 0
+      ? String(requestedPlantSize)
+      : ""
+  );
 
-    setShowPlantSizeModal(
-      true
-    );
+  setShowCostingPage(true);
+}
+
+// ===================================================
+// APPLY PLANT SIZE
+// ===================================================
+
+function handlePlantSizeSubmit() {
+  const size = Number(plantSizeInput);
+
+  if (!Number.isFinite(size) || size <= 0) {
+    return;
   }
 
-  function closePlantSizeModal() {
-    setShowPlantSizeModal(
-      false
-    );
+  // Reset manual arrangement when changing to another plant size above 5 KW.
+  if (size > 5 && size !== requestedPlantSize) {
+    setStructureRows([0]);
+setRowCountInput("1");
   }
 
-  // ===================================================
-  // SUBMIT PLANT SIZE
-  // ===================================================
-
-  function handlePlantSizeSubmit() {
-    const size =
-      Number(
-        plantSizeInput
-      );
-
-    if (
-      !Number.isFinite(size) ||
-      size <= 0
-    ) {
-      return;
-    }
-
-    setRequestedPlantSize(
-      size
-    );
-
-    setSelectedSize(
-      `${size} KW`
-    );
-
-    /*
-      Close the size-entry window.
-
-      The costing window/table now becomes
-      visible underneath.
-    */
-
-    setShowPlantSizeModal(
-      false
-    );
-  }
+  setRequestedPlantSize(size);
+  setSelectedSize(`${size} KW`);
+}
 
   // ===================================================
   // BACK TO PLANT COSTING PAGE
   // ===================================================
 
   function handleBackToPlantCosting() {
-    /*
-      This button is intentionally located
-      INSIDE the costing window header.
-
-      Clicking it hides the costing window
-      and returns to the main Plant Costing page.
-    */
-
-    setSelectedSize("");
-
-    setItems([]);
-
-    setDeletedCharges([]);
-
-    setRequestedPlantSize(0);
-  }
+  setShowCostingPage(false);
+}
 
   // ===================================================
   // PANEL QUANTITY
@@ -1283,17 +1266,22 @@ export default function PlantCosting() {
   // ===================================================
 
   function updatePanelQuantity(
-    index
-  ) {
-    const panelQty =
-      getPanelQuantityForPlantSize(
-        requestedPlantSize
-      );
+  index,
+  option
+) {
+  const panelWatts =
+    getPanelWattage(option);
 
-    updateRow(index, {
-      qty: panelQty,
-    });
-  }
+  const panelQty =
+    getPanelQuantityForPlantSize(
+      requestedPlantSize,
+      panelWatts
+    );
+
+  updateRow(index, {
+    qty: panelQty,
+  });
+}
 
   // ===================================================
   // PLANT SIZE / PANEL SUMMARY
@@ -1355,6 +1343,38 @@ export default function PlantCosting() {
         ) * panelWatts
       );
     }, [items]);
+
+    // ===================================================
+// REQUIRED STRUCTURE AREA
+// ===================================================
+
+const requiredArea = useMemo(() => {
+
+  if (
+    requestedPlantSize === 3 ||
+    requestedPlantSize === 3.5
+  ) {
+    return 180;
+  }
+
+  if (requestedPlantSize === 5) {
+    return 315;
+  }
+
+if (requestedPlantSize > 5) {
+
+  const requiredStructures =
+    Math.ceil(requestedPlantSize / 2.5);
+
+  return requiredStructures * 315;
+}
+
+  return null;
+
+}, [
+  requestedPlantSize,
+  structureRows,
+]);
 
   // ===================================================
   // UPDATE ROW
@@ -1486,8 +1506,9 @@ export default function PlantCosting() {
       */
 
       updatePanelQuantity(
-        index
-      );
+  index,
+  option
+);
     }
 
     // =================================================
@@ -1495,16 +1516,10 @@ export default function PlantCosting() {
     // =================================================
 
     if (type === "inverter") {
-      /*
-        Inverter quantity intentionally remains
-        whatever it currently is.
-
-        Initial value = 0.
-
-        Selecting inverter DOES NOT automatically
-        set its quantity.
-      */
-    }
+  updateRow(index, {
+    qty: 1,
+  });
+}
   }
 
   // ===================================================
@@ -1822,43 +1837,42 @@ function formatPriceInput(value) {
         colorScheme: "light",
       }}
     >
-      {/* =================================================
-          MAIN PLANT COSTING HEADER
-          NO BACK BUTTON HERE
-      ================================================= */}
+    
+{/* MAIN PLANT COSTING HEADER */}
+<div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-6 text-white shadow-lg sm:p-8">
+  <div className="absolute -right-8 -top-12 h-40 w-40 rounded-full bg-pink-400/30 blur-2xl" />
+  <div className="absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
 
-      <div
-        className="
-          rounded-2xl
-          shadow-sm
-          mb-6
-          p-6
-          text-white
-          bg-gradient-to-r
-          from-blue-600
-          via-purple-600
-          to-pink-500
-        "
-      >
-        <div className="flex justify-between items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">
-              Plant Costing
-            </h1>
+  <div className="relative z-10 flex items-center justify-between gap-4">
+    <div>
+      <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+        Plant Costing
+      </h1>
 
-            <p className="text-blue-100 mt-1">
-              Calculate and manage plant
-              installation costs
-            </p>
-          </div>
-        </div>
-      </div>
+      <p className="mt-2 text-sm text-white/90 sm:text-base">
+        Calculate and manage plant installation costs
+      </p>
+
+      <div className="mt-4 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
+    </div>
+
+    <button
+      type="button"
+      onClick={() => navigate("/customer-service")}
+      title="Back to Customer Service"
+      aria-label="Back to Customer Service"
+      className="relative z-20 flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-white/40 bg-white/20 text-white shadow-sm transition hover:bg-white/30"
+    >
+      <Home size={24} strokeWidth={2.5} />
+    </button>
+  </div>
+</div>
 
       {/* =================================================
           CALCULATE PLANT COSTING BUTTON
       ================================================= */}
 
-      {!selectedSize && (
+      {!showCostingPage && (
         <div className="mt-4">
           <button
             type="button"
@@ -1892,203 +1906,14 @@ function formatPriceInput(value) {
         </div>
       )}
 
-      {/* =================================================
-          CALCULATE PLANT COSTING SIZE MODAL
-      ================================================= */}
-
-      {showPlantSizeModal && (
-        <div
-          className="
-            fixed
-            inset-0
-            z-50
-            flex
-            items-center
-            justify-center
-            bg-black/50
-            p-4
-          "
-          onMouseDown={(e) => {
-            if (
-              e.target ===
-              e.currentTarget
-            ) {
-              closePlantSizeModal();
-            }
-          }}
-        >
-          <div
-            className="
-              w-full
-              max-w-sm
-              overflow-hidden
-              rounded-xl
-              border-2
-              border-black
-              bg-white
-              shadow-2xl
-              text-black
-            "
-            onMouseDown={(e) =>
-              e.stopPropagation()
-            }
-          >
-            {/* =================================================
-                MODAL HEADER
-                NO BACK BUTTON HERE
-            ================================================= */}
-
-            <div
-              className="
-                bg-gradient-to-r
-                from-blue-600
-                via-purple-600
-                to-pink-500
-                px-5
-                py-4
-                text-white
-              "
-            >
-              <div>
-                <h2 className="text-xl font-bold">
-                  Calculate Plant Costing
-                </h2>
-
-                <p className="mt-1 text-xs text-blue-100">
-                  Enter the required plant size
-                </p>
-              </div>
-            </div>
-
-            {/* =================================================
-                MODAL BODY
-            ================================================= */}
-
-            <div className="p-5">
-              <h3 className="text-lg font-bold text-green-700">
-                Enter Plant Size
-              </h3>
-
-              <p className="mt-1 text-sm text-slate-600">
-                Enter the required plant size in KW.
-              </p>
-
-              <div className="mt-4">
-                <label className="mb-1 block text-sm font-semibold">
-                  Plant Size (KW)
-                </label>
-
-                <input
-                  autoFocus
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  value={
-                    plantSizeInput
-                  }
-                  onChange={(e) =>
-                    setPlantSizeInput(
-                      e.target.value
-                    )
-                  }
-                  onWheel={
-                    preventWheelChange
-                  }
-                  onKeyDown={(e) => {
-                    if (
-                      e.key ===
-                      "Enter"
-                    ) {
-                      handlePlantSizeSubmit();
-                    }
-
-                    if (
-                      e.key ===
-                      "Escape"
-                    ) {
-                      closePlantSizeModal();
-                    }
-                  }}
-                  placeholder="Example: 3"
-                  className="
-                    w-full
-                    rounded-lg
-                    border-2
-                    border-black
-                    bg-white
-                    px-3
-                    py-2
-                    text-black
-                    outline-none
-                    focus:border-green-600
-                  "
-                />
-              </div>
-
-              <div className="mt-5 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={
-                    closePlantSizeModal
-                  }
-                  className="
-                    rounded-lg
-                    border-2
-                    border-slate-400
-                    bg-white
-                    px-4
-                    py-2
-                    font-semibold
-                    text-slate-700
-                    hover:bg-slate-100
-                  "
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={
-                    handlePlantSizeSubmit
-                  }
-                  disabled={
-                    !Number.isFinite(
-                      Number(
-                        plantSizeInput
-                      )
-                    ) ||
-                    Number(
-                      plantSizeInput
-                    ) <= 0
-                  }
-                  className="
-                    rounded-lg
-                    border-2
-                    border-green-700
-                    bg-green-600
-                    px-4
-                    py-2
-                    font-semibold
-                    text-white
-                    hover:bg-green-700
-                    disabled:cursor-not-allowed
-                    disabled:opacity-50
-                  "
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+     
 
       {/* =================================================
           COSTING WINDOW
           THIS IS WHERE BACK BUTTON BELONGS
       ================================================= */}
 
-      {selectedSize && (
+      {showCostingPage && (
         <div
           className="
             mt-4
@@ -2110,77 +1935,236 @@ function formatPriceInput(value) {
               COSTING WINDOW HEADER
           ================================================= */}
 
-          <div className="flex justify-between items-center mb-3 gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              {/* =================================================
-                  BACK BUTTON
+          {/* =================================================
+    COSTING WINDOW HEADER
+================================================= */}
 
-                  THIS IS THE ONLY BACK BUTTON.
+<div className="mb-4 flex flex-wrap items-center justify-between gap-4">
 
-                  Clicking it returns to the main
-                  Plant Costing page.
-              ================================================= */}
+  <div className="flex flex-wrap items-center gap-3">
 
-              <button
-                type="button"
-                onClick={
-                  handleBackToPlantCosting
-                }
-                title="Back to Plant Costing"
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-lg
-                  border-2
-                  border-slate-700
-                  bg-white
-                  px-3
-                  py-2
-                  text-sm
-                  font-semibold
-                  text-slate-800
-                  shadow-sm
-                  transition
-                  hover:bg-slate-100
-                "
-              >
-                <ArrowLeft
-                  size={17}
-                />
+    <button
+      type="button"
+      onClick={handleBackToPlantCosting}
+      title="Back to Plant Costing"
+      className="
+        inline-flex
+        items-center
+        gap-2
+        rounded-lg
+        border-2
+        border-slate-700
+        bg-white
+        px-3
+        py-2
+        text-sm
+        font-semibold
+        text-slate-800
+        shadow-sm
+        hover:bg-slate-100
+      "
+    >
+      <ArrowLeft size={17} />
+      Back
+    </button>
 
-                Back
-              </button>
+    <h2 className="text-2xl font-bold text-green-700">
+      {selectedSize || "Plant Costing"}
+      {selectedSize ? " Solar Plant" : ""}
+    </h2>
 
-              <h2 className="text-2xl font-bold text-green-700">
-                {selectedSize} Solar Plant
-              </h2>
-            </div>
+  </div>
 
-           <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm font-bold text-slate-800">
-  <span>
-    Total Cost: ₹{" "}
-    {formatAmount(grandTotal)}
-  </span>
+  <div className="flex flex-wrap items-end gap-3">
 
-  <span>
-    Requested Plant Size:{" "}
-    {requestedPlantSize} KW
-  </span>
+    <div>
+      <label className="mb-1 block text-sm font-semibold text-slate-700">
+        Plant Size (KW)
+      </label>
 
-  <span>
-    Actual Plant Size:{" "}
-    {formatAmount(actualPlantSize)}{" "}
-    W
-  </span>
+      <input
+        type="number"
+        min="0.1"
+        step="0.1"
+        value={plantSizeInput}
+        onChange={(e) =>
+          setPlantSizeInput(e.target.value)
+        }
+        placeholder="Enter plant size"
+        className="
+          w-40
+          rounded-lg
+          border-2
+          border-slate-400
+          px-3
+          py-2
+          text-sm
+          text-black
+          outline-none
+          focus:border-green-600
+        "
+      />
+    </div>
+
+    <button
+      type="button"
+      onClick={handlePlantSizeSubmit}
+      className="
+        rounded-lg
+        bg-green-600
+        px-5
+        py-2
+        font-semibold
+        text-white
+        hover:bg-green-700
+      "
+    >
+      Apply
+    </button>
+
+  </div>
+
 </div>
+
+{selectedSize && (
+  <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-bold text-slate-800">
+
+    <span>
+      Total Cost: ₹ {formatAmount(grandTotal)}
+    </span>
+
+    <span>
+      Requested Plant Size: {requestedPlantSize} KW
+    </span>
+
+    <span>
+      Actual Plant Size: {formatAmount(actualPlantSize)} W
+    </span>
+
+    {requiredArea !== null && (
+      <span className="text-blue-700">
+        Required Area: {requiredArea.toLocaleString("en-IN")} sq ft
+      </span>
+    )}
+
+    {requestedPlantSize > 5 && (
+
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-blue-300 bg-blue-50 p-2">
+
+        {/* NUMBER OF ROWS */}
+
+        <div className="flex items-center gap-2">
+
+          <label className="font-semibold">
+            No. of Rows:
+          </label>
+
+          <input
+  type="number"
+  min="1"
+  step="1"
+  value={rowCountInput}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    setRowCountInput(value);
+
+    if (
+      value !== "" &&
+      Number.isInteger(Number(value)) &&
+      Number(value) >= 1
+    ) {
+      const rowCount = Number(value);
+
+      setStructureRows((current) =>
+        Array.from(
+          { length: rowCount },
+          (_, index) => current[index] ?? 0
+        )
+      );
+    }
+  }}
+  onBlur={() => {
+    if (
+      rowCountInput === "" ||
+      Number(rowCountInput) < 1
+    ) {
+      setRowCountInput(String(structureRows.length || 1));
+      setStructureRows((current) =>
+        current.length > 0 ? current : [0]
+      );
+    }
+  }}
+  className="w-20 rounded-md border border-slate-400 bg-white px-2 py-1 text-center"
+/>
+
+        </div>
+
+        {/* STRUCTURES IN EACH ROW */}
+
+        {structureRows.map((count, index) => (
+
+          <div
+            key={index}
+            className="flex items-center gap-2"
+          >
+
+            <label className="font-semibold">
+              Row {index + 1}:
+            </label>
+
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={count}
+              onChange={(e) => {
+
+                const value = Math.max(
+                  0,
+                  Number(e.target.value) || 0
+                );
+
+                setStructureRows((current) =>
+                  current.map((item, i) =>
+                    i === index ? value : item
+                  )
+                );
+
+              }}
+              className="w-16 rounded-md border border-slate-400 bg-white px-2 py-1 text-center"
+            />
+
           </div>
 
-          {/* =================================================
-              COSTING TABLE
-          ================================================= */}
+        ))}
 
-          <div className="overflow-x-auto rounded-lg border-2 border-black">
+        <span className="font-bold text-blue-800">
+  Structures Remaining:{" "}
+  {Math.max(
+    0,
+    Math.ceil(requestedPlantSize / 2.5) -
+      structureRows.reduce(
+        (total, count) =>
+          total + (Number(count) || 0),
+        0
+      )
+  )}
+</span>
+
+      </div>
+
+    )}
+
+  </div>
+)}
+
+         {/* =================================================
+    COSTING TABLE
+================================================= */}
+
+{selectedSize && (
+  <div className="overflow-x-auto rounded-lg border-2 border-black">
             <table
               className="
                 w-full
@@ -2213,11 +2197,7 @@ function formatPriceInput(value) {
                     Price
                   </th>
 
-                  <th className="border-2 border-black px-2 py-2 text-center min-w-[100px]">
-                    GST %
-                  </th>
-
-                  <th className="border-2 border-black px-2 py-2 text-center min-w-[150px]">
+                 <th className="border-2 border-black px-2 py-2 text-center min-w-[150px]">
                     Amount
                   </th>
 
@@ -2469,11 +2449,14 @@ function formatPriceInput(value) {
 ================================================= */}
 
 <td className="border-2 border-black px-2 py-2 text-center">
-  {row.isAdditionalCharge ? (
-    <span className="font-semibold">
-      1
-    </span>
-  ) : (
+  {row.isAdditionalCharge ||
+["earthing", "acdbbox", "dcdbbox"].includes(
+  normalizeCompact(row.item)
+) ? (
+  <span className="font-semibold">
+    1
+  </span>
+) : (
     <input
       type="number"
       min="0"
@@ -2560,71 +2543,6 @@ function formatPriceInput(value) {
     />
   )}
 </td>
-
-                        {/* =================================================
-                            GST
-                        ================================================= */}
-
-                        <td className="border-2 border-black px-2 py-2 text-center">
-                          {row.isAdditionalCharge ? (
-                            <span className="text-gray-400 font-semibold">
-                              —
-                            </span>
-                          ) : (
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={
-                                row.gst ===
-                                  "" ||
-                                row.gst ==
-                                  null
-                                  ? ""
-                                  : Number(
-                                      row.gst
-                                    ).toFixed(
-                                      2
-                                    )
-                              }
-                              onChange={(e) => {
-                                const gst =
-                                  e
-                                    .target
-                                    .value ===
-                                  ""
-                                    ? 0
-                                    : Number(
-                                        e
-                                          .target
-                                          .value
-                                      );
-
-                                updateRow(
-                                  index,
-                                  {
-                                    gst,
-                                  }
-                                );
-                              }}
-                              onWheel={
-                                preventWheelChange
-                              }
-                              className="
-                                border
-                                border-black
-                                rounded
-                                px-2
-                                py-1
-                                w-20
-                                text-center
-                                no-spinner
-                                bg-white
-                                text-black
-                              "
-                            />
-                          )}
-                        </td>
 
                         {/* =================================================
                             AMOUNT
@@ -2727,6 +2645,7 @@ function formatPriceInput(value) {
               </tbody>
             </table>
           </div>
+          )}
 
           {/* =================================================
               REMOVED ADDITIONAL CHARGES
@@ -2808,20 +2727,7 @@ function formatPriceInput(value) {
                   </div>
                 </div>
 
-                {/* GST TOTAL */}
-
-                <div className="grid grid-cols-2 border-t-2 border-black">
-                  <div className="border-r-2 border-black px-3 py-2 font-medium">
-                    Total GST
-                  </div>
-
-                  <div className="px-3 py-2 text-right font-semibold">
-                    ₹{" "}
-                    {formatAmount(
-                      gstTotal
-                    )}
-                  </div>
-                </div>
+              
 
                 {/* ADDITIONAL CHARGES */}
 

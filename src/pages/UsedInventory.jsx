@@ -1,3 +1,4 @@
+import { supabase } from "../services/supabase";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import ExcelJS from "exceljs"; 
@@ -37,6 +38,8 @@ export default function UsedInventory() {
 
   const [items, setItems] = useState([]);
 
+  const [totalProfit, setTotalProfit] = useState(0);
+
   const [search, setSearch] = useState("");
 
   const [showModal, setShowModal] = useState(false);
@@ -73,6 +76,80 @@ export default function UsedInventory() {
         getCustomers(),
         getProjects(),
       ]);
+
+      
+// ============================================================
+// FIND PROJECTS WITH PAYMENT HISTORY
+// ============================================================
+
+const projectIds = (projects || [])
+  .map((project) => project.id)
+  .filter(Boolean);
+
+let paidProjectIds = new Set();
+
+if (projectIds.length > 0) {
+  const { data: paymentEntries, error: paymentError } =
+    await supabase
+      .from("payments")
+      .select("project_id")
+      .in("project_id", projectIds);
+
+  if (paymentError) {
+    throw paymentError;
+  }
+
+  paidProjectIds = new Set(
+    (paymentEntries || []).map(
+      (payment) => payment.project_id
+    )
+  );
+}
+
+// ============================================================
+// OVERALL PROFIT
+// Only projects with payment history are included.
+// Count project value once and sum all their plant costs.
+// ============================================================
+
+const eligibleProjects = (projects || []).filter(
+  (project) => paidProjectIds.has(project.id)
+);
+
+const eligibleProjectNos = new Set(
+  eligibleProjects
+    .map((project) =>
+      String(project.project_no || "")
+        .trim()
+        .toLowerCase()
+    )
+    .filter(Boolean)
+);
+
+const eligibleProjectValue = eligibleProjects.reduce(
+  (sum, project) =>
+    sum + Number(project.total_amount || 0),
+  0
+);
+
+const eligiblePlantCost = (usedData || []).reduce(
+  (sum, item) => {
+    const projectNo = String(item.project_no || "")
+      .trim()
+      .toLowerCase();
+
+    if (!eligibleProjectNos.has(projectNo)) {
+      return sum;
+    }
+
+    return sum + Number(item.total_plant_cost || 0);
+  },
+  0
+);
+
+setTotalProfit(
+  eligibleProjectValue - eligiblePlantCost
+);
 
 
       // ============================================================
@@ -466,6 +543,53 @@ function handleCloseModal() {
     )
 
   );
+
+ // ============================================================
+// OVERALL KPI TOTALS
+// ============================================================
+
+const totalCapacityKW = groupedItems.reduce(
+  (sum, item) =>
+    sum + Number(item.plant_size || 0),
+  0
+);
+
+const formatCapacity = (value) => {
+  if (value >= 1000) {
+    return `${(value / 1000).toLocaleString("en-IN", {
+      maximumFractionDigits: 2,
+    })} MW`;
+  }
+
+  return `${value.toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+  })} KW`;
+};
+
+// Total plant value (count each project once)
+const projectValues = groupedItems.reduce((acc, item) => {
+  const projectNo = String(item.project_no || "")
+    .trim()
+    .toLowerCase();
+
+  if (projectNo && !Object.prototype.hasOwnProperty.call(acc, projectNo)) {
+    acc[projectNo] = Number(item.plant_total_value || 0);
+  }
+
+  return acc;
+}, {});
+
+const totalPlantValue = Object.values(projectValues).reduce(
+  (sum, value) => sum + value,
+  0
+);
+
+// Total plant cost
+const totalPlantCost = groupedItems.reduce(
+  (sum, item) =>
+    sum + Number(item.total_plant_cost || 0),
+  0
+);
 
 
   // ============================================================
@@ -1529,41 +1653,214 @@ return (
     }}
   >
 
-    {/* ======================================================
-        HEADER
-    ====================================================== */}
+   
+{/* ======================================================
+    HEADER
+====================================================== */}
 
-    <div className="mb-4 rounded-2xl bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500 p-4 shadow-xl">
+<div className="relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-4 sm:p-6 shadow-xl">
 
-      <div className="flex justify-between items-center">
+  {/* Background highlights */}
+  <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-pink-400/30 blur-2xl" />
+  <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
+
+  <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+    {/* TITLE */}
+    <div className="min-w-0">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-2xl shadow-lg backdrop-blur-md">
+          🧱
+        </div>
 
         <div>
-
-          <h1 className="text-3xl font-bold text-white tracking-wide">
+          <h1 className="text-2xl font-extrabold tracking-wide text-white sm:text-3xl">
             Material Consumption
           </h1>
 
-          <p className="text-blue-100 mt-2 text-lg">
+          <p className="mt-1 text-sm text-white/90 sm:text-base">
             Material Consumption Management
           </p>
-
         </div>
+      </div>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAdd();
-          }}
-          className="px-4 py-2 rounded-lg bg-white text-indigo-700 font-semibold shadow hover:shadow-lg transition-all"
-        >
-          + Add Material Consumption
-        </button>
+      <div className="mt-4 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
+    </div>
 
+    {/* ADD BUTTON */}
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        handleAdd();
+      }}
+      className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/95 px-5 py-3 font-bold text-indigo-700 shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-xl sm:w-auto"
+    >
+      <span className="text-xl leading-none">+</span>
+      <span>Add Material Consumption</span>
+    </button>
+
+  </div>
+</div>
+
+
+
+
+
+{/* ======================================================
+    FINANCIAL KPI CARDS
+====================================================== */}
+
+<div className="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+  {/* TOTAL INSTALLED CAPACITY */}
+
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-600 to-violet-700 p-5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+
+    <div className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/15 blur-xl" />
+
+    <div className="pointer-events-none absolute -bottom-10 -left-5 h-28 w-28 rounded-full bg-cyan-300/20 blur-2xl" />
+
+    <div className="relative z-10 flex items-center justify-between">
+
+      <div>
+        <p className="text-sm font-bold tracking-wide text-white/90">
+          Total Installed Capacity
+        </p>
+
+        <p className="mt-2 text-2xl font-extrabold tracking-tight text-white">
+          {formatCapacity(totalCapacityKW)}
+        </p>
+
+        <p className="mt-2 text-xs font-medium text-white/80">
+          Combined Plant Capacity
+        </p>
+      </div>
+
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/30 bg-white/20 text-2xl text-white shadow-lg backdrop-blur-md">
+        ⚡
       </div>
 
     </div>
 
+    <div className="relative z-10 mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+      <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-cyan-200 to-white" />
+    </div>
+
+  </div>
+
+
+  {/* TOTAL PLANT VALUE */}
+
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 p-5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+
+    <div className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/15 blur-xl" />
+
+    <div className="pointer-events-none absolute -bottom-10 -left-5 h-28 w-28 rounded-full bg-cyan-300/20 blur-2xl" />
+
+    <div className="relative z-10 flex items-center justify-between">
+
+      <div>
+        <p className="text-sm font-bold tracking-wide text-white/90">
+          Total Plant Value
+        </p>
+
+        <p className="mt-2 text-2xl font-extrabold tracking-tight text-white">
+          ₹ {formatCurrency(totalPlantValue)}
+        </p>
+
+        <p className="mt-2 text-xs font-medium text-white/80">
+          Total Project Value
+        </p>
+      </div>
+
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/30 bg-white/20 text-2xl text-white shadow-lg backdrop-blur-md">
+        ₹
+      </div>
+
+    </div>
+
+    <div className="relative z-10 mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+      <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-cyan-200 to-white" />
+    </div>
+
+  </div>
+
+
+  {/* PLANT COST */}
+
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-400 via-orange-600 to-red-600 p-5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+
+    <div className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/15 blur-xl" />
+
+    <div className="pointer-events-none absolute -bottom-10 -left-5 h-28 w-28 rounded-full bg-yellow-300/20 blur-2xl" />
+
+    <div className="relative z-10 flex items-center justify-between">
+
+      <div>
+        <p className="text-sm font-bold tracking-wide text-white/90">
+          Plant Cost
+        </p>
+
+        <p className="mt-2 text-2xl font-extrabold tracking-tight text-white">
+          ₹ {formatCurrency(totalPlantCost)}
+        </p>
+
+        <p className="mt-2 text-xs font-medium text-white/80">
+          Total Material Consumption Cost
+        </p>
+      </div>
+
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/30 bg-white/20 text-2xl text-white shadow-lg backdrop-blur-md">
+        ₹
+      </div>
+
+    </div>
+
+    <div className="relative z-10 mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+      <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-yellow-200 to-white" />
+    </div>
+
+  </div>
+
+
+  {/* OVERALL PROFIT */}
+
+  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700 p-5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+
+    <div className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-white/15 blur-xl" />
+
+    <div className="pointer-events-none absolute -bottom-10 -left-5 h-28 w-28 rounded-full bg-lime-300/20 blur-2xl" />
+
+    <div className="relative z-10 flex items-center justify-between">
+
+      <div>
+        <p className="text-sm font-bold tracking-wide text-white/90">
+          Overall Profit
+        </p>
+
+        <p className="mt-2 text-2xl font-extrabold tracking-tight text-white">
+          ₹ {formatCurrency(totalProfit)}
+        </p>
+
+        <p className="mt-2 text-xs font-medium text-white/80">
+          Projects with payment history only
+        </p>
+      </div>
+
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/30 bg-white/20 text-3xl font-bold text-white shadow-lg backdrop-blur-md">
+        ₹
+      </div>
+
+    </div>
+
+    <div className="relative z-10 mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+      <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-lime-200 to-white" />
+    </div>
+
+  </div>
+
+</div>
 
     {/* ======================================================
         SEARCH

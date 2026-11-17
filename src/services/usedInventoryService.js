@@ -2679,6 +2679,14 @@ if (
 // ADDITIONAL CHARGES
 // =====================================================
 
+function getAgreementCharges(form) {
+  return num(
+    form?.agreement_charges ??
+    form?.additional_charges?.agreement_charges ??
+    form?.AgreementCharges
+  );
+}
+
 function getAggregateCharges(
   form
 ) {
@@ -2762,6 +2770,8 @@ function calculateTotalPlantCost(
       form?.installation_charges
     ) +
 
+    getAgreementCharges(form) +
+
     num(
       form?.je_charges
     ) +
@@ -2799,10 +2809,14 @@ function calculateTotalPlantCost(
 function buildAdditionalCharges(
   form
 ) {
+  
+  const agreementCharges =
+  getAgreementCharges(form);
+
   const aggregateCharges =
     getAggregateCharges(
       form
-    );
+    );  
 
   const bhadaCharges =
     getBhadaCharges(
@@ -2820,6 +2834,9 @@ function buildAdditionalCharges(
     );
 
   return {
+
+    agreement_charges: agreementCharges,
+
     aggregate_charges:
       aggregateCharges,
 
@@ -2886,6 +2903,9 @@ function buildPayload(
   products,
   materialCost
 ) {
+
+  const agreement_charges = getAgreementCharges(form);
+  
   const aggregateCharges =
     getAggregateCharges(
       form

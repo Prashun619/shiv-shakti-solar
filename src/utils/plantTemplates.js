@@ -1,195 +1,57 @@
+
 export const panelOptions = [
-  {
-    id: "waaree-610wp",
-    label: "Waaree 610Wp",
-    price: 0,
-    gst: 0,
-  },
-  {
-    id: "waaree-605wp",
-    label: "Waaree 605Wp",
-    price: 0,
-    gst: 0,
-  },
-  {
-    id: "waaree-585wp",
-    label: "Waaree 585Wp",
-    price: 0,
-    gst: 0,
-  },
-  {
-    id: "adani-585wp",
-    label: "Adani 585Wp",
-    price: 0,
-    gst: 0,
-  },
-  {
-    id: "adani-580wp",
-    label: "Adani 580Wp",
-    price: 0,
-    gst: 0,
-  },
+  { id: "waaree-610wp", label: "Waaree 610Wp", price: 0, gst: 0 },
+  { id: "waaree-605wp", label: "Waaree 605Wp", price: 0, gst: 0 },
+  { id: "waaree-585wp", label: "Waaree 585Wp", price: 0, gst: 0 },
+  { id: "adani-585wp", label: "Adani 585Wp", price: 0, gst: 0 },
+  { id: "adani-580wp", label: "Adani 580Wp", price: 0, gst: 0 },
 ];
 
 export const inverterOptions = [
-  {
-    id: "waaree",
-    label: "Waaree",
-    price: 0,
-    gst: 0,
-  },
-  {
-    id: "polycab",
-    label: "Polycab",
-    price: 0,
-    gst: 0,
-  },
-  {
-    id: "luminous",
-    label: "Luminous",
-    price: 0,
-    gst: 0,
-  },
+  { id: "waaree", label: "Waaree", price: 0, gst: 0 },
+  { id: "polycab", label: "Polycab", price: 0, gst: 0 },
+  { id: "luminous", label: "Luminous", price: 0, gst: 0 },
 ];
 
+// Inventory products: 16 items
+const inventoryProducts = [
+  "Panel",
+  "Inverter",
+  "AC Wire",
+  "DC Wire",
+  "LA Wire",
+  "Armoured Cable",
+  "Earthing",
+  "ACDB Box",
+  "DCDB Box",
+  "Leg 6ft",
+  "Leg 8ft",
+  "Rafter",
+  "Purlin 13ft",
+  "Purlin 21ft",
+  "C Channel 140x50x2 mm 21ft",
+  "C Channel 140x50x2 mm 9ft",
+];
+
+// All quantities start at zero.
+// Panel quantity is handled by PlantCosting separately.
+const createTemplate = () =>
+  inventoryProducts.map((item) => ({
+    item,
+    qty: 0,
+  }));
+
 export const plantTemplates = {
-
-  "3KW": [
-    { item: "Panel", qty: 6 },
-    { item: "Inverter", qty: 1 },
-
-    { item: "Rafter", qty: 6 },
-    { item: "Purlin 13 ft", qty: 6 },
-
-    { item: "Leg 6ft", qty: 6 },
-    { item: "Leg 8ft", qty: 0 },
-    { item: "Leg 10ft", qty: 0 },
-
-    { item: "Base Plate", qty: 6 },
-    { item: "Fastener", qty: 20 },
-    { item: "Nut Bolts", qty: 20 },
-
-    { item: "Spring Bolt", qty: 20 },
-    { item: "Spring", qty: 20 },
-
-    { item: "ACDB", qty: 1 },
-    { item: "DCDB", qty: 1 },
-
-    { item: "DC Wire", qty: 30 },
-    { item: "AC Wire", qty: 20 },
-    { item: "LA Wire", qty: 10 },
-    { item: "Armoured Wire", qty: 20 },
-
-    { item: "End Clamp", qty: 10 },
-{ item: "Mid Clamp", qty: 10 },
-
-    { item: "MC4 Connector", qty: 4 },
-
-    { item: "PVC Pipe", qty: 20 },
-
-    { item: "L Bend", qty: 4 },
-    { item: "U Bend", qty: 4 },
-    { item: "T Bend", qty: 2 },
-
-    { item: "Catchup 25mm", qty: 10 },
-    { item: "Catchup 12mm", qty: 10 },
-
-    { item: "Earthing Kit", qty: 1 },
-  ],
-
-  "3.5KW": [
-    { item: "Panel", qty: 6 },
-    { item: "Inverter", qty: 1 },
-
-    { item: "Rafter", qty: 6 },
-    { item: "Perlin", qty: 6 },
-
-    { item: "Leg 6ft", qty: 6 },
-    { item: "Leg 8ft", qty: 0 },
-    { item: "Leg 10ft", qty: 0 },
-
-    { item: "Base Plate", qty: 6 },
-    { item: "Fastener", qty: 20 },
-    { item: "Nut Bolts", qty: 20 },
-
-    { item: "Spring Bolt", qty: 20 },
-    { item: "Spring", qty: 20 },
-
-    { item: "ACDB", qty: 1 },
-    { item: "DCDB", qty: 1 },
-
-    { item: "DC Wire", qty: 30 },
-    { item: "AC Wire", qty: 20 },
-    { item: "LA Wire", qty: 10 },
-    { item: "Armoured Wire", qty: 20 },
-
-    { item: "End Clamp", qty: 10 },
-{ item: "Mid Clamp", qty: 10 },
-
-    { item: "MC4 Connector", qty: 4 },
-
-    { item: "PVC Pipe", qty: 20 },
-
-    { item: "L Bend", qty: 4 },
-    { item: "U Bend", qty: 4 },
-    { item: "T Bend", qty: 2 },
-
-    { item: "Catchup 25mm", qty: 10 },
-    { item: "Catchup 12mm", qty: 10 },
-
-    { item: "Earthing Kit", qty: 1 },
-  ],
-
-  "5KW": [
-    { item: "Panel", qty: 10 },
-    { item: "Inverter", qty: 1 },
-
-    { item: "Rafter", qty: 10 },
-    { item: "Purlin 21 ft", qty: 10 },
-
-    { item: "Leg 6ft", qty: 10 },
-    { item: "Leg 8ft", qty: 0 },
-    { item: "Leg 10ft", qty: 0 },
-
-    { item: "Base Plate", qty: 10 },
-    { item: "Fastener", qty: 30 },
-    { item: "Nut Bolts", qty: 30 },
-
-    { item: "Spring Bolt", qty: 30 },
-    { item: "Spring", qty: 30 },
-
-    { item: "ACDB", qty: 1 },
-    { item: "DCDB", qty: 1 },
-
-    { item: "DC Wire", qty: 40 },
-    { item: "AC Wire", qty: 25 },
-    { item: "LA Wire", qty: 15 },
-    { item: "Armoured Wire", qty: 30 },
-
-    { item: "End Clamp", qty: 15 },
-{ item: "Mid Clamp", qty: 15 },
-
-    { item: "MC4 Connector", qty: 6 },
-
-    { item: "PVC Pipe", qty: 30 },
-
-    { item: "L Bend", qty: 6 },
-    { item: "U Bend", qty: 6 },
-    { item: "T Bend", qty: 3 },
-
-    { item: "Catchup 25mm", qty: 15 },
-    { item: "Catchup 12mm", qty: 15 },
-
-    { item: "Earthing Kit", qty: 1 },
-  ],
+  "3KW": createTemplate(),
+  "3.5KW": createTemplate(),
+  "5KW": createTemplate(),
 };
 
+// Manually entered charges: 5 items
 export const manualCostItems = [
   "Civil Material",
-  "Transportation",
-  "Installation Charges",
+  "Installation",
+  "MPEB Charges",
   "Vendor Charges",
-  "Load Extension Charges",
-  "Net Metering Charges",
-  "JE Charges",
+  "Other Charges",
 ];

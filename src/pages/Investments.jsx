@@ -443,31 +443,52 @@ const [editingId, setEditingId] = useState(null);
   return (
     <div className="min-h-screen p-6 space-y-6 bg-gradient-to-br from-sky-50 via-white to-emerald-50">
 
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
+     
+{/* =====================================================
+    HEADER
+===================================================== */}
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+<div className="relative mb-4 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-4 sm:p-6 shadow-xl">
+
+  {/* Background highlights */}
+  <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-pink-400/30 blur-2xl" />
+  <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
+
+  <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+    {/* TITLE */}
+    <div className="min-w-0">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-2xl shadow-lg backdrop-blur-md">
+          💰
+        </div>
 
         <div>
-          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-extrabold tracking-wide text-white sm:text-3xl">
             Investments
           </h1>
 
-          <p className="text-sm text-slate-600 mt-1">
-            Manage investor investments and
-            related transactions
+          <p className="mt-1 text-sm text-white/90">
+            Manage investor investments and related transactions
           </p>
         </div>
-
-        <button
-          onClick={handleAdd}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white font-bold bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg hover:from-emerald-600 hover:to-green-700 transition-all"
-        >
-          <Plus size={20} />
-          Add Investment
-        </button>
       </div>
+
+      <div className="mt-4 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
+    </div>
+
+    {/* ADD INVESTMENT BUTTON */}
+    <button
+      type="button"
+      onClick={handleAdd}
+      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/95 px-5 py-3 font-bold text-indigo-700 shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-xl sm:w-auto"
+    >
+      <Plus size={20} />
+      Add Investment
+    </button>
+
+  </div>
+</div>
 
       
 

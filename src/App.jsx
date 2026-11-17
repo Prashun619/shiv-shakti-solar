@@ -1,10 +1,15 @@
 import PaymentReceipt from "./pages/PaymentReceipt";
 import NewInvoice from "./pages/NewInvoice";
 import Investments from "./pages/Investments";
-
+import Estimate from "./pages/Estimate";
+import EstimateForm from "./pages/EstimateForm";
 import { Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PlantCosting from "./pages/PlantCosting";
+import CustomerService from "./pages/CustomerService";
+import WorkCompletionReport from "./pages/WorkCompletionReport";
+import WorkCompletionReportForm from "./pages/WorkCompletionReportForm";
+import PlantMaterialConsumption from "./pages/PlantMaterialConsumption";
 
 import {
   Routes,
@@ -637,31 +642,6 @@ export default function App() {
 
               )}
 
-
-              {/* ==================================================
-                  FINANCE LEDGER
-              ================================================== */}
-
-              {hasPermission("billing") && (
-
-                <NavLink
-                  to="/finance"
-                  title="Finance Ledger"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={sidebarLinkClass}
-                >
-
-                  <SidebarIcon type="finance" />
-
-                  <span>
-                    Finance Ledger
-                  </span>
-
-                </NavLink>
-
-              )}
-
-
               {/* ==================================================
                   INVESTMENTS
               ================================================== */}
@@ -687,68 +667,42 @@ export default function App() {
 
 
               {/* ==================================================
-                  INVOICE
+                  FINANCE LEDGER
               ================================================== */}
 
-              {hasPermission("invoices") && (
+              {hasPermission("billing") && (
 
                 <NavLink
-  to="/invoice/new-design"
-  title="Invoice"
-  onClick={() => setMobileMenuOpen(false)}
-  className={sidebarLinkClass}
->
-  <SidebarIcon type="invoice" />
-
-  <span>
-    Invoice
-  </span>
-</NavLink>
-
-              )}
-
-              {/* ==================================================}
-                  Payment Receipt
-              ================================================== */}
-             
-             {hasPermission("invoices") && (
-
-            <NavLink
-  to="/payment-receipt"
-  title="Payment Receipt"
-  onClick={() => setMobileMenuOpen(false)}
-  className={sidebarLinkClass}
->
- <SidebarIcon type="payment-receipt" />
-
-<span>
-  Payment Receipt
-</span>
-</NavLink>
-  )}
-
-              {/* ==================================================
-                  PLANT COSTING
-              ================================================== */}
-
-              {hasPermission("settings") && (
-
-                <NavLink
-                  to="/plant-costing"
-                  title="Plant Costing"
+                  to="/finance"
+                  title="Finance Ledger"
                   onClick={() => setMobileMenuOpen(false)}
                   className={sidebarLinkClass}
                 >
 
-                  <SidebarIcon type="plant" />
+                  <SidebarIcon type="finance" />
 
                   <span>
-                    Plant Costing
+                    Finance Ledger
                   </span>
 
                 </NavLink>
 
               )}
+
+
+             {/* CUSTOMER SERVICE */}
+
+<NavLink
+  to="/customer-service"
+  title="Customer Service"
+  onClick={() => setMobileMenuOpen(false)}
+  className={sidebarLinkClass}
+>
+  <SidebarIcon type="customers" />
+  <span>Customer Service</span>
+</NavLink>
+
+
 
 
               {/* ==================================================
@@ -971,6 +925,16 @@ export default function App() {
                 }
               />
 
+{/* CUSTOMER SERVICE */}
+
+<Route
+  path="/customer-service"
+  element={
+    <ProtectedRoute>
+      <CustomerService currentUser={currentUser} />
+    </ProtectedRoute>
+  }
+/>
 
               {/* ==================================================
                   CUSTOMERS
@@ -1099,6 +1063,28 @@ export default function App() {
               />
 
 {/* ==================================================}
+    ESTIMATE
+  ================================================== */}
+
+  <Route
+  path="/estimate"
+  element={
+    <ProtectedRoute>
+      <Estimate />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/estimate/new"
+  element={
+    <ProtectedRoute>
+      <EstimateForm />
+    </ProtectedRoute>
+  }
+/>
+
+{/* ==================================================}
       PAYMENT RECEIPT
   ================================================== */}
   <Route
@@ -1138,6 +1124,42 @@ export default function App() {
                 }
               />
 
+
+
+{/*==================================================================
+         WORK COMPLETION REPORT
+         =========================================================*/}
+
+         <Route
+  path="/work-completion-report"
+  element={
+    <ProtectedRoute>
+      <WorkCompletionReport currentUser={currentUser} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/work-completion-report/new"
+  element={
+    <ProtectedRoute>
+      <WorkCompletionReportForm />
+    </ProtectedRoute>
+  }
+/>
+
+{/* ==================================================
+    PLANT MATERIAL CONSUMPTION
+================================================== */}
+
+<Route
+  path="/plant-material-consumption"
+  element={
+    <ProtectedRoute>
+      <PlantMaterialConsumption />
+    </ProtectedRoute>
+  }
+/>
 
               {/* ==================================================
                   SETTINGS

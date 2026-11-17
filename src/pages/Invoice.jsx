@@ -1,6 +1,8 @@
   import { generateInvoicePDF } from "../services/invoicePdf";
   import { useEffect, useState } from "react";
   import { useNavigate } from "react-router-dom";
+  import { NavLink } from "react-router-dom";
+import { Home } from "lucide-react";
 
   import {
   FileText,
@@ -73,50 +75,38 @@
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6 text-gray-900">
 
     {/* HEADER */}
-  <div
-    className="
-      rounded-2xl
-      shadow-sm
-      mb-6
-      p-6
-      text-white
-      bg-gradient-to-r
-      from-blue-600
-      via-purple-600
-      to-pink-500
-    "
-  >
-    <div className="flex justify-between items-center">
+<div className="mb-6 rounded-2xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 p-6 text-white shadow-sm">
+  <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="flex items-center gap-4">
+      <button
+        type="button"
+        onClick={() => navigate("/customer-service")}
+        title="Back to Customer Service"
+        aria-label="Back to Customer Service"
+       className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-blue-700 bg-white text-blue-700 shadow-lg hover:bg-blue-50"
+      >
+        <span className="text-2xl font-black leading-none">⌂</span>
+      </button>
 
       <div>
         <h1 className="text-3xl font-bold">
-          Invoice
-        </h1>
-
-        <p className="text-blue-100 mt-1">
+  Invoice — TEST
+</h1>
+        <p className="mt-1 text-blue-100">
           Manage and view all your invoices
         </p>
       </div>
-
-      <button
-        onClick={() => navigate("/invoice/new")}
-        className="
-          bg-white
-          text-green-700
-          hover:bg-green-50
-          px-5
-          py-3
-          rounded-xl
-          font-bold
-          shadow-sm
-          transition
-        "
-      >
-        + Create Invoice
-      </button>
-
     </div>
+
+    <button
+      type="button"
+      onClick={() => navigate("/invoice/new")}
+      className="rounded-xl bg-white px-5 py-3 font-bold text-green-700 shadow-sm transition hover:bg-green-50"
+    >
+      + Create Invoice
+    </button>
   </div>
+</div>
 
 
       {/* SEARCH */}

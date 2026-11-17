@@ -1,4 +1,6 @@
 import html2pdf from "html2pdf.js";
+import { Home } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -155,6 +157,7 @@ function amountInWords(value) {
 }
 
 export default function PaymentReceipt() {
+  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [receipts, setReceipts] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -545,37 +548,55 @@ function handleView(receipt) {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="mx-auto max-w-5xl space-y-6">
-        {/* PAGE HEADER */}
-        <div className="overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 p-6 text-white shadow-lg">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/15">
-              <ReceiptText size={30} />
-            </div>
+      
+{/* PAGE HEADER */}
+<div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-6 text-white shadow-lg sm:p-8">
+  <div className="absolute -right-8 -top-12 h-40 w-40 rounded-full bg-pink-400/30 blur-2xl" />
+  <div className="absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
 
-            <div>
-              <h1 className="text-2xl font-bold sm:text-3xl">
-                Payment Receipt
-              </h1>
-              <p className="mt-1 text-sm text-blue-100">
-                Shiv Shakti Solar Energy
-              </p>
-            </div>
-          </div>
-        </div>
+  <div className="relative z-10 flex items-center justify-between gap-4">
+    <div className="flex items-center gap-4">
+      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-white/30 bg-white/20">
+        <ReceiptText size={30} />
+      </div>
 
-        {/* NOTIFICATION */}
-        {message && (
-          <div
-            role="status"
-            className={`rounded-xl border px-4 py-3 text-sm font-medium ${
-              messageType === "error"
-                ? "border-red-200 bg-red-50 text-red-700"
-                : "border-green-200 bg-green-50 text-green-700"
-            }`}
-          >
-            {message}
-          </div>
-        )}
+      <div>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+          Payment Receipt
+        </h1>
+        <p className="mt-2 text-sm text-white/90">
+          Shiv Shakti Solar Energy
+        </p>
+        <div className="mt-4 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
+      </div>
+    </div>
+
+    <button
+  type="button"
+  onClick={() => navigate("/customer-service")}
+  title="Back to Customer Service"
+  aria-label="Back to Customer Service"
+  className="relative z-20 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/40 bg-white/20 text-white shadow-sm transition hover:bg-white/30"
+>
+  <Home size={24} strokeWidth={2.5} />
+</button>
+  </div>
+</div>
+
+{/* NOTIFICATION */}
+{message && (
+  <div
+    role="status"
+    className={`rounded-xl border px-4 py-3 text-sm font-medium ${
+      messageType === "error"
+        ? "border-red-200 bg-red-50 text-red-700"
+        : "border-green-200 bg-green-50 text-green-700"
+    }`}
+  >
+    {message}
+  </div>
+)}
+
 
         {/* CREATE RECEIPT BUTTON */}
         <div className="flex justify-end">

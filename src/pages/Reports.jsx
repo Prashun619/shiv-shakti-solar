@@ -2387,35 +2387,57 @@ const reports = [
 return (
   <div className="p-5 bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 min-h-screen">
 
-    {/* ================= HEADER ================= */}
+    
+{/* ================= HEADER ================= */}
 
-    <div className="mb-6 rounded-3xl bg-gradient-to-r from-violet-700 via-indigo-600 to-blue-500 p-6 shadow-2xl">
+<div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-4 sm:p-6 shadow-xl">
 
-      <div className="flex items-center justify-between">
+  {/* Background highlights */}
+  <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-pink-400/30 blur-2xl" />
+  <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
+
+  <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+
+    {/* TITLE */}
+    <div className="min-w-0">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-2xl shadow-lg backdrop-blur-md">
+          📊
+        </div>
 
         <div>
-          <h1 className="text-4xl font-extrabold tracking-wide text-white">
+          <h1 className="text-2xl font-extrabold tracking-wide text-white sm:text-3xl">
             Reports & Analytics
           </h1>
 
-          <p className="mt-2 text-blue-100">
+          <p className="mt-2 text-sm text-white/90">
             View, analyse and export all business reports from one place.
           </p>
         </div>
-
-        <div className="rounded-2xl bg-white/20 px-6 py-4 text-center backdrop-blur">
-          <p className="text-4xl font-bold text-white">
-            {reports.length}
-          </p>
-
-          <p className="text-sm text-blue-100">
-            Available Reports
-          </p>
-        </div>
-
       </div>
 
+      <div className="mt-4 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
     </div>
+
+    {/* AVAILABLE REPORTS */}
+    <div className="flex shrink-0 items-center gap-4 rounded-2xl border border-white/20 bg-white/15 px-5 py-3 shadow-lg backdrop-blur-md sm:px-6 sm:py-4">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-2xl">
+        📁
+      </div>
+
+      <div>
+        <p className="text-3xl font-extrabold leading-tight text-white sm:text-4xl">
+          {reports.length}
+        </p>
+
+        <p className="mt-1 text-xs font-medium text-white/90 sm:text-sm">
+          Available Reports
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
 
     {/* ================= REPORT CARDS ================= */}
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-
+import { Home } from "lucide-react";
 import { generateNewInvoicePDF } from "../services/newInvoicePdf";
 import {
   getMasterInventory,
@@ -2261,45 +2261,35 @@ align-middle
           text-gray-900
         "
       >
+{/* PAGE HEADER */}
+<div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-6 shadow-lg sm:p-8">
+  <div className="absolute -right-8 -top-12 h-40 w-40 rounded-full bg-pink-400/30 blur-2xl" />
+  <div className="absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
 
-        {/* ======================================================
-            PAGE HEADER
-        ====================================================== */}
+  <div className="relative z-10 flex items-center justify-between gap-4">
+    <div>
+      <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+        Invoice
+      </h1>
 
-        <div
-          className="
-            rounded-2xl
-            shadow-sm
-            mb-6
-            p-6
-            text-white
-            bg-gradient-to-r
-            from-blue-600
-            via-purple-600
-            to-pink-500
-          "
-        >
+      <p className="mt-2 text-sm text-white/90 sm:text-base">
+        Manage GST invoices
+      </p>
 
-          <div className="flex justify-between items-center">
+      <div className="mt-4 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
+    </div>
 
-            <div>
-
-              <h1 className="text-3xl font-bold">
-                New Invoice
-              </h1>
-
-              <p className="text-blue-100 mt-1">
-                Manage GST invoices
-              </p>
-
-            </div>
-
-
-            
-
-          </div>
-
-        </div>
+    <button
+      type="button"
+      onClick={() => navigate("/customer-service")}
+      title="Back to Customer Service"
+      aria-label="Back to Customer Service"
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/40 bg-white/20 text-white shadow-sm transition hover:bg-white/30"
+    >
+      <Home size={24} strokeWidth={2.5} />
+    </button>
+  </div>
+</div>
 
 
         {/* ======================================================

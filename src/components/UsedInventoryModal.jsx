@@ -25,6 +25,7 @@ const INITIAL_FORM = {
   location: "",
   total_plant_cost: 0,
 
+  agreement_charges: 0,
   aggregate_charges: 0,
   bhada: 0,
   cement_charges: 0,
@@ -837,6 +838,13 @@ export default function UsedInventoryModal({
               Number(
                 item.total_plant_cost || 0
               ),
+
+              // Agreement Charges
+agreement_charges: Number(
+  item.agreement_charges ??
+  item.additional_charges?.agreement_charges ??
+  0
+),
 
             // Gitti / Aggregate
             aggregate_charges:
@@ -3087,17 +3095,18 @@ console.log("FINAL MATERIAL SAVE DEBUG:", {
       material_cost:
         materialCost,
 
-      gitti_charges:
-        Number(
-          form.aggregate_charges ||
-            0
-        ),
+      
 
       aggregate_charges:
         Number(
           form.aggregate_charges ||
             0
         ),
+
+        agreement_charges: Number(
+  form.agreement_charges || 0
+),
+      
 
       bhada_charges:
         Number(
@@ -3393,6 +3402,11 @@ if (Array.isArray(payload.products)) {
       form.aggregate_charges ||
         0
     ) +
+
+      Number(
+    form.agreement_charges || 0
+  ) +
+  
     Number(
       form.bhada || 0
     ) +
@@ -4023,6 +4037,29 @@ if (Array.isArray(payload.products)) {
                   className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
                 />
               </div>
+
+              {/* AGREEMENT CHARGES */}
+
+<div>
+  <label className="block font-semibold mb-1">
+    Agreement Charges
+  </label>
+
+  <input
+    type="number"
+    min="0"
+    value={form.agreement_charges || ""}
+    onChange={(e) =>
+      setForm((prev) => ({
+        ...prev,
+        agreement_charges:
+          Number(e.target.value) || 0,
+      }))
+    }
+    placeholder="0"
+    className="border border-gray-300 rounded-lg p-2.5 w-full bg-white"
+  />
+</div>
 
               {/* BHADA */}
 

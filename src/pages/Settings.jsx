@@ -395,27 +395,34 @@ const passwordStrength =
       <div className="bg-white rounded-2xl shadow-xl border border-slate-300 p-6">
 
 
-        <div className="mb-8">
+       
+{/* ================= HEADER ================= */}
 
-  <div className="flex justify-between items-start">
+<div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-4 sm:p-6 shadow-xl">
 
-    <div>
+  {/* Background highlights */}
+  <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-pink-400/30 blur-2xl" />
+  <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
 
-      <h1 className="text-3xl font-extrabold text-slate-900">
-        ⚙️ Settings
-      </h1>
-
-      
-
+  <div className="relative z-10 flex items-center gap-3 sm:gap-4">
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-2xl shadow-lg backdrop-blur-md sm:h-14 sm:w-14 sm:text-3xl">
+      ⚙️
     </div>
 
+    <div>
+      <h1 className="text-2xl font-extrabold tracking-wide text-white sm:text-3xl">
+        Settings
+      </h1>
 
+      <p className="mt-1 text-sm text-white/90">
+        Manage your account and application preferences
+      </p>
+
+      <div className="mt-3 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
+    </div>
   </div>
 
 </div>
-
-<div className="flex gap-3 flex-wrap mb-8">
-
 
 
 <button
@@ -664,7 +671,7 @@ currentUser?.role === "Admin" && (
       </div>
 
 
-    </div>
+    
 
   );
 

@@ -432,111 +432,67 @@
   // =====================================================
 
   function getAdditionalCharges(item) {
+  return [
+    {
+      name: "Agreement Charges",
+      amount: Number(
+        item?.agreement_charges ??
+        item?.additional_charges?.agreement_charges ??
+        item?.AgreementCharges ??
+        0
+      ),
+    },
 
-    return [
-
-      {
-        name: "Bhada Charges",
-        amount:
-          Number(
-            item.bhada_charges || 0
-          ),
-      },
-
-      {
-        name: "Cement Charges",
-        amount:
-          Number(
-            item.cement_charges || 0
-          ),
-      },
-
-      {
-        name: "Gitti Charges",
-        amount:
-          Number(
-            item.gitti_charges || 0
-          ),
-      },
-
-      {
-        name: "Installation Charges",
-        amount:
-          Number(
-            item.installation_charges || 0
-          ),
-      },
-
-      {
-        name: "JE Charges",
-        amount:
-          Number(
-            item.je_charges || 0
-          ),
-      },
-
-      {
-        name: "Load Extension Charges",
-        amount:
-          Number(
-            item.load_extension_charges || 0
-          ),
-      },
-
-      {
-        name: "Meter Connection Charges",
-        amount:
-          Number(
-            item.meter_connection_charges || 0
-          ),
-      },
-
-      {
-        name: "Meter Name Change Charge",
-        amount:
-          Number(
-            item.name_change_charges || 0
-          ),
-      },
-
-      {
-        name: "Meter Change Charge",
-        amount:
-          Number(
-            item.meter_change_charges || 0
-          ),
-      },
-
-      {
-        name: "Net Metering Charges",
-        amount:
-          Number(
-            item.net_metering_charges || 0
-          ),
-      },
-
-      {
-        name: "Sand Charges",
-        amount:
-          Number(
-            item.sand_charges || 0
-          ),
-      },
-
-      {
-        name: "Vendor Charges",
-        amount:
-          Number(
-            item.vendor_charges || 0
-          ),
-      },
-
-    ].filter(
-      (charge) =>
-        charge.amount > 0
-    );
-  }
-
+    {
+      name: "Bhada Charges",
+      amount: Number(item?.bhada_charges || 0),
+    },
+    {
+      name: "Cement Charges",
+      amount: Number(item?.cement_charges || 0),
+    },
+    {
+      name: "Gitti Charges",
+      amount: Number(item?.gitti_charges || 0),
+    },
+    {
+      name: "Installation Charges",
+      amount: Number(item?.installation_charges || 0),
+    },
+    {
+      name: "JE Charges",
+      amount: Number(item?.je_charges || 0),
+    },
+    {
+      name: "Load Extension Charges",
+      amount: Number(item?.load_extension_charges || 0),
+    },
+    {
+      name: "Meter Connection Charges",
+      amount: Number(item?.meter_connection_charges || 0),
+    },
+    {
+      name: "Meter Name Change Charge",
+      amount: Number(item?.name_change_charges || 0),
+    },
+    {
+      name: "Meter Change Charge",
+      amount: Number(item?.meter_change_charges || 0),
+    },
+    {
+      name: "Net Metering Charges",
+      amount: Number(item?.net_metering_charges || 0),
+    },
+    {
+      name: "Sand Charges",
+      amount: Number(item?.sand_charges || 0),
+    },
+    {
+      name: "Vendor Charges",
+      amount: Number(item?.vendor_charges || 0),
+    },
+  ].filter((charge) => charge.amount > 0);
+}
 
   // =====================================================
   // CENTRAL CALCULATION
@@ -1096,6 +1052,16 @@
       // =====================================================
 
       const additionalCharges = [
+
+        {
+  label: "Agreement Charges",
+  amount: Number(
+    item?.agreement_charges ??
+    item?.additional_charges?.agreement_charges ??
+    0
+  ),
+},
+
         {
           label: "Bhada Charges",
           amount:

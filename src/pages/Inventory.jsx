@@ -327,56 +327,62 @@ export default function Inventory() {
   return (
     <div className="w-full overflow-hidden p-3">
 
-      {/* =================================================
-          HEADER
-      ================================================= */}
+   
+{/* =================================================
+    HEADER
+================================================= */}
 
-      <div className="mb-2 rounded-xl bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500 p-6 shadow-2xl">
+<div className="relative mb-2 overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 p-4 sm:p-6 shadow-xl">
 
-        <div className="flex justify-between items-center">
+  {/* Background highlights */}
+  <div className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-pink-400/30 blur-2xl" />
+  <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-32 rounded-full bg-cyan-300/30 blur-2xl" />
 
-          <div>
+  <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-            <h1 className="text-2xl font-extrabold text-white tracking-wide">
-              Inventory
-            </h1>
-
-            <p className="text-blue-100 mt text-sm">
-              Purchase & Stock Management
-            </p>
-
-          </div>
-
-          <div className="text-right">
-
-            <p className="text-black font-bold text-sm mt-1 max-w-xl">
-              Total Purchase Value
-            </p>
-
-            <h2 className="text-3xl font-bold text-red-700">
-              ₹{" "}
-              {Number(
-                totalPurchaseValue
-              ).toLocaleString(
-                "en-IN",
-                {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }
-              )}
-            </h2>
-
-            <p className="text-black font-bold text-sm mt-1 max-w-xl">
-              {numberToWordsIndian(
-                totalPurchaseValue
-              )}
-            </p>
-
-          </div>
-
+    {/* TITLE */}
+    <div className="min-w-0">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-2xl shadow-lg backdrop-blur-md">
+          📦
         </div>
 
+        <div>
+          <h1 className="text-xl font-extrabold tracking-wide text-white sm:text-3xl">
+            Inventory
+          </h1>
+
+          <p className="mt-1 text-xs text-white/90 sm:text-sm">
+            Purchase & Stock Management
+          </p>
+        </div>
       </div>
+
+      <div className="mt-4 h-1 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-pink-300" />
+    </div>
+
+    {/* TOTAL PURCHASE VALUE */}
+    <div className="rounded-2xl border border-white/20 bg-white/15 px-4 py-3 shadow-lg backdrop-blur-md sm:px-6 sm:py-4">
+      <p className="text-xs font-semibold text-white/90 sm:text-sm">
+        Total Purchase Value
+      </p>
+
+      <h2 className="mt-1 whitespace-nowrap text-2xl font-extrabold text-white sm:text-3xl">
+        ₹{" "}
+        {Number(totalPurchaseValue).toLocaleString("en-IN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
+      </h2>
+
+      <p className="mt-2 text-xs font-medium leading-relaxed text-white/90 sm:text-sm">
+        {numberToWordsIndian(totalPurchaseValue)}
+      </p>
+    </div>
+
+  </div>
+</div>
+
 
       {/* =================================================
           SEARCH + ADD
