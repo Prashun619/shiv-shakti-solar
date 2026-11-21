@@ -17,10 +17,7 @@ export const inverterOptions = [
 const inventoryProducts = [
   "Panel",
   "Inverter",
-  "AC Wire",
-  "DC Wire",
-  "LA Wire",
-  "Armoured Cable",
+  "Wire",
   "Earthing",
   "ACDB Box",
   "DCDB Box",
@@ -33,18 +30,39 @@ const inventoryProducts = [
   "C Channel 140x50x2 mm 9ft",
 ];
 
-// All quantities start at zero.
-// Panel quantity is handled by PlantCosting separately.
-const createTemplate = () =>
-  inventoryProducts.map((item) => ({
-    item,
-    qty: 0,
-  }));
+const createTemplate = (size) => {
+  return inventoryProducts
+    .filter((item) => {
+      if (
+        (size === "3KW" || size === "3.5KW") &&
+        item === "Purlin 21ft"
+      ) {
+        return false;
+      }
+
+      if (size === "5KW" && item === "Purlin 13ft") {
+        return false;
+      }
+
+      return true;
+    })
+    .map((item) => ({
+      item,
+      qty:
+        item === "Rafter"
+          ? size === "5KW" ? 3 : 2
+          : item === "Purlin 13ft" && size !== "5KW"
+          ? 4
+          : item === "Purlin 21ft" && size === "5KW"
+          ? 4
+          : 0,
+    }));
+};
 
 export const plantTemplates = {
-  "3KW": createTemplate(),
-  "3.5KW": createTemplate(),
-  "5KW": createTemplate(),
+  "3KW": createTemplate("3KW"),
+  "3.5KW": createTemplate("3.5KW"),
+  "5KW": createTemplate("5KW"),
 };
 
 // Manually entered charges: 5 items

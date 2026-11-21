@@ -790,17 +790,17 @@ if (
       after selection.
     */
 
-    qty:
+  qty:
   isInverter ||
   ["earthing", "acdbbox", "dcdbbox"].includes(
     normalizeCompact(productName)
   )
     ? 1
-    : 0,
+    : Number(templateItem?.qty || 0),
 
-    templateQty: Number(
-      templateItem?.qty || 0
-    ),
+templateQty: Number(
+  templateItem?.qty || 0
+),
 
     options: isPanel
       ? panelOptions
@@ -1983,14 +1983,20 @@ function formatPriceInput(value) {
       </label>
 
       <input
-        type="number"
-        min="0.1"
-        step="0.1"
-        value={plantSizeInput}
-        onChange={(e) =>
-          setPlantSizeInput(e.target.value)
-        }
-        placeholder="Enter plant size"
+  type="number"
+  min="0.1"
+  step="0.1"
+  value={plantSizeInput}
+  onChange={(e) =>
+    setPlantSizeInput(e.target.value)
+  }
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handlePlantSizeSubmit();
+    }
+  }}
+  placeholder="Enter plant size"
         className="
           w-40
           rounded-lg
@@ -2229,9 +2235,10 @@ function formatPriceInput(value) {
                     */
 
                     const base =
-                      row.isAdditionalCharge
-                        ? price
-                        : qty * price;
+  row.isAdditionalCharge ||
+  normalizeCompact(row.item) === "wire"
+    ? price
+    : qty * price;
 
                     const gst =
                       Number(
@@ -2450,13 +2457,13 @@ function formatPriceInput(value) {
 
 <td className="border-2 border-black px-2 py-2 text-center">
   {row.isAdditionalCharge ||
-["earthing", "acdbbox", "dcdbbox"].includes(
-  normalizeCompact(row.item)
-) ? (
-  <span className="font-semibold">
-    1
-  </span>
-) : (
+  ["earthing", "acdbbox", "dcdbbox"].includes(
+    normalizeCompact(row.item)
+  ) ? (
+    <span className="font-semibold">1</span>
+  ) : normalizeCompact(row.item) === "wire" ? (
+    <span></span>
+  ) : (
     <input
       type="number"
       min="0"
@@ -2466,27 +2473,14 @@ function formatPriceInput(value) {
         const qty =
           e.target.value === ""
             ? 0
-            : Math.max(
-                0,
-                Number(e.target.value)
-              );
+            : Math.max(0, Number(e.target.value));
 
-        updateRow(index, {
-          qty,
-        });
+        updateRow(index, { qty });
       }}
       onWheel={preventWheelChange}
       className="
-        border
-        border-black
-        rounded
-        px-2
-        py-1
-        w-20
-        text-center
-        no-spinner
-        bg-white
-        text-black
+        border border-black rounded px-2 py-1
+        w-20 text-center no-spinner bg-white text-black
       "
     />
   )}

@@ -161,12 +161,13 @@ setShowHistory(true);
 
 
 
-function exportExcel(){
-
-exportCustomerPaymentsExcel(
-payments
-);
-
+async function exportExcel() {
+  try {
+    await exportCustomerPaymentsExcel(payments);
+  } catch (error) {
+    console.error("Customer Payments Excel export failed:", error);
+    alert("Unable to export Customer Payments Excel file.");
+  }
 }
 
 

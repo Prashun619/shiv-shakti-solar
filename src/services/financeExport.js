@@ -1,162 +1,60 @@
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
+export async function exportFinanceExcel(data) {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Finance Ledger");
 
+  worksheet.addRow(["Finance Ledger Report"]);
+  worksheet.addRow([]);
 
-export function exportFinanceExcel(data){
+  worksheet.addRow([
+    null,
+    data.totalValue,
+    data.totalReceived,
+    data.remaining,
+    data.openingBalance,
+    data.credit,
+    data.debit,
+    data.closingBalance,
+  ]);
 
+  const buffer = await workbook.xlsx.writeBuffer();
 
-  const sheetData = [
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
 
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
 
-    {
-      Title:"Finance Ledger Report"
-    },
+  link.href = url;
+  link.download = "Finance_Ledger.xlsx";
+  link.click();
 
-
-    {},
-
-
-    {
-      "Total Value":data.totalValue,
-      "Total Received":data.totalReceived,
-      "Remaining":data.remaining,
-      "Opening Balance":data.openingBalance,
-      "Credit":data.credit,
-      "Debit":data.debit,
-      "Closing Balance":data.closingBalance
-    }
-
-
-  ];
-
-
-
-
-  const worksheet = XLSX.utils.json_to_sheet(sheetData);
-
-
-  const workbook = XLSX.utils.book_new();
-
-
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    "Finance Ledger"
-  );
-
-
-
-  XLSX.writeFile(
-    workbook,
-    "Finance_Ledger.xlsx"
-  );
-
-
+  URL.revokeObjectURL(url);
 }
 
+export function exportFinancePDF(data) {
+  const doc = new jsPDF();
 
+  doc.text("Finance Ledger Report", 14, 15);
 
+  autoTable(doc, {
+    startY: 25,
+    head: [["Particular", "Amount"]],
+    body: [
+      ["Total Value", `â‚¹ ${data.totalValue}`],
+      ["Total Received", `â‚¹ ${data.totalReceived}`],
+      ["Remaining", `â‚¹ ${data.remaining}`],
+      ["Opening Balance", `â‚¹ ${data.openingBalance}`],
+      ["Credit", `â‚¹ ${data.credit}`],
+      ["Debit", `â‚¹ ${data.debit}`],
+      ["Closing Balance", `â‚¹ ${data.closingBalance}`],
+    ],
+  });
 
-
-
-
-
-export function exportFinancePDF(data){
-
-
-
- const doc = new jsPDF();
-
-
-
- doc.text(
-  "Finance Ledger Report",
-  14,
-  15
- );
-
-
-
-
-
- autoTable(doc,{
-
- startY:25,
-
- head:[
-
- [
- "Particular",
- "Amount"
- ]
-
- ],
-
- body:[
-
-
- [
- "Total Value",
- `₹ ${data.totalValue}`
- ],
-
-
- [
- "Total Received",
- `₹ ${data.totalReceived}`
- ],
-
-
-
- [
- "Remaining",
- `₹ ${data.remaining}`
- ],
-
-
-
- [
- "Opening Balance",
- `₹ ${data.openingBalance}`
- ],
-
-
-
- [
- "Credit",
- `₹ ${data.credit}`
- ],
-
-
-
- [
- "Debit",
- `₹ ${data.debit}`
- ],
-
-
-
- [
- "Closing Balance",
- `₹ ${data.closingBalance}`
- ]
-
-
- ]
-
-
- });
-
-
-
-
-
- doc.save(
-  "Finance_Ledger.pdf"
- );
-
-
-
+  doc.save("Finance_Ledger.pdf");
 }
