@@ -500,14 +500,28 @@ setInventoryProducts(products);
         return label === value;
       });
 
-    if (!selectedProduct) {
-      setItem((prev) => ({
-        ...prev,
-        name: value,
-      }));
+   if (!selectedProduct) {
+  const customItemName = value.trim().toLowerCase();
 
-      return;
-    }
+  const isInverter = customItemName.includes("inverter");
+  const isPanel = customItemName.includes("panel");
+
+  const gstRate =
+    isInverter || isPanel
+      ? "5"
+      : customItemName === "structure" ||
+        customItemName === "installation"
+      ? "0"
+      : "18";
+
+  setItem((prev) => ({
+    ...prev,
+    name: value,
+    gst: gstRate,
+  }));
+
+  return;
+}
 
     const category = String(
       selectedProduct.category ||
@@ -533,14 +547,14 @@ setInventoryProducts(products);
       category.includes("panel") ||
       productName.includes("panel");
 
-    setItem((prev) => ({
-      ...prev,
-      name: value,
-      gst:
-        isInverter || isPanel
-          ? "5"
-          : "18",
-    }));
+   setItem((prev) => ({
+  ...prev,
+  name: value,
+  gst:
+    isInverter || isPanel
+      ? "5"
+      : "18",
+}));
 
     return;
   }
@@ -593,12 +607,16 @@ setInventoryProducts(products);
         ...prev.items,
 
         {
-          name: item.name,
-          hsn: item.hsn,
-          qty: Number(item.qty),
-          price: Number(item.price),
-          gst: Number(item.gst),
-        },
+  name: item.name,
+  hsn: item.hsn,
+  qty: Number(item.qty),
+  price: Number(item.price),
+ gst:
+  item.name.toLowerCase().includes("structure") ||
+  item.name.toLowerCase().includes("installation")
+    ? 0
+    : Number(item.gst),
+},
       ],
     }));
 
@@ -2845,22 +2863,25 @@ align-middle
                     Invoice Number
                   </label>
 
-                  <input
-                    name="invoice_number"
-                    value={
-                      invoice.invoice_number
-                    }
-                    readOnly
-                    className="
-                      w-full
-                      border
-                      rounded-lg
-                      px-3
-                      py-2
-                      bg-gray-100
-                      outline-none
-                    "
-                  />
+                 <input
+  name="invoice_number"
+  value={invoice.invoice_number || ""}
+  onChange={(e) =>
+    setInvoice((prev) => ({
+      ...prev,
+      invoice_number: e.target.value,
+    }))
+  }
+  className="
+    w-full
+    border
+    rounded-lg
+    px-3
+    py-2
+    bg-white
+    outline-none
+  "
+/>
 
                 </div>
 
@@ -2982,7 +3003,8 @@ align-middle
                         ? "Loading customers..."
                         : "Select Customer"}
                     </option>
-
+ 
+ 
 
                     {customers.map(
                       (customer) => {
@@ -3228,6 +3250,35 @@ align-middle
       ? "Loading products..."
       : "Select Product"}
   </option>
+    {/* FIXED ITEMS - ALWAYS ON TOP */}
+
+  <option value="Waaree Solar Panel">
+    Waaree Solar Panel
+  </option>
+
+  <option value="Adani Solar Panel">
+    Adani Solar Panel
+  </option>
+
+  <option value="Waaree Inverter">
+    Waaree Inverter
+  </option>
+
+  <option value="Luminous Inverter">
+    Luminous Inverter
+  </option>
+
+  <option value="Polycab Inverter">
+    Polycab Inverter
+  </option>
+
+  <option value="Structure">
+    Structure
+  </option>
+
+  <option value="Installation">
+    Installation
+  </option>
 
   {inventoryProducts.map(
     (product, index) => {
@@ -3436,7 +3487,7 @@ if (
 
                     <select
   name="gst"
-  value={item.gst}
+  value={item.gst ?? "5"}
   onChange={handleItemChange}
   disabled={!item.name}
   className="
@@ -3449,16 +3500,18 @@ if (
     cursor-not-allowed
   "
 >
+  <option value="0">
+    0% (No GST)
+  </option>
 
-                      <option value="5">
-                        5% (2.5% + 2.5%)
-                      </option>
+  <option value="5">
+    5% (2.5% + 2.5%)
+  </option>
 
-                      <option value="18">
-                        18% (9% + 9%)
-                      </option>
-
-                    </select>
+  <option value="18">
+    18% (9% + 9%)
+  </option>
+</select>
 
                   </div>
 
