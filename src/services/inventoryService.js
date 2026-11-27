@@ -1,4 +1,5 @@
-  import { supabase } from "./supabase";
+import { supabase } from "./supabase";
+import { addBilling } from "./billingService";
 
 
   // =====================================================
@@ -1480,114 +1481,122 @@ length_ft:
   // ADD INVENTORY
   // =====================================================
 
-  export async function addInventory(
-    purchase
-  ) {
+ 
+export async function addInventory(purchase) {
+  
+  const {
+  date,
+  supplier,
+  payment_mode = "Cash",
+  transportation_payment_mode = "Cash",
+  transportation = 0,
+  products = [],
+} = purchase;
 
-    const {
-      date,
-      supplier,
-      transportation = 0,
-      products = [],
-    } = purchase;
-
-
-    if (
-      !Array.isArray(products) ||
-      products.length === 0
-    ) {
-
-      throw new Error(
-  "At least one product is required."
-);
-    }
-
-
-    const batchId =
-      createBatchId();
-
-
-    // ===================================================
-    // TOTAL PURCHASE VALUE
-    // ===================================================
-
-    const totalPurchaseValue =
-      products.reduce(
-        (sum, item) =>
-          sum +
-          getPurchaseValue(item),
-        0
-      );
-
-
-    let allocatedTransportation = 0;
-
-
-    // ===================================================
-    // PREPARE ROWS
-    // ===================================================
-
-    const rows =
-      products.map(
-        (item, index) => {
-
-          const isLastItem =
-            index ===
-            products.length - 1;
-
-
-          const itemValue =
-            getPurchaseValue(item);
-
-
-          const row =
-            preparePurchaseItem(
-              item,
-              transportation,
-              itemValue,
-              totalPurchaseValue,
-              isLastItem,
-              allocatedTransportation,
-              batchId,
-              date,
-              supplier
-            );
-
-
-          if (!isLastItem) {
-
-            allocatedTransportation +=
-              num(
-                row.transportation
-              );
-          }
-
-
-          return row;
-        }
-      );
-
-
-    // ===================================================
-    // INSERT
-    // ===================================================
-
-    const {
-      data,
-      error,
-    } = await supabase
-      .from("inventory")
-      .insert(rows)
-      .select();
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    return data || [];
+  if (!Array.isArray(products) || products.length === 0) {
+    throw new Error("At least one product is required.");
   }
+
+  const batchId = createBatchId();
+
+  // Calculate product purchase value excluding transportation.
+  const totalPurchaseValue = products.reduce(
+    (sum, item) => sum + getPurchaseValue(item),
+    0
+  );
+
+  // Calculate GST separately.
+  const totalGST = products.reduce(
+    (sum, item) => sum + calculateProductGST(item),
+    0
+  );
+
+  const dealerPaymentAmount =
+    totalPurchaseValue + totalGST;
+
+  let allocatedTransportation = 0;
+
+  // Prepare inventory rows.
+  const rows = products.map((item, index) => {
+    const isLastItem = index === products.length - 1;
+    const itemValue = getPurchaseValue(item);
+
+    const row = preparePurchaseItem(
+      item,
+      transportation,
+      itemValue,
+      totalPurchaseValue,
+      isLastItem,
+      allocatedTransportation,
+      batchId,
+      date,
+      supplier
+    );
+
+    if (!isLastItem) {
+      allocatedTransportation += num(row.transportation);
+    }
+
+    return row;
+  });
+
+  // Save inventory first.
+  const { data, error } = await supabase
+    .from("inventory")
+    .insert(rows)
+    .select();
+
+  if (error) {
+    throw error;
+  }
+
+  // Use the batch ID to identify these ledger entries.
+  const batchReference = `[Inventory Batch: ${batchId}]`;
+
+  const productSummary = products
+    .map((item) => {
+      const name = item.product_name || "Product";
+      const specification = item.specification
+        ? ` (${item.specification})`
+        : "";
+
+      return `${name}${specification}`;
+    })
+    .join(", ");
+
+  // Create Dealer Payment only when the purchase amount is positive.
+  if (dealerPaymentAmount > 0) {
+   await addBilling({
+  date,
+  type: "Dealer Payment",
+  company: supplier,
+  paid_by: "Shiv Shakti Solar",
+  source_type: `Inventory:${batchId}`,
+  payment_mode,
+  amount: dealerPaymentAmount,
+  remarks: `Payment to ${supplier}`,
+});
+  }
+
+  // Create Transportation Expense separately, exactly once.
+  const transportationAmount = num(transportation);
+
+  if (transportationAmount > 0) {
+    await addBilling({
+  date,
+  type: "Expense",
+  company: "Transportation",
+  paid_by: "Shiv Shakti Solar",
+  source_type: `Inventory:${batchId}`,
+  payment_mode: transportation_payment_mode,
+  amount: transportationAmount,
+  remarks: `Transportation Charges for ${supplier}`,
+});
+  }
+
+  return data || [];
+}
+
 
 
   // =====================================================
@@ -1909,25 +1918,89 @@ length_ft:
   // DELETE INVENTORY
   // =====================================================
 
-  export async function deleteInventory(
-    id
-  ) {
+  export async function deleteInventory(id) {
+  // Find the selected purchase row and its batch ID
+  const {
+    data: purchase,
+    error: fetchError,
+  } = await supabase
+    .from("inventory")
+    .select("id, batch_id")
+    .eq("id", id)
+    .maybeSingle();
 
+  if (fetchError) {
+    throw fetchError;
+  }
+
+  if (!purchase) {
+    throw new Error("Purchase not found.");
+  }
+
+  const batchId = purchase.batch_id;
+
+  // Delete the complete purchase batch
+  let deleteQuery = supabase
+    .from("inventory")
+    .delete();
+
+  if (batchId) {
+    deleteQuery = deleteQuery.eq(
+      "batch_id",
+      batchId
+    );
+  } else {
+    deleteQuery = deleteQuery.eq(
+      "id",
+      id
+    );
+  }
+
+  const {
+    error: inventoryError,
+  } = await deleteQuery;
+
+  if (inventoryError) {
+    throw inventoryError;
+  }
+
+  // Delete linked Finance Ledger entries
+  if (batchId) {
     const {
-      error,
+      error: billingError,
     } = await supabase
-      .from("inventory")
+      .from("billing")
       .delete()
       .eq(
-        "id",
-        id
+        "source_type",
+        `Inventory:${batchId}`
       );
 
+    if (billingError) {
+      throw new Error(
+        `Purchase deleted, but linked Finance Ledger entries could not be deleted: ${billingError.message}`
+      );
+    }
 
-    if (error) {
-      throw error;
+    // Also clean up entries created by the older implementation
+    const {
+      error: legacyBillingError,
+    } = await supabase
+      .from("billing")
+      .delete()
+      .eq("source_type", "Inventory")
+      .ilike(
+        "remarks",
+        `%[Inventory Batch: ${batchId}]%`
+      );
+
+    if (legacyBillingError) {
+      throw new Error(
+        `Purchase deleted, but older linked Finance Ledger entries could not be deleted: ${legacyBillingError.message}`
+      );
     }
   }
+}
 
 
   // =====================================================

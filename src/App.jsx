@@ -451,9 +451,9 @@ export default function App() {
             inset-y-0
             left-0
             w-64
-            bg-white
-            border-r
-            border-slate-200
+            bg-[#DCE2E7]
+border-r
+border-[#354657]
             shadow-[2px_0_10px_rgba(0,0,0,0.04)]
             z-50
             overflow-hidden
@@ -477,33 +477,35 @@ export default function App() {
           <div className="h-full flex flex-col items-center">
 
 
-            {/* ==================================================
-                LOGO
-            ================================================== */}
+            {/* SIDEBAR HEADING */}
 
-            <div
-              className="
-                h-[82px]
-                w-full
-                flex
-                items-center
-                justify-center
-                shrink-0
-              "
-            >
-
-              <img
-                src="/logo.png"
-                alt="Shiv Shakti Solar"
-                className="
-                  w-28
-                  h-28
-                  object-contain
-                "
-              />
-
-            </div>
-
+<div
+  className="
+    h-[82px]
+    w-full
+    flex
+    items-center
+    justify-center
+    shrink-0
+  "
+>
+  <h2
+  className="
+    text-white
+    text-lg
+    font-bold
+    tracking-wider
+    uppercase
+    bg-[#087F8C]
+    rounded-full
+    px-6
+    py-2
+    shadow-md
+  "
+>
+  Control Panel
+</h2>
+</div>
 
             {/* ==================================================
                 NAVIGATION

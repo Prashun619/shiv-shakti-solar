@@ -231,8 +231,9 @@
         unit: "Nos",
         length_ft: "",
 
-        price: "",
-        total_weight: "",
+       price: "",
+per_watt_price: "",
+total_weight: "",
 
         gst: "",
         remarks: "",
@@ -284,8 +285,17 @@
         "",
 
       price:
-        row.price ??
-        "",
+  row.price ??
+  "",
+
+per_watt_price:
+  row.product_name === "Panel" &&
+  parseFloat(row.specification) > 0
+    ? (
+        Number(row.price || 0) /
+        parseFloat(row.specification)
+      ).toFixed(4)
+    : "",
 
       unit_cost:
         String(
@@ -357,6 +367,14 @@
       const [supplier, setSupplier] =
         useState("");
 
+      const [paymentMode, setPaymentMode] =
+  useState("Cash");  
+
+  const [
+  transportationPaymentMode,
+  setTransportationPaymentMode,
+] = useState("Cash");
+
       const [
         transportation,
         setTransportation,
@@ -385,6 +403,10 @@
         );
 
         setSupplier("");
+
+        setPaymentMode("Cash");
+
+        setTransportationPaymentMode("Cash");
 
         setTransportation("");
 
@@ -539,108 +561,160 @@
       // NORMAL PRODUCT CHANGE
       // ===================================================
 
-      function handleProductChange(
-        index,
-        field,
-        value
-      ) {
-        // =================================================
-        // PRODUCT
-        // =================================================
+      
+// ===================================================
+// NORMAL PRODUCT CHANGE
+// ===================================================
 
-      if (
-      field ===
-      "product_name"
-    ) {
-      setProducts(
-        (prev) =>
-          prev.map(
-            (
-              item,
-              itemIndex
-            ) => {
-              if (
-                itemIndex !== index
-              ) {
-                return item;
-              }
+function handleProductChange(
+  index,
+  field,
+  value
+) {
+  // =================================================
+  // PRODUCT
+  // =================================================
 
-              const isCChannel =
-      value ===
-        "C Channel 140x50x2 mm 9ft" ||
-      value ===
-        "C Channel 140x50x2 mm 21ft";
-
-            return {
-      ...item,
-
-      product_name:
-        value,
-
-      category:
-        productCategoryMap[
-          value
-        ] || "",
-
-    
-
-      unit:
-        isCChannel
-          ? "Kg"
-          : item.unit,
-
-      total_weight:
-        isCChannel
-          ? item.total_weight
-          : item.total_weight,
-    };
-            }
-          )
-      );
-
-      return;
-    }
-
-        // =================================================
-        // UNIT
-        // =================================================
-
-        if (
-          field === "unit"
-        ) {
-          setProducts(
-            (prev) =>
-              prev.map(
-                (
-                  item,
-                  itemIndex
-                ) =>
-                  itemIndex ===
-                  index
-                    ? {
-                        ...item,
-
-                        unit:
-                          value,
-
-                        total_weight:
-                          value === "Kg"
-                            ? item.total_weight
-                            : "",
-                      }
-                    : item
-              )
-          );
-
-          return;
+  if (field === "product_name") {
+    setProducts((prev) =>
+      prev.map((item, itemIndex) => {
+        if (itemIndex !== index) {
+          return item;
         }
 
-        updateItem(
-          index,
-          field,
-          value
-        );
-      }
+        const isCChannel =
+          value === "C Channel 140x50x2 mm 9ft" ||
+          value === "C Channel 140x50x2 mm 21ft";
+
+        return {
+          ...item,
+
+          product_name: value,
+
+          category:
+            productCategoryMap[value] || "",
+
+          unit: isCChannel
+            ? "Kg"
+            : item.unit,
+
+          total_weight: item.total_weight,
+        };
+      })
+    );
+
+    return;
+  }
+
+  // =================================================
+  // UNIT
+  // =================================================
+
+  if (field === "unit") {
+    setProducts((prev) =>
+      prev.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+
+              unit: value,
+
+              total_weight:
+                value === "Kg"
+                  ? item.total_weight
+                  : "",
+            }
+          : item
+      )
+    );
+
+    return;
+  }
+
+  // =================================================
+  // PANEL SPECIFICATION
+  // Recalculate panel price when wattage changes
+  // =================================================
+
+  if (field === "specification") {
+    setProducts((prev) =>
+      prev.map((item, itemIndex) => {
+        if (itemIndex !== index) {
+          return item;
+        }
+
+        if (item.product_name === "Panel") {
+          const wattage = parseFloat(value) || 0;
+          const perWattPrice =
+            Number(item.per_watt_price) || 0;
+
+          return {
+            ...item,
+
+            specification: value,
+
+            price:
+              wattage > 0 && perWattPrice > 0
+                ? wattage * perWattPrice
+                : "",
+          };
+        }
+
+        return {
+          ...item,
+          specification: value,
+        };
+      })
+    );
+
+    return;
+  }
+
+  // =================================================
+  // PANEL PER WATT PRICE
+  // Calculate existing price per panel
+  // =================================================
+
+  if (field === "per_watt_price") {
+    setProducts((prev) =>
+      prev.map((item, itemIndex) => {
+        if (itemIndex !== index) {
+          return item;
+        }
+
+        const wattage =
+          parseFloat(item.specification) || 0;
+
+        const perWattPrice =
+          Number(value) || 0;
+
+        return {
+          ...item,
+
+          per_watt_price: value,
+
+          price:
+            wattage > 0 && perWattPrice > 0
+              ? wattage * perWattPrice
+              : "",
+        };
+      })
+    );
+
+    return;
+  }
+
+  // =================================================
+  // OTHER FIELDS
+  // =================================================
+
+  updateItem(
+    index,
+    field,
+    value
+  );
+}
+
 
       // ===================================================
       // ADD NORMAL PRODUCT
@@ -1275,18 +1349,22 @@
               }
             );
           } else {
+            
             await addInventory({
-              date,
-              supplier,
+  date,
+  supplier,
+  payment_mode: paymentMode,
+  transportation_payment_mode:
+  transportationPaymentMode,
 
-              transportation:
-                Number(
-                  transportation ||
-                    0
-                ),
+  transportation:
+    Number(
+      transportation ||
+        0
+    ),
 
-              products,
-            });
+  products,
+});
           }
 
           onSaved();
@@ -1383,7 +1461,7 @@
                     DATE + SUPPLIER
                 ================================================= */}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
                   <div>
                     <label className="block mb-1 font-medium">
@@ -1428,6 +1506,25 @@
         {supplierName}
       </option>
     ))}
+  </select>
+</div>
+
+<div>
+  <label className="block mb-1 font-medium">
+    Payment Mode
+  </label>
+
+  <select
+    value={paymentMode}
+    onChange={(e) =>
+      setPaymentMode(e.target.value)
+    }
+    className="border rounded-lg p-2 w-full"
+  >
+    <option value="Cash">Cash</option>
+    <option value="UPI">UPI</option>
+    <option value="Bank">Bank</option>
+    <option value="Cheque">Cheque</option>
   </select>
 </div>
 
@@ -1809,34 +1906,41 @@
                               </div>
                             )}
 
-                            {/* PRICE */}
+                            
+{/* PRICE */}
 
-                            <div>
-                              <label className="block mb-1 font-medium">
-                                {item.unit ===
-                                "Kg"
-                                  ? "Price per Kg"
-                                  : "Price"}
-                              </label>
+<div>
+  <label className="block mb-1 font-medium">
+    {item.product_name === "Panel"
+      ? "Per Watt Price (₹)"
+      : item.unit === "Kg"
+      ? "Price per Kg"
+      : "Price"}
+  </label>
 
-                              <input
-                                type="number"
-                                min="0"
-                                step="any"
-                                value={
-                                  item.price
-                                }
-                                onChange={(e) =>
-                                  handleProductChange(
-                                    index,
-                                    "price",
-                                    e.target.value
-                                  )
-                                }
-                                className="border rounded-lg p-2 w-full"
-                                required
-                              />
-                            </div>
+  <input
+    type="number"
+    min="0"
+    step="any"
+    value={
+      item.product_name === "Panel"
+        ? item.per_watt_price ?? ""
+        : item.price ?? ""
+    }
+    onChange={(e) =>
+      handleProductChange(
+        index,
+        item.product_name === "Panel"
+          ? "per_watt_price"
+          : "price",
+        e.target.value
+      )
+    }
+    className="border rounded-lg p-2 w-full"
+    required
+  />
+</div>
+
 
                             {/* GST */}
 
@@ -2518,32 +2622,57 @@
 
                 <div className="border border-slate-300 rounded-xl p-4">
 
-                  <label className="block mb-1 font-medium">
-                    Transportation
-                  </label>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={
-                      transportation
-                    }
-                    onChange={(e) =>
-                      setTransportation(
-                        e.target.value
-                      )
-                    }
-                    className="border rounded-lg p-2 w-full md:w-1/3"
-                  />
+    {/* TRANSPORTATION AMOUNT */}
 
-                  <p className="text-xs text-slate-500 mt-1">
-                    Transportation is entered once and automatically
-                    divided between products according to their
-                    purchase value.
-                  </p>
+    <div>
+      <label className="block mb-1 font-medium">
+        Transportation Amount
+      </label>
 
-                </div>
+      <input
+        type="number"
+        min="0"
+        step="any"
+        value={transportation}
+        onChange={(e) =>
+          setTransportation(e.target.value)
+        }
+        className="border rounded-lg p-2 w-full"
+      />
+    </div>
+
+    {/* TRANSPORTATION PAYMENT MODE */}
+
+    <div>
+      <label className="block mb-1 font-medium">
+        Transportation Payment Mode
+      </label>
+
+      <select
+        value={transportationPaymentMode}
+        onChange={(e) =>
+          setTransportationPaymentMode(e.target.value)
+        }
+        className="border rounded-lg p-2 w-full"
+      >
+        <option value="Cash">Cash</option>
+        <option value="UPI">UPI</option>
+        <option value="Bank">Bank</option>
+        <option value="Cheque">Cheque</option>
+      </select>
+    </div>
+
+  </div>
+
+  <p className="text-xs text-slate-500 mt-2">
+    Transportation is entered once and automatically
+    divided between products according to their
+    purchase value.
+  </p>
+
+</div>
 
                 {/* =================================================
                     TOTALS
