@@ -12,6 +12,8 @@
   "dependencies": {
     "@capacitor/android": "^8.6.2",
     "@capacitor/core": "^8.6.2",
+    "@capacitor/filesystem": "^8.1.6",
+    "@capacitor/share": "^8.0.3",
     "@fontsource/noto-serif": "^5.2.9",
     "@supabase/supabase-js": "^2.110.0",
     "chart.js": "^4.5.1",

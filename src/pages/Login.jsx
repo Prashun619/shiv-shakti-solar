@@ -205,17 +205,18 @@ export default function Login({ setCurrentUser }) {
   <div className="flex items-center gap-3">
 
     <img
-      src="/logo.png"
-      alt="Shiv Shakti Solar Energy"
-      className="
-        h-15
-        w-15
-        md:h-28
-        md:w-28
-        object-contain
-        drop-shadow-lg
-      "
-    />
+  src="/logo.png"
+  alt="Shiv Shakti Solar Energy"
+  className="
+    h-20
+    w-20
+    md:h-28
+    md:w-28
+    object-contain
+    drop-shadow-lg
+    shrink-0
+  "
+/>
 
     <div className="leading-tight">
 
@@ -259,8 +260,9 @@ export default function Login({ setCurrentUser }) {
           mt-16
           md:ml-[850px]
           rounded-2xl
-          p-7
-          sm:p-10
+          p-5
+sm:p-8
+md:p-10
           border
           border-white/30
         "
@@ -276,7 +278,7 @@ export default function Login({ setCurrentUser }) {
 
         {/* HEADING */}
 
-        <div className="text-center mb-9">
+        <div className="text-center mb-6 md:mb-9">
 
           <h1
             className="

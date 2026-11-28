@@ -19,6 +19,11 @@ function getProductKey(product) {
       product?.name
     );
 
+      const normalizedSpecification =
+    cleanText(product?.specification)
+      .replace(/\s+/g, "")
+      .toLowerCase();
+
   // =====================================================
   // C CHANNEL
   // =====================================================
@@ -60,14 +65,14 @@ function getProductKey(product) {
   // PANEL / INVERTER
   // =====================================================
 
-  if (
+    if (
     category === "panel" ||
     category === "inverter"
   ) {
     return [
       category,
       cleanText(product?.company),
-      cleanText(product?.specification)
+      normalizedSpecification
     ]
       .join("|")
       .toLowerCase();
@@ -85,6 +90,8 @@ function getProductKey(product) {
     .join("|")
     .toLowerCase();
 }
+
+  
 
 // =====================================================
 // GET TOTAL CONSUMED QUANTITY BY PRODUCT

@@ -2461,6 +2461,12 @@ function formatPriceInput(value) {
     normalizeCompact(row.item)
   ) ? (
     <span className="font-semibold">1</span>
+  ) : ["rafter", "purlin13ft", "purlin21ft"].includes(
+      normalizeCompact(row.item)
+    ) ? (
+    <span className="font-semibold">
+      {row.qty}
+    </span>
   ) : normalizeCompact(row.item) === "wire" ? (
     <span></span>
   ) : (

@@ -2,6 +2,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import ExcelJS from "exceljs";
+import { downloadFile } from "../utils/downloadFile";
 
 export async function exportCustomerPaymentsExcel(data) {
   const rows = data.map((item) => ({
@@ -35,15 +36,10 @@ export async function exportCustomerPaymentsExcel(data) {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "Customer_Payments.xlsx";
-  link.click();
-  URL.revokeObjectURL(url);
+  await downloadFile(blob, "Customer_Payments.xlsx");
 }
 
-export function exportCustomerPaymentsPDF(data) {
+export async function exportCustomerPaymentsPDF(data) {
   const doc = new jsPDF();
 
   doc.text("Customer Payments Report", 14, 15);
@@ -68,5 +64,6 @@ export function exportCustomerPaymentsPDF(data) {
     ]),
   });
 
-  doc.save("Customer_Payments.pdf");
+  const pdfBlob = doc.output("blob");
+await downloadFile(pdfBlob, "Customer_Payments.pdf");
 }

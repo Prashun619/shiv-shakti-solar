@@ -812,14 +812,17 @@ border-[#354657]
 
         <div
           className="
-            flex-1
-            min-w-0
-            p-3
-            sm:p-4
-            lg:p-6
-            overflow-x-hidden
-            overflow-y-auto
-          "
+  flex-1
+  min-w-0
+  min-h-0
+  p-3
+  sm:p-4
+  lg:p-6
+  overflow-x-hidden
+  overflow-y-auto
+  overscroll-y-contain
+  touch-pan-y
+"
         >
 
 

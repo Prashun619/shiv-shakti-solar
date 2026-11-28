@@ -172,12 +172,16 @@ async function exportExcel() {
 
 
 
-function exportPDF(){
+async function exportPDF() {
+  try {
+    await exportCustomerPaymentsPDF(payments);
+  } catch (error) {
+    console.error("Customer Payments PDF export failed:", error);
+    console.error("Error message:", error?.message);
+    console.error("Error stack:", error?.stack);
 
-exportCustomerPaymentsPDF(
-payments
-);
-
+    alert("Unable to export Customer Payments PDF file.");
+  }
 }
 
 
